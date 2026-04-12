@@ -31,7 +31,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 */
 
-import { Plus, MessageSquare, Trash2, Loader2, Copy, MoreVertical, Pencil, PanelLeftClose, PanelLeft, Home as HomeIcon, Wand2, Video, Search, LayoutGrid, Brush, Folder, Coins, ArrowRight, Sparkles, ZoomIn, CheckCircle2, Menu, X } from "lucide-react";
+import { Plus, MessageSquare, Trash2, Loader2, Copy, MoreVertical, Pencil, PanelLeftClose, PanelLeft, Home as HomeIcon, Wand2, Video, Search, LayoutGrid, Brush, Folder, Coins, ArrowRight, Sparkles, ZoomIn, CheckCircle2, Menu, X, Layers } from "lucide-react";
 
 // Map string icon names to Lucide icons
 const IconMap: Record<string, any> = { Wand2, Video, ZoomIn, Search, LayoutGrid, Brush, Folder, Coins, ArrowRight, Sparkles, CheckCircle2 };
@@ -1090,9 +1090,9 @@ export default function Home() {
           <div className="w-full flex-grow flex flex-col items-center animate-[fadeInUp_0.4s_ease-out]">
             {/* Generation Interface Inspired by Image 5 */}
             <div className="w-full max-w-4xl mx-auto flex flex-col items-center mt-10 mb-8">
-              <div className="flex items-center gap-3 mb-6">
-                <Wand2 className="text-purple-400" size={32} />
-                <h2 className="text-4xl font-display font-bold">Image</h2>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6 text-center">
+                <Layers className="text-purple-400 shrink-0" size={36} />
+                <h2 className="text-2xl sm:text-4xl font-display font-bold leading-tight max-w-2xl">Complete Architectural Rendering Workspace</h2>
               </div>
             </div>
 
