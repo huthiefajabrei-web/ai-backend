@@ -966,11 +966,11 @@ export default function Home() {
               <h1 className="font-display text-5xl sm:text-7xl font-bold tracking-tighter mb-8 leading-[1.1] max-w-4xl">
                 Design, from Concept to <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400">Reality</span>
               </h1>
-              <div className="flex items-center gap-4 mb-16">
-                <button onClick={() => setActiveApp("generation")} className="px-6 py-3 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold flex items-center gap-2 hover:opacity-90 transition-all shadow-[0_0_20px_rgba(139,92,246,0.4)]">
-                  Get Started <ArrowRight size={18} />
+              <div className="flex flex-wrap items-center justify-center gap-4 mb-16 w-full px-2">
+                <button onClick={() => setActiveApp("generation")} className="px-5 sm:px-6 py-3 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-[0_0_20px_rgba(139,92,246,0.4)] whitespace-nowrap text-sm sm:text-base">
+                  Get Started <ArrowRight size={18} className="shrink-0" />
                 </button>
-                <button onClick={() => document.getElementById("apps")?.scrollIntoView({ behavior: "smooth" })} className="px-6 py-3 rounded-full bg-[#18181b] border border-white/10 text-white font-semibold hover:bg-white/5 transition-all">
+                <button onClick={() => document.getElementById("apps")?.scrollIntoView({ behavior: "smooth" })} className="px-5 sm:px-6 py-3 rounded-full bg-[#18181b] border border-white/10 text-white font-semibold flex justify-center hover:bg-white/5 transition-all whitespace-nowrap text-sm sm:text-base">
                   Explore Apps
                 </button>
               </div>

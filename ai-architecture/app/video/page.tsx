@@ -188,39 +188,41 @@ export default function VideoGenerationPage() {
           <div className="bg-[#121214] border border-[#27272a] rounded-[1.5rem] p-6 shadow-2xl w-full flex flex-col">
             
             {/* Top Files Row */}
-            <div className="flex items-start gap-4 mb-6">
-              {/* Start Frame */}
-              <label className={`w-[90px] h-[90px] md:w-[120px] md:h-[120px] border border-dashed border-[#52525b] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-all relative overflow-hidden flex-shrink-0 group ${startPreview ? 'border-transparent border-none bg-black' : ''}`}>
-                <input type="file" onChange={handleStartFile} accept="image/*" className="hidden" />
-                {startPreview ? (
-                  <img src={startPreview} alt="Start frame" className="absolute inset-0 w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
-                ) : (
-                  <>
-                    <Plus size={20} className="text-zinc-500 mb-1" />
-                    <span className="text-[10px] sm:text-xs font-bold text-zinc-500 text-center uppercase tracking-widest leading-tight w-full px-2">START FRAME</span>
-                  </>
-                )}
-              </label>
+            <div className="flex flex-col md:flex-row items-start gap-4 mb-6">
+              <div className="flex items-center justify-center md:justify-start gap-4 w-full md:w-auto">
+                {/* Start Frame */}
+                <label className={`w-[100px] h-[100px] md:w-[120px] md:h-[120px] border border-dashed border-[#52525b] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-all relative overflow-hidden flex-shrink-0 group ${startPreview ? 'border-transparent border-none bg-black' : ''}`}>
+                  <input type="file" onChange={handleStartFile} accept="image/*" className="hidden" />
+                  {startPreview ? (
+                    <img src={startPreview} alt="Start frame" className="absolute inset-0 w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
+                  ) : (
+                    <>
+                      <Plus size={20} className="text-zinc-500 mb-1" />
+                      <span className="text-[10px] sm:text-xs font-bold text-zinc-500 text-center uppercase tracking-widest leading-tight w-full px-2">START FRAME</span>
+                    </>
+                  )}
+                </label>
 
-              {/* End Frame */}
-              <label className={`w-[90px] h-[90px] md:w-[120px] md:h-[120px] border border-dashed border-[#52525b] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-all relative overflow-hidden flex-shrink-0 group ${endPreview ? 'border-transparent border-none bg-black' : ''}`}>
-                <input type="file" onChange={handleEndFile} accept="image/*" className="hidden" />
-                {endPreview ? (
-                  <img src={endPreview} alt="End frame" className="absolute inset-0 w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
-                ) : (
-                  <>
-                    <Plus size={20} className="text-zinc-500 mb-1" />
-                    <span className="text-[10px] sm:text-xs font-bold text-zinc-500 text-center uppercase tracking-widest leading-tight w-full px-2">END FRAME</span>
-                  </>
-                )}
-              </label>
+                {/* End Frame */}
+                <label className={`w-[100px] h-[100px] md:w-[120px] md:h-[120px] border border-dashed border-[#52525b] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-all relative overflow-hidden flex-shrink-0 group ${endPreview ? 'border-transparent border-none bg-black' : ''}`}>
+                  <input type="file" onChange={handleEndFile} accept="image/*" className="hidden" />
+                  {endPreview ? (
+                    <img src={endPreview} alt="End frame" className="absolute inset-0 w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
+                  ) : (
+                    <>
+                      <Plus size={20} className="text-zinc-500 mb-1" />
+                      <span className="text-[10px] sm:text-xs font-bold text-zinc-500 text-center uppercase tracking-widest leading-tight w-full px-2">END FRAME</span>
+                    </>
+                  )}
+                </label>
+              </div>
 
               {/* Prompt Textarea */}
               <textarea 
                 placeholder="Describe the motion you want... e.g., 'Slow camera pan with natural lighting'" 
                 value={prompt}
                 onChange={e => setPrompt(e.target.value)}
-                className="flex-1 h-[90px] md:h-[120px] bg-transparent border-none outline-none resize-none text-[15px] p-2 text-zinc-300 placeholder:text-zinc-600 custom-scrollbar"
+                className="w-full h-[100px] md:flex-1 md:h-[120px] bg-transparent border border-white/5 md:border-none rounded-xl md:rounded-none outline-none resize-none text-[15px] p-3 md:p-2 text-zinc-300 placeholder:text-zinc-600 custom-scrollbar"
               />
             </div>
 
