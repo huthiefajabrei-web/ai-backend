@@ -1,6 +1,6 @@
 /**
- * MySQL API Client
- * Communicates with the FastAPI backend which connects to MySQL.
+ * Session/auth API client
+ * Talks to the FastAPI backend (PostgreSQL via DATABASE_URL on the server).
  * Authentication uses a Bearer token stored in localStorage.
  */
 
@@ -120,17 +120,53 @@ export async function apiGetSessions(): Promise<MySQLSession[]> {
   }
 }
 
-export async function apiCreateSession(title: string, resps = {}): Promise<MySQLSession | null> {
+export type ApiCreateSessionResult =
+  | { ok: true; data: MySQLSession }
+  | { ok: false; error: string };
+
+export async function apiCreateSession(
+  title: string,
+  resps = {}
+): Promise<ApiCreateSessionResult> {
   try {
     const res = await fetch(`${API_BASE}/sessions`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ title, resps }),
     });
-    const data = await res.json();
-    return data.ok ? data.data : null;
-  } catch {
-    return null;
+    let data: { ok?: boolean; data?: MySQLSession; error?: string } = {};
+    try {
+      data = await res.json();
+    } catch {
+      data = {};
+    }
+    if (data.ok && data.data) {
+      return { ok: true, data: data.data };
+    }
+    const serverErr =
+      typeof data.error === "string" && data.error.trim() ? data.error.trim() : null;
+    if (!res.ok) {
+      return {
+        ok: false,
+        error:
+          serverErr ||
+          `Request failed (${res.status}). Check that NEXT_PUBLIC_API_URL points to your API.`,
+      };
+    }
+    return {
+      ok: false,
+      error: serverErr || "Unexpected response from server.",
+    };
+  } catch (e) {
+    const hint =
+      typeof window !== "undefined" && window.location.hostname !== "localhost"
+        ? " On production, set NEXT_PUBLIC_API_URL to your public API URL (not localhost)."
+        : "";
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      error: `Network error: ${msg}.${hint}`,
+    };
   }
 }
 

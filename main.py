@@ -42,7 +42,13 @@ _db_lock = threading.Lock()
 
 def get_db():
     """Return a new PostgreSQL connection with RealDict cursor support."""
-    conn = psycopg2.connect(DATABASE_URL)
+    url = (DATABASE_URL or "").strip()
+    if not url:
+        raise RuntimeError(
+            "DATABASE_URL is not set on the API server. Add a PostgreSQL connection string "
+            "(e.g. Supabase) to the backend environment."
+        )
+    conn = psycopg2.connect(url)
     conn.autocommit = False
     return conn
 
