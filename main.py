@@ -58,6 +58,42 @@ def _execute(conn, sql: str, params=None):
     cur.execute(sql, params or ())
     return cur
 
+
+def _ensure_user_sessions_fkey_to_app_users(conn) -> None:
+    """
+    Supabase / manual SQL often adds user_sessions.user_id -> auth.users(id).
+    This app stores accounts in public.users only, so inserts fail with:
+    Key (user_id)=(...) is not present in table "users" (FK target mismatch).
+
+    Align FK to public.users and remove orphaned rows/tokens.
+    """
+    cur = conn.cursor()
+    try:
+        cur.execute(
+            "DELETE FROM user_sessions WHERE user_id NOT IN (SELECT id FROM public.users)"
+        )
+        cur.execute(
+            "DELETE FROM auth_tokens WHERE user_id NOT IN (SELECT id FROM public.users)"
+        )
+        cur.execute(
+            "ALTER TABLE user_sessions DROP CONSTRAINT IF EXISTS user_sessions_user_id_fkey"
+        )
+        cur.execute(
+            """
+            ALTER TABLE user_sessions
+            ADD CONSTRAINT user_sessions_user_id_fkey
+            FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+            """
+        )
+        conn.commit()
+        print("✅ user_sessions.user_id FK -> public.users(id)")
+    except Exception as e:
+        conn.rollback()
+        print(f"⚠️ user_sessions FK alignment skipped: {e}")
+    finally:
+        cur.close()
+
+
 def init_mysql_tables():
     """Create PostgreSQL tables if they don't exist."""
     conn = get_db()
@@ -135,6 +171,8 @@ def init_mysql_tables():
             created_at  TEXT DEFAULT (now()::text)
         )""")
         conn.commit()
+
+        _ensure_user_sessions_fkey_to_app_users(conn)
 
         # Seed tools if empty
         cur.execute("SELECT COUNT(*) as cnt FROM app_tools")
