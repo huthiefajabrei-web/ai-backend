@@ -283,7 +283,7 @@ export default function AppFeaturePage() {
 
           {/* Page Headers */}
           <div className="mb-10 pl-2">
-            <h1 className="text-[2.5rem] font-bold uppercase tracking-wide mb-2 font-display leading-tight">{appData.title.includes('Generation') || appData.title.includes('Feature') ? 'RENDER' : appData.title.toUpperCase()}</h1>
+            <h1 className="text-[2.5rem] font-bold uppercase tracking-wide mb-2 font-display leading-tight">{appData.title.toUpperCase()}</h1>
             <p className="text-sm max-w-2xl text-[#a1a1aa] font-medium tracking-wide">
               {(appData.description || "").length > 30 ? appData.description : "Convert architectural 3D models into stunning photorealistic renderings with AI-powered materials, lighting, and environmental context."}
             </p>

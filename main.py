@@ -103,7 +103,9 @@ def init_mysql_tables():
             CREATE TABLE IF NOT EXISTS app_hero (
                 id          TEXT PRIMARY KEY,
                 title       TEXT NOT NULL,
+                description TEXT,
                 image_url   TEXT NOT NULL,
+                action_id   TEXT DEFAULT 'generation',
                 created_at  TEXT DEFAULT (datetime('now'))
             );
             CREATE TABLE IF NOT EXISTS app_prompts (
@@ -139,10 +141,10 @@ def init_mysql_tables():
                 
             if conn.execute("SELECT COUNT(*) FROM app_hero").fetchone()[0] == 0:
                 conn.executescript("""
-                    INSERT INTO app_hero (id, title, image_url) VALUES 
-                    ('h1', 'Modern Mansion', 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80'),
-                    ('h2', 'Curved Architecture', 'https://images.unsplash.com/photo-1613490908679-b3a5105220fa?w=800&q=80'),
-                    ('h3', 'Interior Design', 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&q=80');
+                    INSERT INTO app_hero (id, title, description, image_url, action_id) VALUES 
+                    ('h1', 'Modern Mansion', 'Transform exterior photographs into photorealistic architectural renders.', 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80', 'generation'),
+                    ('h2', 'Curved Architecture', 'Generate stunning architectural visualizations with full material and lighting control.', 'https://images.unsplash.com/photo-1613490908679-b3a5105220fa?w=800&q=80', 'generation'),
+                    ('h3', 'Interior Design', 'Create beautiful photorealistic interior renders from basic 3D models or photos.', 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&q=80', 'generation');
                 """)
                 conn.commit()
 
@@ -205,6 +207,24 @@ def serialize_dates(obj):
 
 os.makedirs("static", exist_ok=True)
 
+def migrate_db():
+    """Run safe schema migrations (ADD COLUMN) for existing databases."""
+    conn = get_db()
+    try:
+        # Add description column to app_hero if it doesn't exist
+        cols = [row[1] for row in conn.execute("PRAGMA table_info(app_hero)").fetchall()]
+        if "description" not in cols:
+            conn.execute("ALTER TABLE app_hero ADD COLUMN description TEXT")
+            print("✅ Migration: added description to app_hero")
+        if "action_id" not in cols:
+            conn.execute("ALTER TABLE app_hero ADD COLUMN action_id TEXT DEFAULT 'generation'")
+            print("✅ Migration: added action_id to app_hero")
+        conn.commit()
+    except Exception as e:
+        print(f"⚠️ Migration warning: {e}")
+    finally:
+        conn.close()
+
 # ذاكرة مؤقتة لتخزين حالة المهام
 jobs: Dict[str, dict] = {}
 
@@ -240,7 +260,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.on_event("startup")
 async def on_startup():
     init_mysql_tables()
-    # Seed app_prompts if empty
+    migrate_db()
     conn = get_db()
     try:
         if conn.execute("SELECT COUNT(*) FROM app_prompts").fetchone()[0] == 0:
@@ -546,11 +566,12 @@ def modify_content(content_type: str, body: ContentUpdateBody, authorization: Op
                 """, (item_id, d.get("name", ""), float(d.get("price", 0)), int(d.get("credits", 0)), d.get("period", "mo"), features, int(d.get("is_popular", 0))))
             elif content_type == "hero":
                 conn.execute("""
-                    INSERT INTO app_hero (id, title, image_url)
-                    VALUES (?, ?, ?)
+                    INSERT INTO app_hero (id, title, description, image_url, action_id)
+                    VALUES (?, ?, ?, ?, ?)
                     ON CONFLICT(id) DO UPDATE SET
-                    title=excluded.title, image_url=excluded.image_url
-                """, (item_id, d.get("title", ""), d.get("image_url", "")))
+                    title=excluded.title, description=excluded.description,
+                    image_url=excluded.image_url, action_id=excluded.action_id
+                """, (item_id, d.get("title", ""), d.get("description", ""), d.get("image_url", ""), d.get("action_id", "generation")))
             elif content_type == "prompts":
                 conn.execute("""
                     INSERT INTO app_prompts (id, title, prompt_text, type)
