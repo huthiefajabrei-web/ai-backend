@@ -30,133 +30,141 @@ from fastapi.staticfiles import StaticFiles
 # MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
 # ...etc
 
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import threading
 
-DB_PATH = os.getenv("SQLITE_PATH", "harch_studio.db")
+# URL-encode special chars in password so psycopg2 can parse the URI correctly
+from urllib.parse import quote_plus
+
+DATABASE_URL = os.getenv("DATABASE_URL", "")
 _db_lock = threading.Lock()
 
 def get_db():
-    """Return a new SQLite connection (thread-safe via WAL mode)."""
-    conn = sqlite3.connect(DB_PATH, check_same_thread=False)
-    conn.row_factory = sqlite3.Row          # dict-like rows
-    conn.execute("PRAGMA journal_mode=WAL") # concurrent reads
-    conn.execute("PRAGMA foreign_keys=ON")
+    """Return a new PostgreSQL connection with RealDict cursor support."""
+    conn = psycopg2.connect(DATABASE_URL)
+    conn.autocommit = False
     return conn
 
+def _execute(conn, sql: str, params=None):
+    """Helper: execute a single SQL statement via a cursor, return cursor."""
+    cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+    cur.execute(sql, params or ())
+    return cur
+
 def init_mysql_tables():
-    """Create SQLite tables if they don't exist (kept same name for compatibility)."""
-    with _db_lock:
-        conn = get_db()
-        try:
-            conn.executescript("""
-            CREATE TABLE IF NOT EXISTS users (
-                id          TEXT PRIMARY KEY,
-                email       TEXT UNIQUE NOT NULL,
-                password_hash TEXT NOT NULL,
-                full_name   TEXT,
-                created_at  TEXT DEFAULT (datetime('now'))
-            );
-            CREATE TABLE IF NOT EXISTS user_sessions (
-                id                  TEXT PRIMARY KEY,
-                user_id             TEXT NOT NULL,
-                title               TEXT,
-                resps               TEXT,
-                parent_session_id   TEXT,
-                created_at          TEXT DEFAULT (datetime('now')),
-                updated_at          TEXT DEFAULT (datetime('now')),
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-            CREATE TABLE IF NOT EXISTS auth_tokens (
-                token       TEXT PRIMARY KEY,
-                user_id     TEXT NOT NULL,
-                expires_at  TEXT NOT NULL,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            );
-            CREATE TABLE IF NOT EXISTS app_tools (
-                id          TEXT PRIMARY KEY,
-                title       TEXT NOT NULL,
-                description TEXT,
-                icon        TEXT,
-                action_id   TEXT,
-                created_at  TEXT DEFAULT (datetime('now'))
-            );
-            CREATE TABLE IF NOT EXISTS app_cards (
-                id          TEXT PRIMARY KEY,
-                title       TEXT NOT NULL,
-                description TEXT,
-                image_url   TEXT,
-                category    TEXT,
-                action_id   TEXT,
-                created_at  TEXT DEFAULT (datetime('now'))
-            );
-            CREATE TABLE IF NOT EXISTS app_plans (
-                id          TEXT PRIMARY KEY,
-                name        TEXT NOT NULL,
-                price       REAL NOT NULL,
-                credits     INTEGER NOT NULL,
-                period      TEXT DEFAULT 'mo',
-                features    TEXT,
-                is_popular  INTEGER DEFAULT 0,
-                created_at  TEXT DEFAULT (datetime('now'))
-            );
-            CREATE TABLE IF NOT EXISTS app_hero (
-                id          TEXT PRIMARY KEY,
-                title       TEXT NOT NULL,
-                description TEXT,
-                image_url   TEXT NOT NULL,
-                action_id   TEXT DEFAULT 'generation',
-                created_at  TEXT DEFAULT (datetime('now'))
-            );
-            CREATE TABLE IF NOT EXISTS app_prompts (
-                id          TEXT PRIMARY KEY,
-                title       TEXT NOT NULL,
-                prompt_text TEXT NOT NULL,
-                type        TEXT NOT NULL,
-                created_at  TEXT DEFAULT (datetime('now'))
-            );
-            """)
+    """Create PostgreSQL tables if they don't exist."""
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id          TEXT PRIMARY KEY,
+            email       TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            full_name   TEXT,
+            created_at  TEXT DEFAULT (now()::text)
+        )""")
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS user_sessions (
+            id                  TEXT PRIMARY KEY,
+            user_id             TEXT NOT NULL,
+            title               TEXT,
+            resps               TEXT,
+            parent_session_id   TEXT,
+            created_at          TEXT DEFAULT (now()::text),
+            updated_at          TEXT DEFAULT (now()::text)
+        )""")
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS auth_tokens (
+            token       TEXT PRIMARY KEY,
+            user_id     TEXT NOT NULL,
+            expires_at  TEXT NOT NULL
+        )""")
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS app_tools (
+            id          TEXT PRIMARY KEY,
+            title       TEXT NOT NULL,
+            description TEXT,
+            icon        TEXT,
+            action_id   TEXT,
+            created_at  TEXT DEFAULT (now()::text)
+        )""")
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS app_cards (
+            id          TEXT PRIMARY KEY,
+            title       TEXT NOT NULL,
+            description TEXT,
+            image_url   TEXT,
+            category    TEXT,
+            action_id   TEXT,
+            created_at  TEXT DEFAULT (now()::text)
+        )""")
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS app_plans (
+            id          TEXT PRIMARY KEY,
+            name        TEXT NOT NULL,
+            price       REAL NOT NULL,
+            credits     INTEGER NOT NULL,
+            period      TEXT DEFAULT 'mo',
+            features    TEXT,
+            is_popular  INTEGER DEFAULT 0,
+            created_at  TEXT DEFAULT (now()::text)
+        )""")
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS app_hero (
+            id          TEXT PRIMARY KEY,
+            title       TEXT NOT NULL,
+            description TEXT,
+            image_url   TEXT NOT NULL,
+            action_id   TEXT DEFAULT 'generation',
+            created_at  TEXT DEFAULT (now()::text)
+        )""")
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS app_prompts (
+            id          TEXT PRIMARY KEY,
+            title       TEXT NOT NULL,
+            prompt_text TEXT NOT NULL,
+            type        TEXT NOT NULL,
+            created_at  TEXT DEFAULT (now()::text)
+        )""")
+        conn.commit()
+
+        # Seed tools if empty
+        cur.execute("SELECT COUNT(*) as cnt FROM app_tools")
+        if cur.fetchone()["cnt"] == 0:
+            cur.execute("""INSERT INTO app_tools (id, title, description, icon, action_id) VALUES
+                ('t1','AI Image Generation','Generate stunning interior and exterior designs from text prompts or reference images.','Wand2','generation'),
+                ('t2','Image to Video','Transform static designs into immersive walkthrough videos with cutting-edge AI.','Video','generation'),
+                ('t3','AI Upscaling','Enhance image quality up to 16x with Magnific AI for print-ready results.','ZoomIn','generation')""")
+            cur.execute("""INSERT INTO app_cards (id, title, description, image_url, category, action_id) VALUES
+                ('a1','Shot to CAD Board','Transform architectural photographs into professional CAD board layouts with plans.','https://images.unsplash.com/photo-1628169222588-444a1eb405d4?w=500&q=80','Architecture','generation'),
+                ('a2','Shot to Physical Model','Transform buildings into miniature white 3D printed architectural models on a display base.','https://images.unsplash.com/photo-1518384401463-d3876163c195?w=500&q=80','Architecture','generation'),
+                ('a3','Model to Full Scene','Transform 3D models or renders into fully realized architectural scenes with environment.','https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=500&q=80','Architecture','generation'),
+                ('a4','Multiple Angles','Generate multiple perspective views of a building from different angles seamlessly.','https://images.unsplash.com/photo-1545083036-728b9fb6f827?w=500&q=80','Architecture','generation')""")
+            cur.execute("""INSERT INTO app_plans (id, name, price, credits, period, features, is_popular) VALUES
+                ('p1','Starter',19.99,100,'mo','["100 AI Generations","Standard Resolution","Community Support","Basic Styles"]',0),
+                ('p2','Pro',49.99,500,'mo','["500 AI Generations","High Resolution (4K)","Priority Support","All Architectural Styles","Video Generation"]',1),
+                ('p3','Studio',199.99,3000,'mo','["3000 AI Generations","Ultra Resolution (8K)","24/7 Dedicated Support","Custom Model Training","API Access"]',0)""")
             conn.commit()
-            
-            # Seed default data if empty
-            if conn.execute("SELECT COUNT(*) FROM app_tools").fetchone()[0] == 0:
-                conn.executescript("""
-                    INSERT INTO app_tools (id, title, description, icon, action_id) VALUES 
-                    ('t1', 'AI Image Generation', 'Generate stunning interior and exterior designs from text prompts or reference images.', 'Wand2', 'generation'),
-                    ('t2', 'Image to Video', 'Transform static designs into immersive walkthrough videos with cutting-edge AI.', 'Video', 'generation'),
-                    ('t3', 'AI Upscaling', 'Enhance image quality up to 16x with Magnific AI for print-ready results.', 'ZoomIn', 'generation');
 
-                    INSERT INTO app_cards (id, title, description, image_url, category, action_id) VALUES 
-                    ('a1', 'Shot to CAD Board', 'Transform architectural photographs into professional CAD board layouts with plans.', 'https://images.unsplash.com/photo-1628169222588-444a1eb405d4?w=500&q=80', 'Architecture', 'generation'),
-                    ('a2', 'Shot to Physical Model', 'Transform buildings into miniature white 3D printed architectural models on a display base.', 'https://images.unsplash.com/photo-1518384401463-d3876163c195?w=500&q=80', 'Architecture', 'generation'),
-                    ('a3', 'Model to Full Scene', 'Transform 3D models or renders into fully realized architectural scenes with environment.', 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=500&q=80', 'Architecture', 'generation'),
-                    ('a4', 'Multiple Angles', 'Generate multiple perspective views of a building from different angles seamlessly.', 'https://images.unsplash.com/photo-1545083036-728b9fb6f827?w=500&q=80', 'Architecture', 'generation');
-                    
-                    INSERT INTO app_plans (id, name, price, credits, period, features, is_popular) VALUES 
-                    ('p1', 'Starter', 19.99, 100, 'mo', '["100 AI Generations", "Standard Resolution", "Community Support", "Basic Styles"]', 0),
-                    ('p2', 'Pro', 49.99, 500, 'mo', '["500 AI Generations", "High Resolution (4K)", "Priority Support", "All Architectural Styles", "Video Generation"]', 1),
-                    ('p3', 'Studio', 199.99, 3000, 'mo', '["3000 AI Generations", "Ultra Resolution (8K)", "24/7 Dedicated Support", "Custom Model Training", "API Access"]', 0);
-                """)
-                conn.commit()
-                
-            if conn.execute("SELECT COUNT(*) FROM app_hero").fetchone()[0] == 0:
-                conn.executescript("""
-                    INSERT INTO app_hero (id, title, description, image_url, action_id) VALUES 
-                    ('h1', 'Modern Mansion', 'Transform exterior photographs into photorealistic architectural renders.', 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80', 'generation'),
-                    ('h2', 'Curved Architecture', 'Generate stunning architectural visualizations with full material and lighting control.', 'https://images.unsplash.com/photo-1613490908679-b3a5105220fa?w=800&q=80', 'generation'),
-                    ('h3', 'Interior Design', 'Create beautiful photorealistic interior renders from basic 3D models or photos.', 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&q=80', 'generation');
-                """)
-                conn.commit()
+        # Seed hero if empty
+        cur.execute("SELECT COUNT(*) as cnt FROM app_hero")
+        if cur.fetchone()["cnt"] == 0:
+            cur.execute("""INSERT INTO app_hero (id, title, description, image_url, action_id) VALUES
+                ('h1','Modern Mansion','Transform exterior photographs into photorealistic architectural renders.','https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80','generation'),
+                ('h2','Curved Architecture','Generate stunning architectural visualizations with full material and lighting control.','https://images.unsplash.com/photo-1613490908679-b3a5105220fa?w=800&q=80','generation'),
+                ('h3','Interior Design','Create beautiful photorealistic interior renders from basic 3D models or photos.','https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&q=80','generation')""")
+            conn.commit()
 
-            if conn.execute("SELECT COUNT(*) FROM app_prompts").fetchone()[0] == 0:
-                # Seed the initial prompts from PERSPECTIVES dict (defined later, we will loop through it locally or defer, but actually let's defer it to startup)
-                pass # will do this dynamically in startup
+        cur.close()
+        print(f"✅ PostgreSQL tables ready (Supabase)")
+    except Exception as e:
+        print(f"❌ PostgreSQL init error: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
 
-            print(f"✅ SQLite tables ready → {DB_PATH}")
-        except Exception as e:
-            print(f"❌ SQLite init error: {e}")
-        finally:
-            conn.close()
 
 def hash_password(password: str) -> str:
     return hashlib.sha256(password.encode()).hexdigest()
@@ -167,16 +175,17 @@ def verify_password(password: str, hashed: str) -> bool:
 def create_token(user_id: str) -> str:
     token = secrets.token_hex(64)
     expires_at = (datetime.utcnow() + timedelta(days=30)).isoformat()
-    with _db_lock:
-        conn = get_db()
-        try:
-            conn.execute(
-                "INSERT INTO auth_tokens (token, user_id, expires_at) VALUES (?, ?, ?)",
-                (token, user_id, expires_at)
-            )
-            conn.commit()
-        finally:
-            conn.close()
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "INSERT INTO auth_tokens (token, user_id, expires_at) VALUES (%s, %s, %s)",
+            (token, user_id, expires_at)
+        )
+        conn.commit()
+        cur.close()
+    finally:
+        conn.close()
     return token
 
 def get_user_from_token(token: str) -> Optional[dict]:
@@ -184,13 +193,16 @@ def get_user_from_token(token: str) -> Optional[dict]:
         return None
     conn = get_db()
     try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         now = datetime.utcnow().isoformat()
-        row = conn.execute("""
+        cur.execute("""
             SELECT u.id, u.email, u.full_name, u.created_at
             FROM auth_tokens t
             JOIN users u ON t.user_id = u.id
-            WHERE t.token = ? AND t.expires_at > ?
-        """, (token, now)).fetchone()
+            WHERE t.token = %s AND t.expires_at > %s
+        """, (token, now))
+        row = cur.fetchone()
+        cur.close()
         return dict(row) if row else None
     except Exception as e:
         print(f"❌ get_user_from_token error: {e}")
@@ -208,22 +220,9 @@ def serialize_dates(obj):
 os.makedirs("static", exist_ok=True)
 
 def migrate_db():
-    """Run safe schema migrations (ADD COLUMN) for existing databases."""
-    conn = get_db()
-    try:
-        # Add description column to app_hero if it doesn't exist
-        cols = [row[1] for row in conn.execute("PRAGMA table_info(app_hero)").fetchall()]
-        if "description" not in cols:
-            conn.execute("ALTER TABLE app_hero ADD COLUMN description TEXT")
-            print("✅ Migration: added description to app_hero")
-        if "action_id" not in cols:
-            conn.execute("ALTER TABLE app_hero ADD COLUMN action_id TEXT DEFAULT 'generation'")
-            print("✅ Migration: added action_id to app_hero")
-        conn.commit()
-    except Exception as e:
-        print(f"⚠️ Migration warning: {e}")
-    finally:
-        conn.close()
+    """No-op for PostgreSQL: schema is managed by init_mysql_tables."""
+    pass
+
 
 # ذاكرة مؤقتة لتخزين حالة المهام
 jobs: Dict[str, dict] = {}
@@ -260,20 +259,24 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.on_event("startup")
 async def on_startup():
     init_mysql_tables()
-    migrate_db()
+    # Seed app_prompts if empty
     conn = get_db()
     try:
-        if conn.execute("SELECT COUNT(*) FROM app_prompts").fetchone()[0] == 0:
-            with _db_lock:
-                for k, v in PERSPECTIVES.items():
-                    if not v: continue
-                    # Determine type loosely
-                    ptype = 'Interior' if any(word in k.lower() for word in ['interior', 'room', 'kitchen', 'bathroom', 'office', 'lobby']) else 'Exterior'
-                    # Special cases manually corrected if needed
-                    conn.execute("INSERT INTO app_prompts (id, title, prompt_text, type) VALUES (?, ?, ?, ?)", (str(uuid.uuid4()), k, v, ptype))
-                conn.commit()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT COUNT(*) as cnt FROM app_prompts")
+        if cur.fetchone()["cnt"] == 0:
+            for k, v in PERSPECTIVES.items():
+                if not v: continue
+                ptype = 'Interior' if any(word in k.lower() for word in ['interior', 'room', 'kitchen', 'bathroom', 'office', 'lobby']) else 'Exterior'
+                cur.execute(
+                    "INSERT INTO app_prompts (id, title, prompt_text, type) VALUES (%s, %s, %s, %s)",
+                    (str(uuid.uuid4()), k, v, ptype)
+                )
+            conn.commit()
+        cur.close()
     finally:
         conn.close()
+
 
 @app.get("/")
 def root():
@@ -301,16 +304,17 @@ class LoginBody(BaseModel):
 def auth_register(body: RegisterBody):
     conn = get_db()
     try:
-        existing = conn.execute("SELECT id FROM users WHERE email = ?", (body.email,)).fetchone()
-        if existing:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT id FROM users WHERE email = %s", (body.email,))
+        if cur.fetchone():
             return JSONResponse(status_code=409, content={"ok": False, "error": "Email already registered"})
         uid = str(uuid.uuid4())
-        with _db_lock:
-            conn.execute(
-                "INSERT INTO users (id, email, password_hash, full_name) VALUES (?, ?, ?, ?)",
-                (uid, body.email, hash_password(body.password), body.full_name)
-            )
-            conn.commit()
+        cur.execute(
+            "INSERT INTO users (id, email, password_hash, full_name) VALUES (%s, %s, %s, %s)",
+            (uid, body.email, hash_password(body.password), body.full_name)
+        )
+        conn.commit()
+        cur.close()
         token = create_token(uid)
         return {
             "ok": True,
@@ -318,17 +322,20 @@ def auth_register(body: RegisterBody):
             "user": {"id": uid, "email": body.email, "full_name": body.full_name}
         }
     except Exception as e:
+        conn.rollback()
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
     finally:
         conn.close()
+
 
 @app.post("/auth/login")
 def auth_login(body: LoginBody):
     conn = get_db()
     try:
-        row = conn.execute(
-            "SELECT id, email, password_hash, full_name FROM users WHERE email = ?", (body.email,)
-        ).fetchone()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT id, email, password_hash, full_name FROM users WHERE email = %s", (body.email,))
+        row = cur.fetchone()
+        cur.close()
         if not row or not verify_password(body.password, row["password_hash"]):
             return JSONResponse(status_code=401, content={"ok": False, "error": "Invalid email or password"})
         user = dict(row)
@@ -343,6 +350,7 @@ def auth_login(body: LoginBody):
     finally:
         conn.close()
 
+
 @app.post("/auth/logout")
 def auth_logout(authorization: Optional[str] = Header(None)):
     token = (authorization or "").replace("Bearer ", "").strip()
@@ -350,12 +358,14 @@ def auth_logout(authorization: Optional[str] = Header(None)):
         return {"ok": True}
     conn = get_db()
     try:
-        with _db_lock:
-            conn.execute("DELETE FROM auth_tokens WHERE token = ?", (token,))
-            conn.commit()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM auth_tokens WHERE token = %s", (token,))
+        conn.commit()
+        cur.close()
     finally:
         conn.close()
     return {"ok": True}
+
 
 @app.get("/auth/me")
 def auth_me(authorization: Optional[str] = Header(None)):
@@ -381,10 +391,13 @@ def get_sessions(authorization: Optional[str] = Header(None)):
         return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
     conn = get_db()
     try:
-        rows = conn.execute("""
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("""
             SELECT id, user_id, title, resps, parent_session_id, created_at, updated_at
-            FROM user_sessions WHERE user_id = ? ORDER BY updated_at DESC
-        """, (user["id"],)).fetchall()
+            FROM user_sessions WHERE user_id = %s ORDER BY updated_at DESC
+        """, (user["id"],))
+        rows = cur.fetchall()
+        cur.close()
         result = []
         for r in rows:
             d = dict(r)
@@ -395,6 +408,7 @@ def get_sessions(authorization: Optional[str] = Header(None)):
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
     finally:
         conn.close()
+
 
 class SessionCreateBody(BaseModel):
     title: Optional[str] = "New Session"
@@ -411,25 +425,24 @@ def create_session(body: SessionCreateBody, authorization: Optional[str] = Heade
     try:
         sid = str(uuid.uuid4())
         now = datetime.utcnow().isoformat()
-        with _db_lock:
-            conn.execute("""
-                INSERT INTO user_sessions (id, user_id, title, resps, parent_session_id, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (sid, user["id"], body.title, json_lib.dumps(body.resps or {}), body.parent_session_id, now, now))
-            conn.commit()
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO user_sessions (id, user_id, title, resps, parent_session_id, created_at, updated_at)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (sid, user["id"], body.title, json_lib.dumps(body.resps or {}), body.parent_session_id, now, now))
+        conn.commit()
+        cur.close()
         return {"ok": True, "data": {
-            "id": sid,
-            "user_id": user["id"],
-            "title": body.title,
-            "resps": body.resps or {},
-            "parent_session_id": body.parent_session_id,
-            "created_at": now,
-            "updated_at": now,
+            "id": sid, "user_id": user["id"], "title": body.title,
+            "resps": body.resps or {}, "parent_session_id": body.parent_session_id,
+            "created_at": now, "updated_at": now,
         }}
     except Exception as e:
+        conn.rollback()
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
     finally:
         conn.close()
+
 
 class SessionUpdateBody(BaseModel):
     title: Optional[str] = None
@@ -443,26 +456,27 @@ def update_session(session_id: str, body: SessionUpdateBody, authorization: Opti
         return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
     conn = get_db()
     try:
-        existing = conn.execute(
-            "SELECT id FROM user_sessions WHERE id = ? AND user_id = ?", (session_id, user["id"])
-        ).fetchone()
-        if not existing:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT id FROM user_sessions WHERE id = %s AND user_id = %s", (session_id, user["id"]))
+        if not cur.fetchone():
             return JSONResponse(status_code=404, content={"ok": False, "error": "Session not found"})
         fields, values = [], []
         if body.title is not None:
-            fields.append("title = ?"); values.append(body.title)
+            fields.append("title = %s"); values.append(body.title)
         if body.resps is not None:
-            fields.append("resps = ?"); values.append(json_lib.dumps(body.resps))
-        fields.append("updated_at = ?"); values.append(datetime.utcnow().isoformat())
+            fields.append("resps = %s"); values.append(json_lib.dumps(body.resps))
+        fields.append("updated_at = %s"); values.append(datetime.utcnow().isoformat())
         values.append(session_id)
-        with _db_lock:
-            conn.execute(f"UPDATE user_sessions SET {', '.join(fields)} WHERE id = ?", values)
-            conn.commit()
+        cur.execute(f"UPDATE user_sessions SET {', '.join(fields)} WHERE id = %s", values)
+        conn.commit()
+        cur.close()
         return {"ok": True}
     except Exception as e:
+        conn.rollback()
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
     finally:
         conn.close()
+
 
 @app.delete("/sessions/{session_id}")
 def delete_session(session_id: str, authorization: Optional[str] = Header(None)):
@@ -472,14 +486,17 @@ def delete_session(session_id: str, authorization: Optional[str] = Header(None))
         return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
     conn = get_db()
     try:
-        with _db_lock:
-            conn.execute("DELETE FROM user_sessions WHERE id = ? AND user_id = ?", (session_id, user["id"]))
-            conn.commit()
+        cur = conn.cursor()
+        cur.execute("DELETE FROM user_sessions WHERE id = %s AND user_id = %s", (session_id, user["id"]))
+        conn.commit()
+        cur.close()
         return {"ok": True}
     except Exception as e:
+        conn.rollback()
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
     finally:
         conn.close()
+
 
 # =========================
 # Admin & Public Content Endpoints
@@ -489,29 +506,36 @@ def delete_session(session_id: str, authorization: Optional[str] = Header(None))
 def get_admin_stats():
     conn = get_db()
     try:
-        users_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
-        sessions_count = conn.execute("SELECT COUNT(*) FROM user_sessions").fetchone()[0]
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT COUNT(*) as cnt FROM users")
+        users_count = cur.fetchone()["cnt"]
+        cur.execute("SELECT COUNT(*) as cnt FROM user_sessions")
+        sessions_count = cur.fetchone()["cnt"]
+        cur.close()
         return {"ok": True, "stats": {"users": users_count, "sessions": sessions_count}}
     finally:
         conn.close()
+
 
 @app.get("/content/{content_type}")
 def get_content(content_type: str):
     conn = get_db()
     try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         if content_type == "tools":
-            rows = conn.execute("SELECT * FROM app_tools ORDER BY created_at ASC").fetchall()
+            cur.execute("SELECT * FROM app_tools ORDER BY created_at ASC")
         elif content_type == "apps":
-            rows = conn.execute("SELECT * FROM app_cards ORDER BY created_at ASC").fetchall()
+            cur.execute("SELECT * FROM app_cards ORDER BY created_at ASC")
         elif content_type == "plans":
-            rows = conn.execute("SELECT * FROM app_plans ORDER BY price ASC").fetchall()
+            cur.execute("SELECT * FROM app_plans ORDER BY price ASC")
         elif content_type == "hero":
-            rows = conn.execute("SELECT * FROM app_hero ORDER BY created_at ASC").fetchall()
+            cur.execute("SELECT * FROM app_hero ORDER BY created_at ASC")
         elif content_type == "prompts":
-            rows = conn.execute("SELECT * FROM app_prompts ORDER BY type ASC, created_at ASC").fetchall()
+            cur.execute("SELECT * FROM app_prompts ORDER BY type ASC, created_at ASC")
         else:
             return JSONResponse(status_code=400, content={"ok": False, "error": "Invalid type"})
-        
+        rows = cur.fetchall()
+        cur.close()
         result = []
         for r in rows:
             d = dict(r)
@@ -525,6 +549,7 @@ def get_content(content_type: str):
     finally:
         conn.close()
 
+
 class ContentUpdateBody(BaseModel):
     id: Optional[str] = None
     data: dict
@@ -535,58 +560,59 @@ def modify_content(content_type: str, body: ContentUpdateBody, authorization: Op
     user = get_user_from_token(token)
     if not user:
         return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
-
     conn = get_db()
     try:
         item_id = body.id or str(uuid.uuid4())
         d = body.data
-        
-        with _db_lock:
-            if content_type == "tools":
-                conn.execute("""
-                    INSERT INTO app_tools (id, title, description, icon, action_id)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(id) DO UPDATE SET
-                    title=excluded.title, description=excluded.description, icon=excluded.icon, action_id=excluded.action_id
-                """, (item_id, d.get("title", ""), d.get("description", ""), d.get("icon", ""), d.get("action_id", "generation")))
-            elif content_type == "apps":
-                conn.execute("""
-                    INSERT INTO app_cards (id, title, description, image_url, category, action_id)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(id) DO UPDATE SET
-                    title=excluded.title, description=excluded.description, image_url=excluded.image_url, category=excluded.category, action_id=excluded.action_id
-                """, (item_id, d.get("title", ""), d.get("description", ""), d.get("image_url", ""), d.get("category", ""), d.get("action_id", "generation")))
-            elif content_type == "plans":
-                features = json_lib.dumps(d.get("features", [])) if isinstance(d.get("features"), list) else d.get("features", "[]")
-                conn.execute("""
-                    INSERT INTO app_plans (id, name, price, credits, period, features, is_popular)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(id) DO UPDATE SET
-                    name=excluded.name, price=excluded.price, credits=excluded.credits, period=excluded.period, features=excluded.features, is_popular=excluded.is_popular
-                """, (item_id, d.get("name", ""), float(d.get("price", 0)), int(d.get("credits", 0)), d.get("period", "mo"), features, int(d.get("is_popular", 0))))
-            elif content_type == "hero":
-                conn.execute("""
-                    INSERT INTO app_hero (id, title, description, image_url, action_id)
-                    VALUES (?, ?, ?, ?, ?)
-                    ON CONFLICT(id) DO UPDATE SET
-                    title=excluded.title, description=excluded.description,
-                    image_url=excluded.image_url, action_id=excluded.action_id
-                """, (item_id, d.get("title", ""), d.get("description", ""), d.get("image_url", ""), d.get("action_id", "generation")))
-            elif content_type == "prompts":
-                conn.execute("""
-                    INSERT INTO app_prompts (id, title, prompt_text, type)
-                    VALUES (?, ?, ?, ?)
-                    ON CONFLICT(id) DO UPDATE SET
-                    title=excluded.title, prompt_text=excluded.prompt_text, type=excluded.type
-                """, (item_id, d.get("title", ""), d.get("prompt_text", ""), d.get("type", "Exterior")))
-            else:
-                return JSONResponse(status_code=400, content={"ok": False, "error": "Invalid type"})
-            conn.commit()
+        cur = conn.cursor()
+        if content_type == "tools":
+            cur.execute("""
+                INSERT INTO app_tools (id, title, description, icon, action_id)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT(id) DO UPDATE SET
+                title=EXCLUDED.title, description=EXCLUDED.description, icon=EXCLUDED.icon, action_id=EXCLUDED.action_id
+            """, (item_id, d.get("title",""), d.get("description",""), d.get("icon",""), d.get("action_id","generation")))
+        elif content_type == "apps":
+            cur.execute("""
+                INSERT INTO app_cards (id, title, description, image_url, category, action_id)
+                VALUES (%s, %s, %s, %s, %s, %s)
+                ON CONFLICT(id) DO UPDATE SET
+                title=EXCLUDED.title, description=EXCLUDED.description, image_url=EXCLUDED.image_url, category=EXCLUDED.category, action_id=EXCLUDED.action_id
+            """, (item_id, d.get("title",""), d.get("description",""), d.get("image_url",""), d.get("category",""), d.get("action_id","generation")))
+        elif content_type == "plans":
+            features = json_lib.dumps(d.get("features",[])) if isinstance(d.get("features"), list) else d.get("features","[]")
+            cur.execute("""
+                INSERT INTO app_plans (id, name, price, credits, period, features, is_popular)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT(id) DO UPDATE SET
+                name=EXCLUDED.name, price=EXCLUDED.price, credits=EXCLUDED.credits, period=EXCLUDED.period, features=EXCLUDED.features, is_popular=EXCLUDED.is_popular
+            """, (item_id, d.get("name",""), float(d.get("price",0)), int(d.get("credits",0)), d.get("period","mo"), features, int(d.get("is_popular",0))))
+        elif content_type == "hero":
+            cur.execute("""
+                INSERT INTO app_hero (id, title, description, image_url, action_id)
+                VALUES (%s, %s, %s, %s, %s)
+                ON CONFLICT(id) DO UPDATE SET
+                title=EXCLUDED.title, description=EXCLUDED.description, image_url=EXCLUDED.image_url, action_id=EXCLUDED.action_id
+            """, (item_id, d.get("title",""), d.get("description",""), d.get("image_url",""), d.get("action_id","generation")))
+        elif content_type == "prompts":
+            cur.execute("""
+                INSERT INTO app_prompts (id, title, prompt_text, type)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT(id) DO UPDATE SET
+                title=EXCLUDED.title, prompt_text=EXCLUDED.prompt_text, type=EXCLUDED.type
+            """, (item_id, d.get("title",""), d.get("prompt_text",""), d.get("type","Exterior")))
+        else:
+            cur.close()
+            return JSONResponse(status_code=400, content={"ok": False, "error": "Invalid type"})
+        conn.commit()
+        cur.close()
         return {"ok": True, "id": item_id}
     except Exception as e:
+        conn.rollback()
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
     finally:
         conn.close()
+
 
 @app.delete("/content/{content_type}/{item_id}")
 def delete_content(content_type: str, item_id: str, authorization: Optional[str] = Header(None)):
@@ -594,24 +620,28 @@ def delete_content(content_type: str, item_id: str, authorization: Optional[str]
     user = get_user_from_token(token)
     if not user:
         return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
-        
     conn = get_db()
     try:
-        with _db_lock:
-            if content_type == "tools":
-                conn.execute("DELETE FROM app_tools WHERE id = ?", (item_id,))
-            elif content_type == "apps":
-                conn.execute("DELETE FROM app_cards WHERE id = ?", (item_id,))
-            elif content_type == "plans":
-                conn.execute("DELETE FROM app_plans WHERE id = ?", (item_id,))
-            elif content_type == "hero":
-                conn.execute("DELETE FROM app_hero WHERE id = ?", (item_id,))
-            elif content_type == "prompts":
-                conn.execute("DELETE FROM app_prompts WHERE id = ?", (item_id,))
-            conn.commit()
+        cur = conn.cursor()
+        if content_type == "tools":
+            cur.execute("DELETE FROM app_tools WHERE id = %s", (item_id,))
+        elif content_type == "apps":
+            cur.execute("DELETE FROM app_cards WHERE id = %s", (item_id,))
+        elif content_type == "plans":
+            cur.execute("DELETE FROM app_plans WHERE id = %s", (item_id,))
+        elif content_type == "hero":
+            cur.execute("DELETE FROM app_hero WHERE id = %s", (item_id,))
+        elif content_type == "prompts":
+            cur.execute("DELETE FROM app_prompts WHERE id = %s", (item_id,))
+        conn.commit()
+        cur.close()
         return {"ok": True}
+    except Exception as e:
+        conn.rollback()
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
     finally:
         conn.close()
+
 
 @app.post("/admin/upload-image")
 async def admin_upload_image(
