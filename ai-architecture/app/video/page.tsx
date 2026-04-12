@@ -2,20 +2,36 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Video, Plus, Wand2, Clock, Layers, Volume2, Send, Home, Search, LayoutGrid, Brush, Folder, Coins, Loader2, PlaySquare } from "lucide-react";
+import {
+  Video, Plus, Wand2, Clock, Layers, Volume2, Send, Home,
+  Search, LayoutGrid, Brush, Folder, Coins, Loader2, ImageIcon, ClapperboardIcon, ChevronDown
+} from "lucide-react";
 import Link from "next/link";
 import { apiGetMe, MySQLUser } from "@/lib/mysql/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
+// Mode Types
+type VideoMode = "image_to_video" | "frame_to_frame";
+
 export default function VideoGenerationPage() {
   const router = useRouter();
   const [user, setUser] = useState<MySQLUser | null>(null);
-  
+
+  // Mode selector
+  const [videoMode, setVideoMode] = useState<VideoMode>("image_to_video");
+
+  // Image to Video mode
+  const [imgFile, setImgFile] = useState<File | null>(null);
+  const [imgPreview, setImgPreview] = useState<string>("");
+
+  // Frame to Frame mode
   const [startFile, setStartFile] = useState<File | null>(null);
   const [startPreview, setStartPreview] = useState<string>("");
   const [endFile, setEndFile] = useState<File | null>(null);
   const [endPreview, setEndPreview] = useState<string>("");
+
+  // Shared
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState("kling-v3");
   const [aspectRatio, setAspectRatio] = useState("16:9");
@@ -31,36 +47,35 @@ export default function VideoGenerationPage() {
     }).catch(console.error);
   }, []);
 
+  const handleImgFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) { setImgFile(file); setImgPreview(URL.createObjectURL(file)); }
+  };
   const handleStartFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setStartFile(file);
-      setStartPreview(URL.createObjectURL(file));
-    }
+    if (file) { setStartFile(file); setStartPreview(URL.createObjectURL(file)); }
   };
-
   const handleEndFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setEndFile(file);
-      setEndPreview(URL.createObjectURL(file));
-    }
+    if (file) { setEndFile(file); setEndPreview(URL.createObjectURL(file)); }
   };
 
   const handleGenerate = async () => {
-    if (!startFile && !prompt) {
-      alert("Please provide a prompt or a start frame.");
+    if (videoMode === "image_to_video" && !imgFile && !prompt) {
+      alert("Please provide an image or a prompt.");
       return;
     }
-    
+    if (videoMode === "frame_to_frame" && !startFile) {
+      alert("Please provide at least a Start Frame.");
+      return;
+    }
+
     setIsGenerating(true);
     setResultVideo(null);
     try {
       const formData = new FormData();
       formData.append("perspective", "Custom Scene");
-      if (prompt.trim()) {
-        formData.append("custom_prompt", prompt.trim());
-      }
+      if (prompt.trim()) formData.append("custom_prompt", prompt.trim());
       formData.append("denoise", "0.75");
       formData.append("aspect_ratio", aspectRatio === "auto" ? "16:9" : aspectRatio);
       formData.append("image_count", "1");
@@ -69,11 +84,12 @@ export default function VideoGenerationPage() {
       formData.append("duration", duration);
       formData.append("resolution", resolution);
 
-      if (startFile) {
-        formData.append("file", startFile);
-      }
-      if (endFile) {
-        formData.append("refs", endFile);
+      if (videoMode === "image_to_video") {
+        if (imgFile) formData.append("file", imgFile);
+      } else {
+        // Frame to Frame
+        if (startFile) formData.append("file", startFile);
+        if (endFile) formData.append("refs", endFile);
       }
 
       const token = localStorage.getItem("harch_token");
@@ -94,9 +110,7 @@ export default function VideoGenerationPage() {
           const sData = await sRes.json();
           if (sData.status === "COMPLETED") {
             const output_val = sData.output_url || sData.result_url || sData.file_url || sData.video_url;
-            if (output_val) {
-              setResultVideo(output_val);
-            }
+            if (output_val) setResultVideo(output_val);
             clearInterval(poll);
             setIsGenerating(false);
             if (user) setUser({ ...user, credits: Math.max(0, (user.credits || 0) - 1) });
@@ -123,32 +137,27 @@ export default function VideoGenerationPage() {
       <header className="h-20 border-b border-white/5 bg-[#09090b]/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 z-50 sticky top-0">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-3 shrink-0 group">
-              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-[#14b8a6] to-teal-700 p-[1px] shadow-[0_0_20px_rgba(20,184,166,0.3)] transition-transform duration-300 group-hover:scale-105">
-                <div className="relative w-full h-full bg-[#040508] rounded-xl flex items-center justify-center">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#logo-grad-teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <defs>
-                      <linearGradient id="logo-grad-teal" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#2dd4bf" />
-                        <stop offset="100%" stopColor="#0f766e" />
-                      </linearGradient>
-                    </defs>
-                    <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                    <polyline points="2 17 12 22 22 17"></polyline>
-                    <polyline points="2 12 12 17 22 12"></polyline>
-                  </svg>
-                </div>
+            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-[#14b8a6] to-teal-700 p-[1px] shadow-[0_0_20px_rgba(20,184,166,0.3)] transition-transform duration-300 group-hover:scale-105">
+              <div className="relative w-full h-full bg-[#040508] rounded-xl flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#logo-grad-teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <defs><linearGradient id="logo-grad-teal" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#2dd4bf" /><stop offset="100%" stopColor="#0f766e" /></linearGradient></defs>
+                  <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                  <polyline points="2 17 12 22 22 17"></polyline>
+                  <polyline points="2 12 12 17 22 12"></polyline>
+                </svg>
               </div>
-              <div className="flex flex-col leading-none">
-                <span className="font-display font-black text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-white/80">H_ARCH</span>
-                <span className="text-[9px] text-teal-400 font-bold tracking-[0.2em] uppercase mt-0.5">Studio</span>
-              </div>
+            </div>
+            <div className="flex flex-col leading-none">
+              <span className="font-display font-black text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-white/80">H_ARCH</span>
+              <span className="text-[9px] text-teal-400 font-bold tracking-[0.2em] uppercase mt-0.5">Studio</span>
+            </div>
           </Link>
         </div>
 
         <div className="hidden md:flex items-center gap-2 bg-[#18181b] px-3 py-2 rounded-2xl border border-white/5 mx-4">
           <button onClick={() => router.push("/")} className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><Home size={20} /></button>
           <button onClick={() => router.push("/apps/a1")} className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><Wand2 size={20} /></button>
-          <button className="p-2.5 text-[#09090b] bg-[#14b8a6] rounded-xl transition-all shadow-md"><Video size={20} strokeWidth={2.5}/></button>
+          <button className="p-2.5 text-[#09090b] bg-[#14b8a6] rounded-xl transition-all shadow-md"><Video size={20} strokeWidth={2.5} /></button>
           <button className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><Search size={20} /></button>
           <button className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><LayoutGrid size={20} /></button>
           <button className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><Brush size={20} /></button>
@@ -175,56 +184,118 @@ export default function VideoGenerationPage() {
       </header>
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 w-full flex flex-col items-center py-16 px-4">
+      <main className="flex-1 w-full flex flex-col items-center py-10 px-4">
         <div className="w-full max-w-4xl animate-[fadeInUp_0.4s_ease-out]">
-          
+
           {/* Page Title */}
-          <div className="flex items-center justify-center gap-3 mb-10 w-full text-center">
+          <div className="flex items-center justify-center gap-3 mb-8 w-full text-center">
             <Video className="text-[#2dd4bf]" size={42} strokeWidth={2.5} />
             <h1 className="text-[3.5rem] font-bold text-[#2dd4bf] tracking-wider font-display drop-shadow-[0_0_15px_rgba(45,212,191,0.3)]">Video</h1>
           </div>
 
+          {/* ── MODE SELECTOR ── */}
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <button
+              onClick={() => { setVideoMode("image_to_video"); setResultVideo(null); }}
+              className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl border font-semibold text-sm transition-all duration-300 ${
+                videoMode === "image_to_video"
+                  ? "bg-[#14b8a6] border-[#14b8a6] text-[#09090b] shadow-[0_0_20px_rgba(20,184,166,0.4)]"
+                  : "bg-[#18181b] border-white/10 text-zinc-400 hover:text-white hover:border-white/20"
+              }`}
+            >
+              <ImageIcon size={18} className="shrink-0" />
+              Image to Video
+            </button>
+            <button
+              onClick={() => { setVideoMode("frame_to_frame"); setResultVideo(null); }}
+              className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl border font-semibold text-sm transition-all duration-300 ${
+                videoMode === "frame_to_frame"
+                  ? "bg-[#14b8a6] border-[#14b8a6] text-[#09090b] shadow-[0_0_20px_rgba(20,184,166,0.4)]"
+                  : "bg-[#18181b] border-white/10 text-zinc-400 hover:text-white hover:border-white/20"
+              }`}
+            >
+              <ClapperboardIcon size={18} className="shrink-0" />
+              Frame to Frame
+            </button>
+          </div>
+
           {/* Video Generator Card */}
           <div className="bg-[#121214] border border-[#27272a] rounded-[1.5rem] p-6 shadow-2xl w-full flex flex-col">
-            
-            {/* Top Files Row */}
-            <div className="flex flex-col md:flex-row items-start gap-4 mb-6">
-              <div className="flex items-center justify-center md:justify-start gap-4 w-full md:w-auto">
-                {/* Start Frame */}
-                <label className={`w-[100px] h-[100px] md:w-[120px] md:h-[120px] border border-dashed border-[#52525b] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-all relative overflow-hidden flex-shrink-0 group ${startPreview ? 'border-transparent border-none bg-black' : ''}`}>
-                  <input type="file" onChange={handleStartFile} accept="image/*" className="hidden" />
-                  {startPreview ? (
-                    <img src={startPreview} alt="Start frame" className="absolute inset-0 w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
+
+            {/* ── IMAGE TO VIDEO MODE ── */}
+            {videoMode === "image_to_video" && (
+              <div className="flex flex-col md:flex-row items-start gap-4 mb-6">
+                {/* Single Image Upload */}
+                <label className={`w-full md:w-[140px] h-[140px] border border-dashed border-[#52525b] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 hover:border-teal-500/50 transition-all relative overflow-hidden flex-shrink-0 group ${imgPreview ? 'border-transparent bg-black' : ''}`}>
+                  <input type="file" onChange={handleImgFile} accept="image/*" className="hidden" />
+                  {imgPreview ? (
+                    <img src={imgPreview} alt="Source" className="absolute inset-0 w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
                   ) : (
                     <>
-                      <Plus size={20} className="text-zinc-500 mb-1" />
-                      <span className="text-[10px] sm:text-xs font-bold text-zinc-500 text-center uppercase tracking-widest leading-tight w-full px-2">START FRAME</span>
+                      <ImageIcon size={28} className="text-teal-600 mb-2" />
+                      <span className="text-[10px] font-bold text-zinc-500 text-center uppercase tracking-widest leading-tight px-2">Source Image</span>
+                      <span className="text-[9px] text-zinc-600 mt-1">Click to upload</span>
                     </>
                   )}
                 </label>
 
-                {/* End Frame */}
-                <label className={`w-[100px] h-[100px] md:w-[120px] md:h-[120px] border border-dashed border-[#52525b] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 transition-all relative overflow-hidden flex-shrink-0 group ${endPreview ? 'border-transparent border-none bg-black' : ''}`}>
-                  <input type="file" onChange={handleEndFile} accept="image/*" className="hidden" />
-                  {endPreview ? (
-                    <img src={endPreview} alt="End frame" className="absolute inset-0 w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
-                  ) : (
-                    <>
-                      <Plus size={20} className="text-zinc-500 mb-1" />
-                      <span className="text-[10px] sm:text-xs font-bold text-zinc-500 text-center uppercase tracking-widest leading-tight w-full px-2">END FRAME</span>
-                    </>
-                  )}
-                </label>
+                {/* Prompt */}
+                <textarea
+                  placeholder="Describe the motion... e.g., 'Slow camera pan from left to right with golden hour lighting'"
+                  value={prompt}
+                  onChange={e => setPrompt(e.target.value)}
+                  className="w-full h-[140px] md:flex-1 bg-transparent border border-white/5 md:border-none rounded-xl md:rounded-none outline-none resize-none text-[15px] p-3 md:p-2 text-zinc-300 placeholder:text-zinc-600 custom-scrollbar"
+                />
               </div>
+            )}
 
-              {/* Prompt Textarea */}
-              <textarea 
-                placeholder="Describe the motion you want... e.g., 'Slow camera pan with natural lighting'" 
-                value={prompt}
-                onChange={e => setPrompt(e.target.value)}
-                className="w-full h-[100px] md:flex-1 md:h-[120px] bg-transparent border border-white/5 md:border-none rounded-xl md:rounded-none outline-none resize-none text-[15px] p-3 md:p-2 text-zinc-300 placeholder:text-zinc-600 custom-scrollbar"
-              />
-            </div>
+            {/* ── FRAME TO FRAME MODE ── */}
+            {videoMode === "frame_to_frame" && (
+              <div className="flex flex-col md:flex-row items-start gap-4 mb-6">
+                <div className="flex items-center justify-center md:justify-start gap-4 w-full md:w-auto">
+                  {/* Start Frame */}
+                  <label className={`w-[120px] h-[120px] border border-dashed border-[#52525b] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 hover:border-teal-500/50 transition-all relative overflow-hidden flex-shrink-0 group ${startPreview ? 'border-transparent bg-black' : ''}`}>
+                    <input type="file" onChange={handleStartFile} accept="image/*" className="hidden" />
+                    {startPreview ? (
+                      <img src={startPreview} alt="Start frame" className="absolute inset-0 w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
+                    ) : (
+                      <>
+                        <Plus size={20} className="text-zinc-500 mb-1" />
+                        <span className="text-[10px] font-bold text-zinc-500 text-center uppercase tracking-widest leading-tight w-full px-2">Start Frame</span>
+                      </>
+                    )}
+                  </label>
+
+                  {/* Arrow between frames */}
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-8 h-px bg-zinc-700"></div>
+                    <span className="text-[9px] text-zinc-600 uppercase tracking-widest">to</span>
+                    <div className="w-8 h-px bg-zinc-700"></div>
+                  </div>
+
+                  {/* End Frame */}
+                  <label className={`w-[120px] h-[120px] border border-dashed border-[#52525b] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 hover:border-teal-500/50 transition-all relative overflow-hidden flex-shrink-0 group ${endPreview ? 'border-transparent bg-black' : ''}`}>
+                    <input type="file" onChange={handleEndFile} accept="image/*" className="hidden" />
+                    {endPreview ? (
+                      <img src={endPreview} alt="End frame" className="absolute inset-0 w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
+                    ) : (
+                      <>
+                        <Plus size={20} className="text-zinc-500 mb-1" />
+                        <span className="text-[10px] font-bold text-zinc-500 text-center uppercase tracking-widest leading-tight w-full px-2">End Frame</span>
+                      </>
+                    )}
+                  </label>
+                </div>
+
+                {/* Prompt */}
+                <textarea
+                  placeholder="Describe the motion between frames... e.g., 'Smooth transition with architectural lighting shift'"
+                  value={prompt}
+                  onChange={e => setPrompt(e.target.value)}
+                  className="w-full h-[120px] md:flex-1 bg-transparent border border-white/5 md:border-none rounded-xl md:rounded-none outline-none resize-none text-[15px] p-3 md:p-2 text-zinc-300 placeholder:text-zinc-600 custom-scrollbar"
+                />
+              </div>
+            )}
 
             {/* Separator */}
             <div className="h-px bg-white/10 w-full mb-4"></div>
@@ -232,7 +303,7 @@ export default function VideoGenerationPage() {
             {/* Bottom Controls Row */}
             <div className="flex flex-wrap items-center justify-between gap-y-4">
               <div className="flex flex-wrap items-center gap-3">
-                
+
                 {/* Model Selector */}
                 <div className="bg-[#18181b] hover:bg-white/5 border border-white/5 rounded-full px-4 py-2 flex items-center gap-2 cursor-pointer transition-colors relative">
                   <Wand2 size={15} className="text-[#2dd4bf]" />
@@ -240,11 +311,7 @@ export default function VideoGenerationPage() {
                     {model === 'kling-v3' ? 'Kling V3' : model === 'kling-v2-6' ? 'Kling V2.6' : model === 'kling-v1-1' ? 'Kling V1.1' : 'Veo 3.1'}
                   </span>
                   <ChevronDown size={14} className="text-zinc-500 ml-1" />
-                  <select 
-                    value={model} 
-                    onChange={e => setModel(e.target.value)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer bg-[#18181b] text-white"
-                  >
+                  <select value={model} onChange={e => setModel(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                     <option value="veo-3.1">Veo 3.1</option>
                     <option value="kling-v3">Kling V3</option>
                     <option value="kling-v2-6">Kling V2.6</option>
@@ -252,17 +319,13 @@ export default function VideoGenerationPage() {
                   </select>
                 </div>
 
-                {/* Aspect Ratio / Auto */}
+                {/* Aspect Ratio */}
                 <div className="bg-[#18181b] hover:bg-white/5 border border-white/5 rounded-full px-4 py-2 flex items-center gap-2 cursor-pointer transition-colors relative">
                   <div className="w-3.5 h-3.5 border border-zinc-400 rounded-sm font-mono text-[9px] flex items-center justify-center font-bold text-zinc-400">
                     {aspectRatio === "auto" ? "A" : aspectRatio.split(":")[0]}
                   </div>
                   <span className="text-xs font-bold text-zinc-300">{aspectRatio === "auto" ? "Auto" : aspectRatio}</span>
-                  <select 
-                    value={aspectRatio} 
-                    onChange={e => setAspectRatio(e.target.value)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer bg-[#18181b] text-white"
-                  >
+                  <select value={aspectRatio} onChange={e => setAspectRatio(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                     <option value="auto">Auto</option>
                     <option value="16:9">16:9</option>
                     <option value="9:16">9:16</option>
@@ -274,11 +337,7 @@ export default function VideoGenerationPage() {
                 <div className="bg-[#18181b] hover:bg-white/5 border border-white/5 rounded-full px-4 py-2 flex items-center gap-2 cursor-pointer transition-colors relative">
                   <Clock size={15} className="text-zinc-400" />
                   <span className="text-xs font-bold text-zinc-300">{duration} seconds</span>
-                  <select 
-                    value={duration} 
-                    onChange={e => setDuration(e.target.value)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer bg-[#18181b] text-white"
-                  >
+                  <select value={duration} onChange={e => setDuration(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                     <option value="5">5 seconds</option>
                     <option value="8">8 seconds</option>
                     <option value="10">10 seconds</option>
@@ -289,11 +348,7 @@ export default function VideoGenerationPage() {
                 <div className="bg-[#18181b] hover:bg-white/5 border border-white/5 rounded-full px-4 py-2 flex items-center gap-2 cursor-pointer transition-colors relative">
                   <Layers size={15} className="text-zinc-400" />
                   <span className="text-xs font-bold text-zinc-300">{resolution}</span>
-                  <select 
-                    value={resolution} 
-                    onChange={e => setResolution(e.target.value)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer bg-[#18181b] text-white"
-                  >
+                  <select value={resolution} onChange={e => setResolution(e.target.value)} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
                     <option value="720p HD">720p HD</option>
                     <option value="1080p FHD">1080p FHD</option>
                     <option value="4K UHD">4K UHD</option>
@@ -301,18 +356,18 @@ export default function VideoGenerationPage() {
                 </div>
 
                 {/* Audio Toggle */}
-                <button 
+                <button
                   onClick={() => setGenerateAudio(!generateAudio)}
-                  className={`border border-white/5 rounded-full px-4 py-2 flex items-center gap-2 transition-colors duration-300 ${generateAudio ? 'bg-[#134e4a] text-[#2dd4bf]' : 'bg-[#18181b] text-zinc-400 hover:bg-white/5 hover:text-zinc-300'}`}
+                  className={`border border-white/5 rounded-full px-4 py-2 flex items-center gap-2 transition-colors duration-300 ${generateAudio ? 'bg-[#134e4a] text-[#2dd4bf]' : 'bg-[#18181b] text-zinc-400 hover:bg-white/5'}`}
                 >
                   <Volume2 size={15} className={generateAudio ? 'text-[#2dd4bf]' : 'text-zinc-400'} />
                   <span className="text-xs font-bold">Generate Audio</span>
                 </button>
               </div>
 
-              {/* Send / Generate Button */}
-              <button 
-                onClick={handleGenerate} 
+              {/* Generate Button */}
+              <button
+                onClick={handleGenerate}
                 disabled={isGenerating}
                 className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${isGenerating ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-[#2dd4bf] text-[#09090b] hover:bg-teal-300 hover:scale-105 shadow-[0_0_15px_rgba(45,212,191,0.5)]'}`}
               >
@@ -321,9 +376,9 @@ export default function VideoGenerationPage() {
             </div>
           </div>
 
-          {/* Results Area (Full Width Output) */}
+          {/* Results Area */}
           {(isGenerating || resultVideo) && (
-            <div className="mt-12 bg-[#121214] border border-[#27272a] rounded-[1.5rem] p-6 shadow-2xl w-full flex flex-col items-center justify-center min-h-[400px] overflow-hidden relative">
+            <div className="mt-12 bg-[#121214] border border-[#27272a] rounded-[1.5rem] p-6 shadow-2xl w-full flex flex-col items-center justify-center min-h-[400px]">
               {isGenerating ? (
                 <div className="flex flex-col items-center justify-center text-center">
                   <div className="relative mb-6">
@@ -334,14 +389,11 @@ export default function VideoGenerationPage() {
                   <p className="text-sm text-zinc-400">Taking up to 60-120 seconds for processing and rendering highly-detailed video.</p>
                 </div>
               ) : resultVideo ? (
-                <div className="w-full h-full relative rounded-xl overflow-hidden group">
-                  <video 
-                    src={resultVideo} 
-                    className="w-full h-full object-contain rounded-xl max-h-[600px] bg-black" 
-                    controls 
-                    autoPlay 
-                    loop 
-                    muted 
+                <div className="w-full h-full relative rounded-xl overflow-hidden">
+                  <video
+                    src={resultVideo}
+                    className="w-full h-full object-contain rounded-xl max-h-[600px] bg-black"
+                    controls autoPlay loop muted
                   />
                 </div>
               ) : null}
@@ -350,8 +402,7 @@ export default function VideoGenerationPage() {
 
         </div>
       </main>
-      
-      {/* Icon components for ChevronDown, imported from lucide */}
+
       <style jsx global>{`
         @keyframes fadeInUp {
           from { opacity: 0; transform: translateY(20px); }
@@ -362,5 +413,3 @@ export default function VideoGenerationPage() {
   );
 }
 
-// Ensure ChevronDown is included if not in lucide import
-import { ChevronDown } from "lucide-react";
