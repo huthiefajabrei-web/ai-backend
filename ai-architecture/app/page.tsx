@@ -31,7 +31,7 @@ import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 */
 
-import { Plus, MessageSquare, Trash2, Loader2, Copy, MoreVertical, Pencil, PanelLeftClose, PanelLeft, Home as HomeIcon, Wand2, Video, Search, LayoutGrid, Brush, Folder, Coins, ArrowRight, Sparkles, ZoomIn, CheckCircle2 } from "lucide-react";
+import { Plus, MessageSquare, Trash2, Loader2, Copy, MoreVertical, Pencil, PanelLeftClose, PanelLeft, Home as HomeIcon, Wand2, Video, Search, LayoutGrid, Brush, Folder, Coins, ArrowRight, Sparkles, ZoomIn, CheckCircle2, Menu, X } from "lucide-react";
 
 // Map string icon names to Lucide icons
 const IconMap: Record<string, any> = { Wand2, Video, ZoomIn, Search, LayoutGrid, Brush, Folder, Coins, ArrowRight, Sparkles, CheckCircle2 };
@@ -903,7 +903,7 @@ export default function Home() {
               <button className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"><Folder size={18} strokeWidth={2} /></button>
             </div>
 
-            {/* User / Auth */}
+            {/* User / Auth & Mobile Toggle */}
             <div className="flex items-center gap-3 shrink-0">
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/10 text-yellow-500 font-medium text-sm">
                 <Coins size={14} />
@@ -925,9 +925,34 @@ export default function Home() {
                   Sign In
                 </a>
               )}
+              {/* Mobile Menu Toggle */}
+              <button 
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="md:hidden p-2 -mr-2 text-zinc-400 hover:text-white transition-colors"
+              >
+                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+              </button>
             </div>
           </nav>
         </div>
+        
+        {/* Mobile Nav Dropdown */}
+        {mobileMenuOpen && (
+          <div className="md:hidden absolute top-full left-0 w-full bg-[#09090b]/95 backdrop-blur-xl border-b border-white/5 flex flex-col p-4 gap-2 shadow-2xl animate-in slide-in-from-top-2">
+            <button onClick={() => { setActiveApp(null); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={`p-4 rounded-xl flex items-center gap-3 font-semibold ${!activeApp ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
+              <HomeIcon size={20} /> Home
+            </button>
+            <button onClick={() => { setActiveApp("generation"); setMobileMenuOpen(false); }} className={`p-4 rounded-xl flex items-center gap-3 font-semibold ${activeApp === "generation" ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
+              <Wand2 size={20} /> AI Workspace
+            </button>
+            <button onClick={() => { router.push("/video"); setMobileMenuOpen(false); }} className="p-4 rounded-xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5">
+              <Video size={20} /> Video Generation
+            </button>
+            <button onClick={() => { document.getElementById("apps")?.scrollIntoView({ behavior: "smooth" }); setMobileMenuOpen(false); }} className="p-4 rounded-xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5">
+              <LayoutGrid size={20} /> Explore Apps
+            </button>
+          </div>
+        )}
       </header>
 
       {/* Main Content Area - Spacious */}

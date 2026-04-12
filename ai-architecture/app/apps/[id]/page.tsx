@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Upload, ChevronDown, Sparkles, Home, Wand2, Video, Search, LayoutGrid, Brush, Folder, Coins, ArrowRight, Loader2, X, Download } from "lucide-react";
+import { Upload, ChevronDown, Sparkles, Home, Wand2, Video, Search, LayoutGrid, Brush, Folder, Coins, ArrowRight, Loader2, X, Download, Menu } from "lucide-react";
 import Link from "next/link";
 import { apiGetMe, MySQLUser } from "@/lib/mysql/client";
 
@@ -34,6 +34,7 @@ export default function AppFeaturePage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultImage, setResultImage] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const [model, setModel] = useState("gemini-2.5-flash");
   const [lighting, setLighting] = useState("default");
@@ -236,20 +237,45 @@ export default function AppFeaturePage() {
           <button className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><Folder size={20} /></button>
         </div>
 
-        <div className="flex items-center justify-end gap-4">
-          <div className="flex items-center gap-2 bg-[#18181b] border border-white/5 px-4 py-2 rounded-2xl hidden sm:flex">
+        <div className="flex items-center justify-end gap-3 sm:gap-4">
+          <div className="flex items-center gap-2 bg-[#18181b] border border-white/5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl hidden sm:flex">
             <Coins size={16} className="text-yellow-500" />
             <span className="text-sm font-bold text-white">{user ? (user.credits || 0) : 0}</span>
             <span className="text-zinc-500 cursor-pointer hover:text-white ml-1 font-bold">+</span>
           </div>
-          <div className="px-4 py-2 rounded-2xl bg-[#18181b] border border-white/5 flex items-center gap-3 cursor-pointer hover:bg-white/5 transition-all">
+          <div className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-[#18181b] border border-white/5 flex items-center gap-3 cursor-pointer hover:bg-white/5 transition-all">
             <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold text-white uppercase">
               {user && user.email ? user.email.charAt(0) : "H"}
             </div>
             <span className="text-xs font-semibold text-zinc-300 hidden sm:block">{user ? user.email.split('@')[0] : 'User'}</span>
           </div>
+          {/* Mobile Menu Toggle */}
+          <button 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="md:hidden p-2 -mr-2 text-zinc-400 hover:text-white transition-colors"
+          >
+            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
       </header>
+
+      {/* Mobile Nav Dropdown */}
+      {mobileMenuOpen && (
+        <div className="md:hidden sticky top-[80px] left-0 w-full bg-[#09090b]/95 backdrop-blur-xl border-b border-white/5 flex flex-col p-4 gap-2 shadow-2xl animate-in slide-in-from-top-2 z-40">
+          <button onClick={() => { router.push("/"); setMobileMenuOpen(false); }} className={`p-4 rounded-xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5`}>
+            <Home size={20} /> Home
+          </button>
+          <button onClick={() => { setMobileMenuOpen(false); }} className={`p-4 rounded-xl flex items-center gap-3 font-semibold bg-gradient-to-r from-teal-500/20 to-emerald-500/20 text-white`}>
+            <Wand2 size={20} /> Current App
+          </button>
+          <button onClick={() => { router.push("/video"); setMobileMenuOpen(false); }} className="p-4 rounded-xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5">
+            <Video size={20} /> Video Generation
+          </button>
+          <button onClick={() => { router.push("/#apps"); setMobileMenuOpen(false); }} className="p-4 rounded-xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5">
+            <LayoutGrid size={20} /> Explore Apps
+          </button>
+        </div>
+      )}
 
       {/* MAIN CONTENT */}
       <main className="flex-1 overflow-y-auto px-6 py-10 custom-scrollbar">
