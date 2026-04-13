@@ -30,12 +30,8 @@ from fastapi.staticfiles import StaticFiles
 # MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
 # ...etc
 
-try:
-    import psycopg2
-    import psycopg2.extras
-except ImportError:
-    psycopg2 = None
-    psycopg2_extras = None
+import psycopg2
+import psycopg2.extras
 import threading
 
 # URL-encode special chars in password so psycopg2 can parse the URI correctly
@@ -46,9 +42,7 @@ _db_lock = threading.Lock()
 
 def get_db():
     """Return a new PostgreSQL connection with RealDict cursor support."""
-    if not psycopg2:
-        raise RuntimeError("psycopg2 package is required; install psycopg2 or psycopg2-binary.")
-    conn = psycopg2.connect(DATABASE_URL, sslmode="require")
+    conn = psycopg2.connect(DATABASE_URL)
     conn.autocommit = False
     return conn
 
@@ -58,7 +52,7 @@ def _execute(conn, sql: str, params=None):
     cur.execute(sql, params or ())
     return cur
 
-def init_postgresql_tables():
+def init_mysql_tables():
     """Create PostgreSQL tables if they don't exist."""
     conn = get_db()
     try:
@@ -264,7 +258,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.on_event("startup")
 async def on_startup():
-    init_postgresql_tables()
+    init_mysql_tables()
     # Seed app_prompts if empty
     conn = get_db()
     try:
@@ -734,13 +728,11 @@ def build_prompt(perspective: str, custom: Optional[str] = None) -> str:
     if perspective == "Custom Scene":
         return custom
 
+    # Fetch from SQLite database
     conn = get_db()
     extra = ""
     try:
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("SELECT prompt_text FROM app_prompts WHERE title = %s", (perspective,))
-        row = cur.fetchone()
-        cur.close()
+        row = conn.execute("SELECT prompt_text FROM app_prompts WHERE title = ?", (perspective,)).fetchone()
         if row:
             extra = row["prompt_text"]
         else:
@@ -1447,4 +1439,4 @@ def check_status(job_id: str):
 
 @app.on_event("startup")
 def startup_event():
-    init_postgresql_tables()
+    init_mysql_tables()
