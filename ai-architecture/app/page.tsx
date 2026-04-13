@@ -36,6 +36,38 @@ import { Plus, MessageSquare, Trash2, Loader2, Copy, MoreVertical, Pencil, Panel
 // Map string icon names to Lucide icons
 const IconMap: Record<string, any> = { Wand2, Video, ZoomIn, Search, LayoutGrid, Brush, Folder, Coins, ArrowRight, Sparkles, CheckCircle2 };
 
+function normalizeAssetUrl(rawUrl?: string | null): string {
+  if (!rawUrl) return "";
+  const trimmed = rawUrl.trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return trimmed;
+
+  const apiOrigin = (() => {
+    try {
+      return new URL(API_BASE).origin;
+    } catch {
+      return "";
+    }
+  })();
+
+  try {
+    const resolved = new URL(trimmed, apiOrigin || undefined);
+    const isLocalHostRef =
+      resolved.hostname === "127.0.0.1" ||
+      resolved.hostname === "localhost";
+
+    if (isLocalHostRef && apiOrigin) {
+      return `${apiOrigin}${resolved.pathname}${resolved.search}${resolved.hash}`;
+    }
+    return resolved.toString();
+  } catch {
+    if (trimmed.startsWith("/") && apiOrigin) {
+      return `${apiOrigin}${trimmed}`;
+    }
+    return trimmed;
+  }
+}
+
 export default function Home() {
   const router = useRouter();
   // SUPABASE: const [user, setUser] = useState<User | null>(null);
@@ -73,9 +105,23 @@ export default function Home() {
       fetch(`${API_BASE}/content/apps`).then((r) => r.json()).catch(() => ({})),
       fetch(`${API_BASE}/content/plans`).then((r) => r.json()).catch(() => ({}))
     ]).then(([hRes, tRes, aRes, pRes]) => {
-      if (hRes?.data) setDbHero(hRes.data);
+      if (hRes?.data) {
+        setDbHero(
+          hRes.data.map((item: Record<string, unknown>) => ({
+            ...item,
+            image_url: normalizeAssetUrl(String(item.image_url || "")),
+          })),
+        );
+      }
       if (tRes?.data) setDbTools(tRes.data);
-      if (aRes?.data) setDbApps(aRes.data);
+      if (aRes?.data) {
+        setDbApps(
+          aRes.data.map((item: Record<string, unknown>) => ({
+            ...item,
+            image_url: normalizeAssetUrl(String(item.image_url || "")),
+          })),
+        );
+      }
       if (pRes?.data) setDbPlans(pRes.data);
     });
   }, []);
@@ -522,11 +568,11 @@ export default function Home() {
           ((r as ApiOk).image_data_url || (r as ApiOk).file_url),
       )
       .map((r) => ({
-        url: (r as ApiOk).file_url || (r as ApiOk).image_data_url!,
+        url: normalizeAssetUrl((r as ApiOk).file_url || (r as ApiOk).image_data_url || ""),
         perspective: (r as ApiOk).perspective || "",
         isVideo: !!(r as ApiOk).is_video,
         isRegenerated: !!(r as ApiOk).is_regenerated,
-        parentUrl: (r as ApiOk).parent_url,
+        parentUrl: normalizeAssetUrl((r as ApiOk).parent_url || ""),
         aspectRatio: (r as ApiOk).aspect_ratio || "16:9",
       }));
   }, [resps]);
