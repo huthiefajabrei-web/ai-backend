@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Users, Layout, Settings, Plus, Pencil, Trash2, Save, X, Activity, CreditCard, CheckCircle2, Search, ArrowLeft, Coins, Image as ImageIcon, Upload, MessageSquare } from "lucide-react";
+import { apiGetMe, apiLogout } from "@/lib/mysql/client";
 
 // --- Types ---
 type Stats = { users: number; sessions: number };
@@ -27,6 +28,7 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<"overview" | "hero" | "tools" | "apps" | "plans" | "prompts">("overview");
   const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
   
   // Data
   const [stats, setStats] = useState<Stats>({ users: 0, sessions: 0 });
@@ -45,14 +47,26 @@ export default function AdminDashboard() {
   const [editPrompt, setEditPrompt] = useState<PromptData | null>(null);
 
   useEffect(() => {
-    // Basic auth check
-    const token = localStorage.getItem("harch_token");
-    if (!token) {
-      router.push("/login");
-      return;
-    }
-    fetchAllData();
-  }, []);
+    const checkAdminAccess = async () => {
+      const token = localStorage.getItem("harch_token");
+      if (!token) {
+        router.replace("/admin/login");
+        return;
+      }
+
+      const me = await apiGetMe();
+      if (!me?.is_admin) {
+        await apiLogout();
+        router.replace("/admin/login?error=forbidden");
+        return;
+      }
+
+      setAuthChecked(true);
+      void fetchAllData();
+    };
+
+    void checkAdminAccess();
+  }, [router]);
 
   const fetchAllData = async () => {
     setLoading(true);
@@ -75,6 +89,10 @@ export default function AdminDashboard() {
       if (appsRes.ok) setApps(appsRes.data);
       if (plansRes.ok) setPlans(plansRes.data);
       if (promptsRes.ok) setPrompts(promptsRes.data);
+      if (statsRes?.error === "Admin access required") {
+        await apiLogout();
+        router.replace("/admin/login?error=forbidden");
+      }
     } catch (err) {
       console.error("Error fetching data:", err);
     } finally {
@@ -161,7 +179,7 @@ export default function AdminDashboard() {
     } catch { alert("Error deleting item"); }
   };
 
-  if (loading && stats.users === 0) {
+  if (!authChecked || (loading && stats.users === 0)) {
     return (
       <div className="min-h-screen bg-[#09090b] flex items-center justify-center text-white">
         <Loader2 className="animate-spin text-purple-500" size={32} />
@@ -189,6 +207,15 @@ export default function AdminDashboard() {
             <div className="hidden sm:flex items-center gap-2 text-sm text-zinc-400">
               <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]"></span> System Online
             </div>
+            <button
+              onClick={async () => {
+                await apiLogout();
+                router.replace("/admin/login");
+              }}
+              className="px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-sm text-zinc-300 hover:text-white hover:bg-white/10 transition-colors"
+            >
+              Logout
+            </button>
           </div>
         </div>
       </header>

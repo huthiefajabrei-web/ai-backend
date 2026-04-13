@@ -38,6 +38,28 @@ from urllib.parse import quote_plus
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 _db_lock = threading.Lock()
+ADMIN_EMAILS = {
+    email.strip().lower()
+    for email in os.getenv("ADMIN_EMAILS", "").split(",")
+    if email.strip()
+}
+
+def is_admin_email(email: Optional[str]) -> bool:
+    return bool(email and email.strip().lower() in ADMIN_EMAILS)
+
+def build_user_payload(user: dict) -> dict:
+    return {
+        "id": user["id"],
+        "email": user["email"],
+        "full_name": user.get("full_name"),
+        "is_admin": is_admin_email(user.get("email")),
+    }
+
+def require_admin_user(token: str) -> Optional[dict]:
+    user = get_user_from_token(token)
+    if not user or not is_admin_email(user.get("email")):
+        return None
+    return user
 
 def get_db():
     """Return a new PostgreSQL connection with RealDict cursor support."""
@@ -334,7 +356,7 @@ def auth_register(body: RegisterBody):
         return {
             "ok": True,
             "token": token,
-            "user": {"id": uid, "email": body.email, "full_name": body.full_name}
+            "user": build_user_payload({"id": uid, "email": body.email, "full_name": body.full_name})
         }
     except Exception as e:
         conn.rollback()
@@ -358,7 +380,7 @@ def auth_login(body: LoginBody):
         return {
             "ok": True,
             "token": token,
-            "user": {"id": user["id"], "email": user["email"], "full_name": user["full_name"]}
+            "user": build_user_payload(user)
         }
     except Exception as e:
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
@@ -388,11 +410,7 @@ def auth_me(authorization: Optional[str] = Header(None)):
     user = get_user_from_token(token)
     if not user:
         return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
-    return {"ok": True, "user": {
-        "id": user["id"],
-        "email": user["email"],
-        "full_name": user.get("full_name"),
-    }}
+    return {"ok": True, "user": build_user_payload(user)}
 
 # =========================
 # Sessions Endpoints
@@ -518,7 +536,11 @@ def delete_session(session_id: str, authorization: Optional[str] = Header(None))
 # =========================
 
 @app.get("/admin/stats")
-def get_admin_stats():
+def get_admin_stats(authorization: Optional[str] = Header(None)):
+    token = (authorization or "").replace("Bearer ", "").strip()
+    user = require_admin_user(token)
+    if not user:
+        return JSONResponse(status_code=403, content={"ok": False, "error": "Admin access required"})
     conn = get_db()
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
@@ -572,9 +594,9 @@ class ContentUpdateBody(BaseModel):
 @app.post("/content/{content_type}")
 def modify_content(content_type: str, body: ContentUpdateBody, authorization: Optional[str] = Header(None)):
     token = (authorization or "").replace("Bearer ", "").strip()
-    user = get_user_from_token(token)
+    user = require_admin_user(token)
     if not user:
-        return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
+        return JSONResponse(status_code=403, content={"ok": False, "error": "Admin access required"})
     conn = get_db()
     try:
         item_id = body.id or str(uuid.uuid4())
@@ -632,9 +654,9 @@ def modify_content(content_type: str, body: ContentUpdateBody, authorization: Op
 @app.delete("/content/{content_type}/{item_id}")
 def delete_content(content_type: str, item_id: str, authorization: Optional[str] = Header(None)):
     token = (authorization or "").replace("Bearer ", "").strip()
-    user = get_user_from_token(token)
+    user = require_admin_user(token)
     if not user:
-        return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
+        return JSONResponse(status_code=403, content={"ok": False, "error": "Admin access required"})
     conn = get_db()
     try:
         cur = conn.cursor()
@@ -664,9 +686,9 @@ async def admin_upload_image(
     authorization: Optional[str] = Header(None)
 ):
     token = (authorization or "").replace("Bearer ", "").strip()
-    user = get_user_from_token(token)
+    user = require_admin_user(token)
     if not user:
-        return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
+        return JSONResponse(status_code=403, content={"ok": False, "error": "Admin access required"})
     
     try:
         content = await file.read()

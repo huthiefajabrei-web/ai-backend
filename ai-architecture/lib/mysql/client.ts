@@ -46,6 +46,7 @@ export interface AppUser {
   full_name?: string | null;
   credits?: number;
   is_pro?: number;
+  is_admin?: boolean;
 }
 
 export interface AppSession {
