@@ -67,6 +67,8 @@ interface ControlPanelProps {
   setRefPreviewUrls: React.Dispatch<React.SetStateAction<string[]>>;
   mode: "image" | "video";
   setMode: (mode: "image" | "video") => void;
+  videoGenerationMode: "image_to_video" | "frame_start_to_end";
+  setVideoGenerationMode: (mode: "image_to_video" | "frame_start_to_end") => void;
   onSend: () => void;
   onGenerateVideo: () => void;
   onClear: () => void;
@@ -91,6 +93,8 @@ export default function ControlPanel({
   setRefPreviewUrls,
   mode,
   setMode,
+  videoGenerationMode,
+  setVideoGenerationMode,
   onSend,
   onGenerateVideo,
   onClear,
@@ -248,10 +252,46 @@ export default function ControlPanel({
           </button>
         </div>
 
+        {mode === "video" && (
+          <div className="flex flex-col gap-2 relative">
+            <label className="text-sm font-medium text-slate-200">
+              Video Generation Type
+            </label>
+            <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 relative">
+              <button
+                className={`flex-1 relative z-10 py-2.5 rounded-lg text-sm font-semibold transition-colors ${videoGenerationMode === "image_to_video"
+                  ? "bg-emerald-500/20 text-emerald-100 border border-emerald-500/40"
+                  : "text-slate-400 hover:text-slate-200"
+                  }`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setVideoGenerationMode("image_to_video");
+                }}
+              >
+                Image to Video
+              </button>
+              <button
+                className={`flex-1 relative z-10 py-2.5 rounded-lg text-sm font-semibold transition-colors ${videoGenerationMode === "frame_start_to_end"
+                  ? "bg-emerald-500/20 text-emerald-100 border border-emerald-500/40"
+                  : "text-slate-400 hover:text-slate-200"
+                  }`}
+                onClick={(e) => {
+                  e.preventDefault();
+                  setVideoGenerationMode("frame_start_to_end");
+                }}
+              >
+                Frame: Start to End
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-col gap-2 relative">
           <label className="text-sm font-medium text-slate-200">
             {mode === "video"
-              ? "Start Image (First Frame)"
+              ? (videoGenerationMode === "frame_start_to_end"
+                ? "Start Image (First Frame)"
+                : "Source Image")
               : "Upload Reference Image"}
           </label>
           <div
@@ -358,7 +398,9 @@ export default function ControlPanel({
                       <line x1="8" y1="12" x2="16" y2="12"></line>
                     </svg>
                     {mode === "video"
-                      ? "Add End Image (Last Frame)"
+                      ? (videoGenerationMode === "frame_start_to_end"
+                        ? "Add End Image (Last Frame)"
+                        : "Add Motion Reference (Optional)")
                       : "Add Secondary Image Reference"}
                   </label>
                 </div>

@@ -58,6 +58,7 @@ export default function Home() {
   );
   const [denoise, setDenoise] = useState<number>(0.75);
   const [mode, setMode] = useState<"image" | "video">("image");
+  const [videoGenerationMode, setVideoGenerationMode] = useState<"image_to_video" | "frame_start_to_end">("image_to_video");
   const [activeApp, setActiveApp] = useState<string | null>(null);
 
   const [dbHero, setDbHero] = useState<any[]>([]);
@@ -534,12 +535,23 @@ export default function Home() {
     return Object.keys(resps);
   }, [resps]);
 
-  async function onSend(isVideo = false) {
+  async function onSend(
+    isVideo = false,
+    videoMode: "image_to_video" | "frame_start_to_end" = "image_to_video",
+  ) {
     if (!user) {
       router.push("/login");
       return;
     }
     if (selectedPerspectives.length === 0) return;
+    if (isVideo && !file) {
+      alert("Please upload a start/source image before generating video.");
+      return;
+    }
+    if (isVideo && videoMode === "frame_start_to_end" && refs.length === 0) {
+      alert("Please add an end frame image for Start to End mode.");
+      return;
+    }
     const targetSessionId = await getOrCreateSession();
     if (!targetSessionId) return;
     if (currentSessionIdRef.current === targetSessionId) setLoading(true);
@@ -554,13 +566,19 @@ export default function Home() {
       fd.append("custom_prompt", customPrompt || "");
       fd.append("denoise", denoise.toString());
       fd.append("is_video", isVideo ? "true" : "false");
+      if (isVideo) fd.append("video_mode", videoMode);
 
       if (file) fd.append("file", file);
 
       if (refs && refs.length > 0) {
-        refs.forEach((r) => {
-          fd.append("refs", r);
-        });
+        if (isVideo && videoMode === "frame_start_to_end") {
+          // Start-to-End video should include one end frame reference only.
+          fd.append("refs", refs[0]);
+        } else if (!isVideo) {
+          refs.forEach((r) => {
+            fd.append("refs", r);
+          });
+        }
       }
 
       const res = await fetch(`${API_BASE}/generate`, {
@@ -1306,8 +1324,12 @@ export default function Home() {
                   setRefPreviewUrls={setRefPreviewUrls}
                   mode={mode}
                   setMode={setMode}
+                  videoGenerationMode={videoGenerationMode}
+                  setVideoGenerationMode={setVideoGenerationMode}
                   onSend={() => onSend(false)}
-                  onGenerateVideo={() => onSend(true)}
+                  onGenerateVideo={() => {
+                    void onSend(true, videoGenerationMode);
+                  }}
                   onClear={onClear}
                 />
               </div>
