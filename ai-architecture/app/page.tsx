@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 
 // Server URL
@@ -397,6 +396,7 @@ export default function Home() {
       setResps({});
       onClear();
     } else {
+      if (!created.ok && created.clearedAuth) setUser(null);
       alert(`تعذر إنشاء الجلسة.\n${created.error}`);
     }
   };
@@ -456,6 +456,7 @@ export default function Home() {
         fetchedSessionIdsRef.current.add(typed.id);
         setSessions((prev) => [typed, ...prev]);
       } else {
+        if (!dup.ok && dup.clearedAuth) setUser(null);
         alert(`تعذر نسخ الجلسة.\n${dup.error}`);
       }
     } finally {
@@ -574,6 +575,7 @@ export default function Home() {
       setResps({});
       return typed.id;
     } else {
+      if (!created.ok && created.clearedAuth) setUser(null);
       alert(`تعذر إنشاء الجلسة للتوليد.\n${created.error}`);
     }
     return null;
@@ -1040,12 +1042,11 @@ export default function Home() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto px-4">
                 {dbHero.slice(0, 3).map((hero, index) => (
                   <div key={hero.id} onClick={() => router.push(`/apps/${hero.id}`)} className={`cursor-pointer aspect-[3/4] rounded-3xl overflow-hidden relative group ${index === 1 ? 'md:-translate-y-6' : ''}`}>
-                    <Image
+                    {/* eslint-disable-next-line @next/next/no-img-element -- CMS URLs from API may be any host */}
+                    <img
                       src={hero.image_url}
                       alt={hero.title}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-700"
-                      sizes="(max-width: 768px) 100vw, 33vw"
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent flex items-end">
                       <div className="p-6 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0 w-full">
@@ -1096,12 +1097,11 @@ export default function Home() {
                   <div key={a.id} className="flex flex-col gap-4">
                     <div className="aspect-[4/5] rounded-3xl overflow-hidden relative group cursor-pointer" onClick={() => router.push(`/apps/${a.id}`)}>
                       <div className="absolute top-4 left-4 z-10 px-3 py-1.5 rounded-full bg-purple-500 text-white text-[11px] font-bold shadow-lg">New</div>
-                      <Image
+                      {/* eslint-disable-next-line @next/next/no-img-element -- CMS URLs from API may be any host */}
+                      <img
                         src={a.image_url}
                         alt={a.title}
-                        fill
-                        className="object-cover group-hover:scale-105 transition-transform duration-500"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                       <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
                     </div>

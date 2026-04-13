@@ -122,7 +122,17 @@ export async function apiGetSessions(): Promise<MySQLSession[]> {
 
 export type ApiCreateSessionResult =
   | { ok: true; data: MySQLSession }
-  | { ok: false; error: string };
+  | { ok: false; error: string; clearedAuth?: boolean };
+
+function sessionErrorShouldClearAuth(msg: string): boolean {
+  const m = msg.toLowerCase();
+  return (
+    m.includes("foreign key") ||
+    m.includes("user_sessions_user_id") ||
+    m.includes("not present in table") ||
+    m.includes("violates foreign key constraint")
+  );
+}
 
 export async function apiCreateSession(
   title: string,
@@ -145,18 +155,20 @@ export async function apiCreateSession(
     }
     const serverErr =
       typeof data.error === "string" && data.error.trim() ? data.error.trim() : null;
-    if (!res.ok) {
+    const errText =
+      !res.ok
+        ? serverErr ||
+          `Request failed (${res.status}). Check that NEXT_PUBLIC_API_URL points to your API.`
+        : serverErr || "Unexpected response from server.";
+    if (typeof window !== "undefined" && sessionErrorShouldClearAuth(errText)) {
+      removeToken();
       return {
         ok: false,
-        error:
-          serverErr ||
-          `Request failed (${res.status}). Check that NEXT_PUBLIC_API_URL points to your API.`,
+        error: `${errText}\n\nتم مسح بيانات تسجيل الدخول المحلية — سجّل الدخول مرة أخرى.`,
+        clearedAuth: true,
       };
     }
-    return {
-      ok: false,
-      error: serverErr || "Unexpected response from server.",
-    };
+    return { ok: false, error: errText };
   } catch (e) {
     const hint =
       typeof window !== "undefined" && window.location.hostname !== "localhost"

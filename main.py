@@ -61,14 +61,16 @@ def _execute(conn, sql: str, params=None):
 
 def _ensure_user_sessions_fkey_to_app_users(conn) -> None:
     """
-    Supabase / manual SQL often adds user_sessions.user_id -> auth.users(id).
-    This app stores accounts in public.users only, so inserts fail with:
-    Key (user_id)=(...) is not present in table "users" (FK target mismatch).
+    Supabase often links user_sessions.user_id to auth.users while this app uses public.users.
+    PgBouncer/transaction poolers may also prevent ALTER from running; we still try.
 
-    Align FK to public.users and remove orphaned rows/tokens.
+    Uses autocommit so a failed ADD CONSTRAINT does not rollback successful DROPs
+    (otherwise inserts keep failing forever).
     """
     cur = conn.cursor()
+    prev_autocommit = conn.autocommit
     try:
+        conn.autocommit = True
         cur.execute(
             "DELETE FROM user_sessions WHERE user_id NOT IN (SELECT id FROM public.users)"
         )
@@ -76,21 +78,44 @@ def _ensure_user_sessions_fkey_to_app_users(conn) -> None:
             "DELETE FROM auth_tokens WHERE user_id NOT IN (SELECT id FROM public.users)"
         )
         cur.execute(
-            "ALTER TABLE user_sessions DROP CONSTRAINT IF EXISTS user_sessions_user_id_fkey"
-        )
-        cur.execute(
             """
-            ALTER TABLE user_sessions
-            ADD CONSTRAINT user_sessions_user_id_fkey
-            FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+            DO $$
+            DECLARE r RECORD;
+            BEGIN
+              FOR r IN (
+                SELECT c.conname
+                FROM pg_constraint c
+                JOIN pg_class t ON c.conrelid = t.oid
+                JOIN pg_namespace n ON t.relnamespace = n.oid
+                WHERE t.relname = 'user_sessions'
+                  AND n.nspname = 'public'
+                  AND c.contype = 'f'
+              ) LOOP
+                EXECUTE format(
+                  'ALTER TABLE public.user_sessions DROP CONSTRAINT IF EXISTS %I',
+                  r.conname
+                );
+              END LOOP;
+            END $$;
             """
         )
-        conn.commit()
-        print("✅ user_sessions.user_id FK -> public.users(id)")
+        try:
+            cur.execute(
+                """
+                ALTER TABLE public.user_sessions
+                ADD CONSTRAINT user_sessions_user_id_fkey
+                FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+                """
+            )
+            print("✅ user_sessions.user_id FK -> public.users(id)")
+        except Exception as add_err:
+            print(
+                f"⚠️ Could not ADD FK to public.users (sessions still work without FK): {add_err}"
+            )
     except Exception as e:
-        conn.rollback()
-        print(f"⚠️ user_sessions FK alignment skipped: {e}")
+        print(f"⚠️ user_sessions FK migration error: {e}")
     finally:
+        conn.autocommit = prev_autocommit
         cur.close()
 
 
