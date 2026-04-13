@@ -2,7 +2,7 @@
 
 // ============================================================
 // SUPABASE LOGIN - معلّق مؤقتاً (لم يُحذف)
-// تم الانتقال إلى MySQL Auth
+// تم الانتقال إلى Backend Auth (Supabase Postgres)
 // ============================================================
 /*
 ORIGINAL SUPABASE IMPORTS & LOGIC:
@@ -51,7 +51,7 @@ export default function AuthPage() {
     setIsLoading(true);
     try {
       if (isLogin) {
-        // MySQL Login
+        // Backend login
         const data = await apiLogin(email, password);
         if (!data.ok) throw new Error(data.error || "Invalid email or password");
         setToken(data.token);
@@ -59,7 +59,7 @@ export default function AuthPage() {
         window.location.href = "/";
         return;
       }
-      // MySQL Register
+      // Backend register
       const data = await apiRegister(email, password, name || undefined);
       if (!data.ok) throw new Error(data.error || "Registration failed");
       setToken(data.token);
@@ -132,7 +132,7 @@ export default function AuthPage() {
               <div className="flex items-center">
                 <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 text-xs font-medium text-slate-400">
                   <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981] animate-pulse"></span>
-                  <span>Engine Online v3.2 · MySQL</span>
+                  <span>Engine Online v3.2 · Supabase</span>
                 </div>
               </div>
 

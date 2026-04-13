@@ -10,7 +10,7 @@ import ControlPanel, { SelectedPerspective } from "@/app/components/ControlPanel
 import ResultDisplay from "@/app/components/ResultDisplay";
 import { ApiResponse, ApiOk, UserSession } from "@/app/types";
 
-// ── MySQL Auth (replaces Supabase) ───────────────────────────────────────────
+// ── Backend Auth/API client ───────────────────────────────────────────────────
 import {
   MySQLUser,
   apiGetMe,
@@ -181,7 +181,7 @@ export default function Home() {
           if (currentSessionIdRef.current === sid) setLoading(false);
 
           if (latestSessionResps) {
-            // MYSQL: save to MySQL instead of Supabase
+            // Save to backend DB session store
             // SUPABASE WAS: const supabase = createClient(); supabase.from("user_sessions").update({ resps: ... }).eq("id", sid).then();
             apiUpdateSession(sid, { resps: stripBase64ForSave(latestSessionResps) as Record<string, unknown> }).catch(() => { });
           }
@@ -269,7 +269,7 @@ export default function Home() {
   useEffect(() => { latestRespsRef.current = resps; }, [resps]);
 
   /**
-   * Strips heavy base64 image_data_url fields before saving to MySQL (same as before for Supabase).
+   * Strips heavy base64 image_data_url fields before saving to DB.
    */
   const stripBase64ForSave = (r: Record<string, ApiResponse>): Record<string, ApiResponse> => {
     const out: Record<string, ApiResponse> = {};
@@ -286,7 +286,7 @@ export default function Home() {
     return out;
   };
 
-  // Debounced auto-save to MySQL
+  // Debounced auto-save to backend DB
   // SUPABASE WAS: supabase.from("user_sessions").update({ resps: ..., updated_at: ... }).eq("id", activeSessionToSave);
   useEffect(() => {
     if (!user?.id || !currentSessionId) return;
@@ -329,7 +329,7 @@ export default function Home() {
       setResps({});
       onClear();
     } else {
-      alert("Error creating session. Check MySQL connection.");
+      alert("تعذر إنشاء الجلسة. تحقق من اتصال قاعدة بيانات Supabase (DATABASE_URL) ثم أعد المحاولة.");
     }
   };
 
@@ -837,7 +837,7 @@ export default function Home() {
       return { ...s, resps: next };
     }));
 
-    // 2) Persist deletion to MySQL so it survives page reloads
+    // 2) Persist deletion to DB so it survives page reloads
     // SUPABASE WAS: const supabase = createClient(); supabase.from("user_sessions").update({ resps: ..., updated_at: ... }).eq("id", sessionId);
     try {
       const respsToSave = stripBase64ForSave(updatedResps);

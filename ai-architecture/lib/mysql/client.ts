@@ -1,6 +1,6 @@
 /**
- * MySQL API Client
- * Communicates with the FastAPI backend which connects to MySQL.
+ * Backend API client.
+ * Communicates with FastAPI backed by Supabase Postgres via DATABASE_URL.
  * Authentication uses a Bearer token stored in localStorage.
  */
 
@@ -40,7 +40,7 @@ export function setStoredUser(user: MySQLUser) {
 }
 
 // ─── Types ───────────────────────────────────────────────────────────────────
-export interface MySQLUser {
+export interface AppUser {
   id: string;
   email: string;
   full_name?: string | null;
@@ -48,7 +48,7 @@ export interface MySQLUser {
   is_pro?: number;
 }
 
-export interface MySQLSession {
+export interface AppSession {
   id: string;
   user_id: string;
   title: string;
@@ -87,7 +87,7 @@ export async function apiLogout() {
   removeToken();
 }
 
-export async function apiGetMe(): Promise<MySQLUser | null> {
+export async function apiGetMe(): Promise<AppUser | null> {
   const token = getToken();
   if (!token) return null;
   try {
@@ -110,7 +110,7 @@ function authHeaders() {
   };
 }
 
-export async function apiGetSessions(): Promise<MySQLSession[]> {
+export async function apiGetSessions(): Promise<AppSession[]> {
   try {
     const res = await fetch(`${API_BASE}/sessions`, { headers: authHeaders() });
     const data = await res.json();
@@ -120,7 +120,7 @@ export async function apiGetSessions(): Promise<MySQLSession[]> {
   }
 }
 
-export async function apiCreateSession(title: string, resps = {}): Promise<MySQLSession | null> {
+export async function apiCreateSession(title: string, resps = {}): Promise<AppSession | null> {
   try {
     const res = await fetch(`${API_BASE}/sessions`, {
       method: "POST",
@@ -163,3 +163,7 @@ export async function apiDeleteSession(id: string): Promise<boolean> {
     return false;
   }
 }
+
+// Backward-compatible aliases for existing imports.
+export type MySQLUser = AppUser;
+export type MySQLSession = AppSession;

@@ -17,10 +17,9 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 # =========================
-# SQLite Database Layer
-# (MySQL server not required - SQLite is built into Python)
+# PostgreSQL Database Layer (Supabase-compatible)
 # =========================
-# MYSQL CODE - معلّق مؤقتاً (لم يُحذف، يمكن إعادة تفعيله عند تثبيت MySQL server)
+# Legacy MYSQL comments kept only for reference.
 # try:
 #     import mysql.connector
 #     from mysql.connector import pooling
@@ -37,11 +36,13 @@ import threading
 # URL-encode special chars in password so psycopg2 can parse the URI correctly
 from urllib.parse import quote_plus
 
-DATABASE_URL = os.getenv("DATABASE_URL", "")
+DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 _db_lock = threading.Lock()
 
 def get_db():
     """Return a new PostgreSQL connection with RealDict cursor support."""
+    if not DATABASE_URL:
+        raise RuntimeError("DATABASE_URL is missing. Set your Supabase Postgres connection string.")
     conn = psycopg2.connect(DATABASE_URL)
     conn.autocommit = False
     return conn
@@ -52,7 +53,7 @@ def _execute(conn, sql: str, params=None):
     cur.execute(sql, params or ())
     return cur
 
-def init_mysql_tables():
+def init_db_tables():
     """Create PostgreSQL tables if they don't exist."""
     conn = get_db()
     try:
@@ -66,7 +67,7 @@ def init_mysql_tables():
             created_at  TEXT DEFAULT (now()::text)
         )""")
         cur.execute("""
-        CREATE TABLE IF NOT EXISTS user_sessions (
+        CREATE TABLE IF NOT EXISTS app_user_sessions (
             id                  TEXT PRIMARY KEY,
             user_id             TEXT NOT NULL,
             title               TEXT,
@@ -75,6 +76,20 @@ def init_mysql_tables():
             created_at          TEXT DEFAULT (now()::text),
             updated_at          TEXT DEFAULT (now()::text)
         )""")
+        # Best-effort migration from legacy table name if it exists and is compatible.
+        cur.execute("""
+        DO $$
+        BEGIN
+            IF to_regclass('public.user_sessions') IS NOT NULL THEN
+                EXECUTE '
+                    INSERT INTO app_user_sessions (id, user_id, title, resps, parent_session_id, created_at, updated_at)
+                    SELECT id::text, user_id::text, title, COALESCE(resps::text, ''{}''), parent_session_id::text, created_at::text, updated_at::text
+                    FROM public.user_sessions
+                    ON CONFLICT (id) DO NOTHING
+                ';
+            END IF;
+        END $$;
+        """)
         cur.execute("""
         CREATE TABLE IF NOT EXISTS auth_tokens (
             token       TEXT PRIMARY KEY,
@@ -220,7 +235,7 @@ def serialize_dates(obj):
 os.makedirs("static", exist_ok=True)
 
 def migrate_db():
-    """No-op for PostgreSQL: schema is managed by init_mysql_tables."""
+    """No-op for PostgreSQL: schema is managed by init_db_tables."""
     pass
 
 
@@ -258,7 +273,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.on_event("startup")
 async def on_startup():
-    init_mysql_tables()
+    init_db_tables()
     # Seed app_prompts if empty
     conn = get_db()
     try:
@@ -287,7 +302,7 @@ def health():
     return {"ok": True}
 
 # =========================
-# MySQL Auth Endpoints
+# Auth Endpoints
 # =========================
 from pydantic import BaseModel
 
@@ -380,7 +395,7 @@ def auth_me(authorization: Optional[str] = Header(None)):
     }}
 
 # =========================
-# SQLite Sessions Endpoints
+# Sessions Endpoints
 # =========================
 
 @app.get("/sessions")
@@ -394,7 +409,7 @@ def get_sessions(authorization: Optional[str] = Header(None)):
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("""
             SELECT id, user_id, title, resps, parent_session_id, created_at, updated_at
-            FROM user_sessions WHERE user_id = %s ORDER BY updated_at DESC
+            FROM app_user_sessions WHERE user_id = %s ORDER BY updated_at DESC
         """, (user["id"],))
         rows = cur.fetchall()
         cur.close()
@@ -427,7 +442,7 @@ def create_session(body: SessionCreateBody, authorization: Optional[str] = Heade
         now = datetime.utcnow().isoformat()
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO user_sessions (id, user_id, title, resps, parent_session_id, created_at, updated_at)
+            INSERT INTO app_user_sessions (id, user_id, title, resps, parent_session_id, created_at, updated_at)
             VALUES (%s, %s, %s, %s, %s, %s, %s)
         """, (sid, user["id"], body.title, json_lib.dumps(body.resps or {}), body.parent_session_id, now, now))
         conn.commit()
@@ -457,7 +472,7 @@ def update_session(session_id: str, body: SessionUpdateBody, authorization: Opti
     conn = get_db()
     try:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("SELECT id FROM user_sessions WHERE id = %s AND user_id = %s", (session_id, user["id"]))
+        cur.execute("SELECT id FROM app_user_sessions WHERE id = %s AND user_id = %s", (session_id, user["id"]))
         if not cur.fetchone():
             return JSONResponse(status_code=404, content={"ok": False, "error": "Session not found"})
         fields, values = [], []
@@ -467,7 +482,7 @@ def update_session(session_id: str, body: SessionUpdateBody, authorization: Opti
             fields.append("resps = %s"); values.append(json_lib.dumps(body.resps))
         fields.append("updated_at = %s"); values.append(datetime.utcnow().isoformat())
         values.append(session_id)
-        cur.execute(f"UPDATE user_sessions SET {', '.join(fields)} WHERE id = %s", values)
+        cur.execute(f"UPDATE app_user_sessions SET {', '.join(fields)} WHERE id = %s", values)
         conn.commit()
         cur.close()
         return {"ok": True}
@@ -487,7 +502,7 @@ def delete_session(session_id: str, authorization: Optional[str] = Header(None))
     conn = get_db()
     try:
         cur = conn.cursor()
-        cur.execute("DELETE FROM user_sessions WHERE id = %s AND user_id = %s", (session_id, user["id"]))
+        cur.execute("DELETE FROM app_user_sessions WHERE id = %s AND user_id = %s", (session_id, user["id"]))
         conn.commit()
         cur.close()
         return {"ok": True}
@@ -509,7 +524,7 @@ def get_admin_stats():
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("SELECT COUNT(*) as cnt FROM users")
         users_count = cur.fetchone()["cnt"]
-        cur.execute("SELECT COUNT(*) as cnt FROM user_sessions")
+        cur.execute("SELECT COUNT(*) as cnt FROM app_user_sessions")
         sessions_count = cur.fetchone()["cnt"]
         cur.close()
         return {"ok": True, "stats": {"users": users_count, "sessions": sessions_count}}
@@ -728,11 +743,14 @@ def build_prompt(perspective: str, custom: Optional[str] = None) -> str:
     if perspective == "Custom Scene":
         return custom
 
-    # Fetch from SQLite database
+    # Fetch from PostgreSQL prompt table first
     conn = get_db()
     extra = ""
     try:
-        row = conn.execute("SELECT prompt_text FROM app_prompts WHERE title = ?", (perspective,)).fetchone()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT prompt_text FROM app_prompts WHERE title = %s", (perspective,))
+        row = cur.fetchone()
+        cur.close()
         if row:
             extra = row["prompt_text"]
         else:
@@ -1146,7 +1164,16 @@ def generate_kling_jwt():
     }
     return jwt.encode(payload, sk, algorithm="HS256", headers=headers)
 
-def process_video_journey(job_id: str, perspectives: List[str], custom_prompt: str, input_image_b64: Optional[str], mime_type: str, reference_images: Optional[list], aspect_ratio: str):
+def process_video_journey(
+    job_id: str,
+    perspectives: List[str],
+    custom_prompt: str,
+    input_image_b64: Optional[str],
+    mime_type: str,
+    reference_images: Optional[list],
+    aspect_ratio: str,
+    model_name: Optional[str] = None,
+):
     import time
     import requests
     import os
@@ -1224,7 +1251,7 @@ def process_video_journey(job_id: str, perspectives: List[str], custom_prompt: s
                     "aspect_ratio": kling_ar
                 }, f"{base_url}/text2video"
 
-        model_to_use = os.getenv("KLING_VIDEO_MODEL", "kling-v2-6")
+        model_to_use = (model_name or "").strip() or os.getenv("KLING_VIDEO_MODEL", "kling-v2-6")
         payload, url = build_kling_payload(model_to_use)
 
         r = requests.post(url, headers=headers, json=payload, timeout=60)
@@ -1234,7 +1261,7 @@ def process_video_journey(job_id: str, perspectives: List[str], custom_prompt: s
         if (r.status_code != 200 or r_json.get("code") != 0):
             err_msg = r_json.get("message", str(r_json))
             if "model_name" in err_msg.lower() and "invalid" in err_msg.lower():
-                model_to_use = os.getenv("KLING_VIDEO_MODEL_FALLBACK", "kling-v1")
+                model_to_use = os.getenv("KLING_VIDEO_MODEL_FALLBACK", "kling-v1-1")
                 payload, url = build_kling_payload(model_to_use)
                 r = requests.post(url, headers=headers, json=payload, timeout=60)
                 r_json = r.json()
@@ -1304,11 +1331,12 @@ def process_video_journey(job_id: str, perspectives: List[str], custom_prompt: s
                 f.write(chunk)
 
         current_job = jobs.get(job_id, {})
+        api_base = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         current_job.update({
             "ok": True,
             "status": "COMPLETED",
             "is_video": True,
-            "file_url": f"http://127.0.0.1:8000/static/{video_filename}",
+            "file_url": f"{api_base}/static/{video_filename}",
             "filename": video_filename,
         })
         jobs[job_id] = current_job
@@ -1335,6 +1363,9 @@ async def generate(
     image_count: List[Any] = Form([1]),
     is_video: bool = Form(False),
     model_name: str = Form("nano-banana-pro-preview"),
+    duration: Optional[str] = Form(None),
+    resolution: Optional[str] = Form(None),
+    generateAudio: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     refs: List[UploadFile] = File(None),
 ):
@@ -1375,7 +1406,17 @@ async def generate(
                 "is_video": True,
                 "aspect_ratio": video_ar,
             }
-            background_tasks.add_task(process_video_journey, job_id, perspective, custom_prompt, input_image_b64, mime_type, reference_images, video_ar)
+            background_tasks.add_task(
+                process_video_journey,
+                job_id,
+                perspective,
+                custom_prompt,
+                input_image_b64,
+                mime_type,
+                reference_images,
+                video_ar,
+                model_name,
+            )
             job_ids.append(job_id)
         else:
             for idx, p in enumerate(perspective):
@@ -1436,7 +1477,3 @@ def check_status(job_id: str):
             content={"error": "Job not found", "status": "FAILED"}
         )
     return jobs[job_id]
-
-@app.on_event("startup")
-def startup_event():
-    init_mysql_tables()
