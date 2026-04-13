@@ -59,6 +59,9 @@ export default function ResultDisplay({
   const [videoCreationMode, setVideoCreationMode] = useState<
     "idle" | "select_start" | "select_end" | "write_prompt"
   >("idle");
+  const [videoType, setVideoType] = useState<"image_to_video" | "frame_start_to_end">(
+    "image_to_video",
+  );
   const [videoStartImg, setVideoStartImg] = useState<string | null>(null);
   const [videoEndImg, setVideoEndImg] = useState<string | null>(null);
   const [videoPrompt, setVideoPrompt] = useState<string>(
@@ -219,7 +222,12 @@ export default function ResultDisplay({
 
     if (videoCreationMode === "select_start") {
       setVideoStartImg(img.url);
-      setVideoCreationMode("select_end");
+      if (videoType === "image_to_video") {
+        setVideoEndImg(null);
+        setVideoCreationMode("write_prompt");
+      } else {
+        setVideoCreationMode("select_end");
+      }
     } else if (videoCreationMode === "select_end") {
       setVideoEndImg(img.url);
       setVideoCreationMode("write_prompt");
@@ -257,12 +265,16 @@ export default function ResultDisplay({
               } else {
                 setVideoStartImg(null);
                 setVideoEndImg(null);
-                const stillInGallery =
-                  lastVideoEndImageUrl &&
-                  images.some((i) => i.url === lastVideoEndImageUrl);
-                if (stillInGallery && lastVideoEndImageUrl) {
-                  setVideoStartImg(lastVideoEndImageUrl);
-                  setVideoCreationMode("select_end");
+                if (videoType === "frame_start_to_end") {
+                  const stillInGallery =
+                    lastVideoEndImageUrl &&
+                    images.some((i) => i.url === lastVideoEndImageUrl);
+                  if (stillInGallery && lastVideoEndImageUrl) {
+                    setVideoStartImg(lastVideoEndImageUrl);
+                    setVideoCreationMode("select_end");
+                  } else {
+                    setVideoCreationMode("select_start");
+                  }
                 } else {
                   setVideoCreationMode("select_start");
                 }
@@ -281,15 +293,50 @@ export default function ResultDisplay({
 
       {videoCreationMode !== "idle" && (
         <div className="p-5 bg-emerald-500/10 border-b border-emerald-500/20 flex flex-col gap-4 z-10 backdrop-blur-md">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all border ${videoType === "image_to_video"
+                ? "bg-emerald-500/20 border-emerald-400/50 text-emerald-100"
+                : "bg-black/20 border-white/10 text-slate-300 hover:bg-white/5"
+                }`}
+              onClick={() => {
+                setVideoType("image_to_video");
+                setVideoStartImg(null);
+                setVideoEndImg(null);
+                setVideoCreationMode("select_start");
+              }}
+            >
+              Image to Video
+            </button>
+            <button
+              type="button"
+              className={`px-3 py-2 rounded-lg text-xs font-semibold transition-all border ${videoType === "frame_start_to_end"
+                ? "bg-emerald-500/20 border-emerald-400/50 text-emerald-100"
+                : "bg-black/20 border-white/10 text-slate-300 hover:bg-white/5"
+                }`}
+              onClick={() => {
+                setVideoType("frame_start_to_end");
+                setVideoStartImg(null);
+                setVideoEndImg(null);
+                setVideoCreationMode("select_start");
+              }}
+            >
+              Frame: Start to End
+            </button>
+          </div>
+
           {videoCreationMode === "select_start" && (
             <h3 className="text-emerald-400 font-semibold text-sm flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-xs">
                 1
               </span>
-              Select First Image (Start Frame) from gallery below
+              {videoType === "image_to_video"
+                ? "Select Source Image from gallery below"
+                : "Select First Image (Start Frame) from gallery below"}
             </h3>
           )}
-          {videoCreationMode === "select_end" && (
+          {videoCreationMode === "select_end" && videoType === "frame_start_to_end" && (
             <h3 className="text-emerald-400 font-semibold text-sm flex items-center gap-2">
               <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center text-xs">
                 2
@@ -320,11 +367,11 @@ export default function ResultDisplay({
                   ×
                 </button>
                 <span className="block text-center text-[10px] text-emerald-400 mt-2 font-bold uppercase tracking-wider">
-                  Start
+                  {videoType === "image_to_video" ? "Source" : "Start"}
                 </span>
               </div>
             )}
-            {videoStartImg && videoEndImg && (
+            {videoType === "frame_start_to_end" && videoStartImg && videoEndImg && (
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
@@ -341,7 +388,7 @@ export default function ResultDisplay({
                 <polyline points="12 5 19 12 12 19"></polyline>
               </svg>
             )}
-            {videoEndImg && (
+            {videoType === "frame_start_to_end" && videoEndImg && (
               <div className="relative shrink-0 group w-20 h-20">
                 <Image
                   src={videoEndImg}
@@ -412,10 +459,13 @@ export default function ResultDisplay({
                 className="mt-2 w-full sm:w-auto self-end bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-[0_10px_20px_rgba(16,185,129,0.3)] text-white font-semibold py-3 px-6 rounded-xl transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2"
                 onClick={() => {
                   if (onGenerateVideoFromGallery && videoStartImg) {
+                    if (videoType === "frame_start_to_end" && !videoEndImg) {
+                      return;
+                    }
                     if (videoEndImg) setLastVideoEndImageUrl(videoEndImg);
                     onGenerateVideoFromGallery(
                       videoStartImg,
-                      videoEndImg || "",
+                      videoType === "frame_start_to_end" ? (videoEndImg || "") : "",
                       videoPrompt,
                       videoDuration,
                     );
