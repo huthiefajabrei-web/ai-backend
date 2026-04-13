@@ -1,6 +1,6 @@
 /**
- * Session/auth API client
- * Talks to the FastAPI backend (PostgreSQL via DATABASE_URL on the server).
+ * MySQL API Client
+ * Communicates with the FastAPI backend which connects to MySQL.
  * Authentication uses a Bearer token stored in localStorage.
  */
 
@@ -120,65 +120,17 @@ export async function apiGetSessions(): Promise<MySQLSession[]> {
   }
 }
 
-export type ApiCreateSessionResult =
-  | { ok: true; data: MySQLSession }
-  | { ok: false; error: string; clearedAuth?: boolean };
-
-function sessionErrorShouldClearAuth(msg: string): boolean {
-  const m = msg.toLowerCase();
-  return (
-    m.includes("foreign key") ||
-    m.includes("user_sessions_user_id") ||
-    m.includes("not present in table") ||
-    m.includes("violates foreign key constraint")
-  );
-}
-
-export async function apiCreateSession(
-  title: string,
-  resps = {}
-): Promise<ApiCreateSessionResult> {
+export async function apiCreateSession(title: string, resps = {}): Promise<MySQLSession | null> {
   try {
     const res = await fetch(`${API_BASE}/sessions`, {
       method: "POST",
       headers: authHeaders(),
       body: JSON.stringify({ title, resps }),
     });
-    let data: { ok?: boolean; data?: MySQLSession; error?: string } = {};
-    try {
-      data = await res.json();
-    } catch {
-      data = {};
-    }
-    if (data.ok && data.data) {
-      return { ok: true, data: data.data };
-    }
-    const serverErr =
-      typeof data.error === "string" && data.error.trim() ? data.error.trim() : null;
-    const errText =
-      !res.ok
-        ? serverErr ||
-          `Request failed (${res.status}). Check that NEXT_PUBLIC_API_URL points to your API.`
-        : serverErr || "Unexpected response from server.";
-    if (typeof window !== "undefined" && sessionErrorShouldClearAuth(errText)) {
-      removeToken();
-      return {
-        ok: false,
-        error: `${errText}\n\nتم مسح بيانات تسجيل الدخول المحلية — سجّل الدخول مرة أخرى.`,
-        clearedAuth: true,
-      };
-    }
-    return { ok: false, error: errText };
-  } catch (e) {
-    const hint =
-      typeof window !== "undefined" && window.location.hostname !== "localhost"
-        ? " On production, set NEXT_PUBLIC_API_URL to your public API URL (not localhost)."
-        : "";
-    const msg = e instanceof Error ? e.message : String(e);
-    return {
-      ok: false,
-      error: `Network error: ${msg}.${hint}`,
-    };
+    const data = await res.json();
+    return data.ok ? data.data : null;
+  } catch {
+    return null;
   }
 }
 

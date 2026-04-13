@@ -42,13 +42,7 @@ _db_lock = threading.Lock()
 
 def get_db():
     """Return a new PostgreSQL connection with RealDict cursor support."""
-    url = (DATABASE_URL or "").strip()
-    if not url:
-        raise RuntimeError(
-            "DATABASE_URL is not set on the API server. Add a PostgreSQL connection string "
-            "(e.g. Supabase) to the backend environment."
-        )
-    conn = psycopg2.connect(url)
+    conn = psycopg2.connect(DATABASE_URL)
     conn.autocommit = False
     return conn
 
@@ -57,67 +51,6 @@ def _execute(conn, sql: str, params=None):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
     cur.execute(sql, params or ())
     return cur
-
-
-def _ensure_user_sessions_fkey_to_app_users(conn) -> None:
-    """
-    Supabase often links user_sessions.user_id to auth.users while this app uses public.users.
-    PgBouncer/transaction poolers may also prevent ALTER from running; we still try.
-
-    Uses autocommit so a failed ADD CONSTRAINT does not rollback successful DROPs
-    (otherwise inserts keep failing forever).
-    """
-    cur = conn.cursor()
-    prev_autocommit = conn.autocommit
-    try:
-        conn.autocommit = True
-        cur.execute(
-            "DELETE FROM user_sessions WHERE user_id NOT IN (SELECT id FROM public.users)"
-        )
-        cur.execute(
-            "DELETE FROM auth_tokens WHERE user_id NOT IN (SELECT id FROM public.users)"
-        )
-        cur.execute(
-            """
-            DO $$
-            DECLARE r RECORD;
-            BEGIN
-              FOR r IN (
-                SELECT c.conname
-                FROM pg_constraint c
-                JOIN pg_class t ON c.conrelid = t.oid
-                JOIN pg_namespace n ON t.relnamespace = n.oid
-                WHERE t.relname = 'user_sessions'
-                  AND n.nspname = 'public'
-                  AND c.contype = 'f'
-              ) LOOP
-                EXECUTE format(
-                  'ALTER TABLE public.user_sessions DROP CONSTRAINT IF EXISTS %I',
-                  r.conname
-                );
-              END LOOP;
-            END $$;
-            """
-        )
-        try:
-            cur.execute(
-                """
-                ALTER TABLE public.user_sessions
-                ADD CONSTRAINT user_sessions_user_id_fkey
-                FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
-                """
-            )
-            print("✅ user_sessions.user_id FK -> public.users(id)")
-        except Exception as add_err:
-            print(
-                f"⚠️ Could not ADD FK to public.users (sessions still work without FK): {add_err}"
-            )
-    except Exception as e:
-        print(f"⚠️ user_sessions FK migration error: {e}")
-    finally:
-        conn.autocommit = prev_autocommit
-        cur.close()
-
 
 def init_mysql_tables():
     """Create PostgreSQL tables if they don't exist."""
@@ -196,8 +129,6 @@ def init_mysql_tables():
             created_at  TEXT DEFAULT (now()::text)
         )""")
         conn.commit()
-
-        _ensure_user_sessions_fkey_to_app_users(conn)
 
         # Seed tools if empty
         cur.execute("SELECT COUNT(*) as cnt FROM app_tools")

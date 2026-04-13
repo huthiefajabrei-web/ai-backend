@@ -19,6 +19,7 @@ import {
   apiCreateSession,
   apiUpdateSession,
   apiDeleteSession,
+  getToken,
   getStoredUser,
   setStoredUser,
   removeToken,
@@ -30,78 +31,10 @@ import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
 */
 
-import {
-  Plus,
-  MessageSquare,
-  Trash2,
-  Loader2,
-  Copy,
-  MoreVertical,
-  Pencil,
-  PanelLeftClose,
-  PanelLeft,
-  Home as HomeIcon,
-  Wand2,
-  Video,
-  Search,
-  LayoutGrid,
-  Brush,
-  Folder,
-  Coins,
-  ArrowRight,
-  Sparkles,
-  ZoomIn,
-  CheckCircle2,
-  Menu,
-  X,
-  Layers,
-  type LucideIcon,
-} from "lucide-react";
-
-/** CMS rows from GET /content/* (shape matches FastAPI responses). */
-interface ContentHeroItem {
-  id: string;
-  title: string;
-  image_url: string;
-}
-interface ContentToolItem {
-  id: string;
-  title: string;
-  description?: string;
-  icon: string;
-  action_id?: string;
-}
-interface ContentAppItem {
-  id: string;
-  title: string;
-  description?: string;
-  image_url: string;
-  category?: string;
-}
-interface ContentPlanItem {
-  id: string;
-  name: string;
-  price: number;
-  credits: number;
-  period: string;
-  features: string[];
-  is_popular?: number;
-}
+import { Plus, MessageSquare, Trash2, Loader2, Copy, MoreVertical, Pencil, PanelLeftClose, PanelLeft, Home as HomeIcon, Wand2, Video, Search, LayoutGrid, Brush, Folder, Coins, ArrowRight, Sparkles, ZoomIn, CheckCircle2, Menu, X, Layers } from "lucide-react";
 
 // Map string icon names to Lucide icons
-const IconMap: Record<string, LucideIcon> = {
-  Wand2,
-  Video,
-  ZoomIn,
-  Search,
-  LayoutGrid,
-  Brush,
-  Folder,
-  Coins,
-  ArrowRight,
-  Sparkles,
-  CheckCircle2,
-};
+const IconMap: Record<string, any> = { Wand2, Video, ZoomIn, Search, LayoutGrid, Brush, Folder, Coins, ArrowRight, Sparkles, CheckCircle2 };
 
 export default function Home() {
   const router = useRouter();
@@ -127,10 +60,10 @@ export default function Home() {
   const [mode, setMode] = useState<"image" | "video">("image");
   const [activeApp, setActiveApp] = useState<string | null>(null);
 
-  const [dbHero, setDbHero] = useState<ContentHeroItem[]>([]);
-  const [dbTools, setDbTools] = useState<ContentToolItem[]>([]);
-  const [dbApps, setDbApps] = useState<ContentAppItem[]>([]);
-  const [dbPlans, setDbPlans] = useState<ContentPlanItem[]>([]);
+  const [dbHero, setDbHero] = useState<any[]>([]);
+  const [dbTools, setDbTools] = useState<any[]>([]);
+  const [dbApps, setDbApps] = useState<any[]>([]);
+  const [dbPlans, setDbPlans] = useState<any[]>([]);
 
   useEffect(() => {
     Promise.all([
@@ -139,10 +72,10 @@ export default function Home() {
       fetch(`${API_BASE}/content/apps`).then((r) => r.json()).catch(() => ({})),
       fetch(`${API_BASE}/content/plans`).then((r) => r.json()).catch(() => ({}))
     ]).then(([hRes, tRes, aRes, pRes]) => {
-      if (hRes?.data && Array.isArray(hRes.data)) setDbHero(hRes.data as ContentHeroItem[]);
-      if (tRes?.data && Array.isArray(tRes.data)) setDbTools(tRes.data as ContentToolItem[]);
-      if (aRes?.data && Array.isArray(aRes.data)) setDbApps(aRes.data as ContentAppItem[]);
-      if (pRes?.data && Array.isArray(pRes.data)) setDbPlans(pRes.data as ContentPlanItem[]);
+      if (hRes?.data) setDbHero(hRes.data);
+      if (tRes?.data) setDbTools(tRes.data);
+      if (aRes?.data) setDbApps(aRes.data);
+      if (pRes?.data) setDbPlans(pRes.data);
     });
   }, []);
 
@@ -384,10 +317,10 @@ export default function Home() {
     const finalTitle = userTitle.trim() !== "" ? userTitle.trim() : defaultTitle + " - " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     // SUPABASE WAS: const supabase = createClient(); supabase.from("user_sessions").insert({...}).select().single();
-    const created = await apiCreateSession(finalTitle, {});
+    const data = await apiCreateSession(finalTitle, {});
 
-    if (created.ok) {
-      const typed = created.data as unknown as UserSession;
+    if (data) {
+      const typed = data as unknown as UserSession;
       setSessions((prev) => [typed, ...prev]);
       setCurrentSessionId(typed.id);
       currentSessionIdRef.current = typed.id;
@@ -396,8 +329,7 @@ export default function Home() {
       setResps({});
       onClear();
     } else {
-      if (!created.ok && created.clearedAuth) setUser(null);
-      alert(`تعذر إنشاء الجلسة.\n${created.error}`);
+      alert("Error creating session. Check MySQL connection.");
     }
   };
 
@@ -450,14 +382,13 @@ export default function Home() {
     try {
       // SUPABASE WAS: const supabase = createClient(); supabase.from('user_sessions').insert({...}).select().single();
       const respsToClone = session.resps || {};
-      const dup = await apiCreateSession(newName.trim() || defaultName, respsToClone as Record<string, unknown>);
-      if (dup.ok) {
-        const typed = dup.data as unknown as UserSession;
+      const data = await apiCreateSession(newName.trim() || defaultName, respsToClone as Record<string, unknown>);
+      if (data) {
+        const typed = data as unknown as UserSession;
         fetchedSessionIdsRef.current.add(typed.id);
         setSessions((prev) => [typed, ...prev]);
       } else {
-        if (!dup.ok && dup.clearedAuth) setUser(null);
-        alert(`تعذر نسخ الجلسة.\n${dup.error}`);
+        alert('Duplicate Error: Could not duplicate session');
       }
     } finally {
       setDuplicatingId(null);
@@ -560,13 +491,13 @@ export default function Home() {
     const title = selectedPerspectives.length > 0 ? selectedPerspectives[0].perspective : "New Session";
 
     // SUPABASE WAS: const supabase = createClient(); supabase.from("user_sessions").insert({...}).select().single();
-    const created = await apiCreateSession(
+    const data = await apiCreateSession(
       title + " - " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       {}
     );
 
-    if (created.ok) {
-      const typed = created.data as unknown as UserSession;
+    if (data) {
+      const typed = data as unknown as UserSession;
       setSessions((prev) => [typed, ...prev]);
       setCurrentSessionId(typed.id);
       currentSessionIdRef.current = typed.id;
@@ -575,8 +506,7 @@ export default function Home() {
       setResps({});
       return typed.id;
     } else {
-      if (!created.ok && created.clearedAuth) setUser(null);
-      alert(`تعذر إنشاء الجلسة للتوليد.\n${created.error}`);
+      alert("getOrCreateSession Error: Could not create session");
     }
     return null;
   };
@@ -918,6 +848,13 @@ export default function Home() {
   }
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navLinks = [
+    { label: "Features", href: "#features" },
+    { label: "Create", href: "#create" },
+    { label: "Gallery", href: "#gallery" },
+    { label: "Pricing", href: "#pricing" },
+    { label: "API", href: "#api" },
+  ];
 
   return (
     <div className="min-h-screen flex flex-col font-sans overflow-x-hidden bg-[#09090b] text-slate-50 relative selection:bg-cyan-500/30">
@@ -1042,12 +979,7 @@ export default function Home() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto px-4">
                 {dbHero.slice(0, 3).map((hero, index) => (
                   <div key={hero.id} onClick={() => router.push(`/apps/${hero.id}`)} className={`cursor-pointer aspect-[3/4] rounded-3xl overflow-hidden relative group ${index === 1 ? 'md:-translate-y-6' : ''}`}>
-                    {/* eslint-disable-next-line @next/next/no-img-element -- CMS URLs from API may be any host */}
-                    <img
-                      src={hero.image_url}
-                      alt={hero.title}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-                    />
+                    <img src={hero.image_url} alt={hero.title} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent flex items-end">
                       <div className="p-6 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0 w-full">
                         <span className="text-white font-bold text-lg drop-shadow-xl font-display">{hero.title}</span>
@@ -1097,12 +1029,7 @@ export default function Home() {
                   <div key={a.id} className="flex flex-col gap-4">
                     <div className="aspect-[4/5] rounded-3xl overflow-hidden relative group cursor-pointer" onClick={() => router.push(`/apps/${a.id}`)}>
                       <div className="absolute top-4 left-4 z-10 px-3 py-1.5 rounded-full bg-purple-500 text-white text-[11px] font-bold shadow-lg">New</div>
-                      {/* eslint-disable-next-line @next/next/no-img-element -- CMS URLs from API may be any host */}
-                      <img
-                        src={a.image_url}
-                        alt={a.title}
-                        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
+                      <img src={a.image_url} alt={a.title} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" />
                       <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
                     </div>
                     <div className="px-1">
@@ -1144,7 +1071,7 @@ export default function Home() {
                       <span className="text-xs font-medium text-zinc-400 uppercase tracking-widest">Credits included</span>
                     </div>
                     <ul className="flex flex-col gap-4 flex-1 mb-8">
-                      {(Array.isArray(p.features) ? p.features : []).map((f, i) => (
+                      {p.features.map((f: string, i: number) => (
                         <li key={i} className="flex items-start gap-3 text-sm text-zinc-300">
                           <CheckCircle2 size={18} className="text-purple-400 shrink-0 mt-0.5" />
                           <span className="leading-relaxed">{f}</span>
@@ -1390,7 +1317,7 @@ export default function Home() {
       </main>
 
       {/* Footer with anchors for Pricing & API */}
-      <footer className="mt-16 py-10 border-t border-white/10 bg-black/40 text-center relative z-10 backdrop-blur-md scroll-mt-24">
+      <footer id="pricing" className="mt-16 py-10 border-t border-white/10 bg-black/40 text-center relative z-10 backdrop-blur-md scroll-mt-24">
         <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-16">
           <p className="text-sm text-slate-500 font-medium">
             H_ARCH STUDIO &copy; {new Date().getFullYear()}. Empowering designers.
