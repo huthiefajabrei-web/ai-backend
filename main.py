@@ -1074,29 +1074,71 @@ def process_gemini_job(
         r = None
         for attempt in range(2):
             try:
+                print(f"🔄 Gemini API attempt {attempt + 1} for job {job_id}")
                 r = requests.post(URL, json=payload, timeout=120)
+                print(f"📡 Gemini API response status: {r.status_code}")
+                
                 if r.status_code == 200:
+                    print(f"✅ Gemini API success for job {job_id}")
                     break
+                    
+                # Log error details
+                error_text = r.text[:500] if r.text else "No error text"
+                print(f"❌ Gemini API error {r.status_code}: {error_text}")
+                
                 if r.status_code in (429,) or (500 <= r.status_code < 600):
                     if attempt == 0:
+                        print(f"⏳ Retrying after 5 seconds...")
                         time.sleep(5)
                         continue
+                        
                 jobs[job_id] = {
                     "ok": False,
                     "status": "FAILED",
-                    "error": "Gemini API error",
-                    "details": (r.text[:500] if r.text else str(r.status_code)) if r else "No response"
+                    "error": f"Gemini API error {r.status_code}",
+                    "details": error_text,
+                    "job_id": job_id,
+                    "perspective": perspective,
+                    "aspect_ratio": aspect_ratio
                 }
                 return
             except requests.Timeout:
+                print(f"⏱️ Gemini API timeout on attempt {attempt + 1}")
+                if attempt == 0:
+                    time.sleep(3)
+                    continue
+                raise
+            except Exception as e:
+                print(f"❌ Gemini API request error: {e}")
                 if attempt == 0:
                     time.sleep(3)
                     continue
                 raise
 
+        # Check if response is valid
+        if not r or r.status_code != 200:
+            error_msg = "No response from Gemini API"
+            if r:
+                error_msg = f"Gemini API returned status {r.status_code}: {r.text[:500]}"
+            print(f"❌ {error_msg}")
+            jobs[job_id] = {
+                "ok": False,
+                "status": "FAILED",
+                "error": "Gemini API error",
+                "details": error_msg,
+                "job_id": job_id,
+                "perspective": perspective,
+                "aspect_ratio": aspect_ratio
+            }
+            return
+
         data = r.json()
+        print(f"📦 Gemini API response data keys: {list(data.keys())}")
+        
         try:
             base64_img = data["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]
+            print(f"✅ Successfully extracted image from Gemini response")
+            
             # Save image to static so file_url persists after DB save (frontend strips base64)
             static_filename = f"{job_id}.jpg"
             static_path = os.path.join("static", static_filename)
@@ -1104,8 +1146,11 @@ def process_gemini_job(
                 raw = base64.b64decode(base64_img)
                 with open(static_path, "wb") as f:
                     f.write(raw)
-            except Exception:
+                print(f"💾 Saved image to {static_path}")
+            except Exception as save_error:
+                print(f"⚠️ Failed to save image to static: {save_error}")
                 pass  # keep image_data_url for in-session display if static write fails
+                
             api_base = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
             file_url = f"{api_base}/static/{static_filename}" if os.path.isfile(static_path) else None
             current_job = jobs.get(job_id, {})
@@ -1115,32 +1160,52 @@ def process_gemini_job(
                 "prompt_used": final_prompt,
                 "image_base64": base64_img,
                 "image_data_url": f"data:image/jpeg;base64,{base64_img}",
-                "filename": f"{job_id}.jpg"
+                "filename": f"{job_id}.jpg",
+                "job_id": job_id,
+                "perspective": perspective,
+                "aspect_ratio": aspect_ratio
             }
             if file_url:
                 update_payload["file_url"] = file_url
             current_job.update(update_payload)
             jobs[job_id] = current_job
+            print(f"🎉 Job {job_id} completed successfully")
+            
         except (KeyError, IndexError) as e:
+            print(f"❌ Failed to parse Gemini response: {e}")
+            print(f"📄 Response data: {data}")
             jobs[job_id] = {
                 "ok": False,
                 "status": "FAILED",
                 "error": "Unexpected response format from Gemini",
-                "details": str(e)
+                "details": f"{str(e)} - Response: {str(data)[:500]}",
+                "job_id": job_id,
+                "perspective": perspective,
+                "aspect_ratio": aspect_ratio
             }
             
     except requests.Timeout:
+        print(f"⏱️ Gemini API timeout for job {job_id}")
         jobs[job_id] = {
             "ok": False,
             "status": "TIMEOUT",
-            "error": "Nano Banana API Timeout."
+            "error": "Nano Banana API Timeout.",
+            "job_id": job_id,
+            "perspective": perspective,
+            "aspect_ratio": aspect_ratio
         }
     except Exception as e:
+        print(f"❌ Unexpected error in process_gemini_job: {e}")
+        import traceback
+        traceback.print_exc()
         jobs[job_id] = {
             "ok": False,
             "status": "FAILED",
             "error": "Server error",
-            "details": str(e)
+            "details": str(e),
+            "job_id": job_id,
+            "perspective": perspective,
+            "aspect_ratio": aspect_ratio
         }
 
 # =========================
