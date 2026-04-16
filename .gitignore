@@ -18,6 +18,9 @@ Thumbs.db
 tmp/
 uploads/
 
+# Static files (images should be in Supabase Storage)
+static/
+
 # Build and IDE
 .vscode/
 .idea/

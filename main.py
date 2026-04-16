@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+
 # =========================
 # PostgreSQL Database Layer (Supabase-compatible)
 # =========================
@@ -38,11 +39,30 @@ from urllib.parse import quote_plus
 
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 _db_lock = threading.Lock()
+
 ADMIN_EMAILS = {
     email.strip().lower()
     for email in os.getenv("ADMIN_EMAILS", "").split(",")
     if email.strip()
 }
+
+# =========================
+# Supabase Storage Setup
+# =========================
+SUPABASE_URL = os.getenv("SUPABASE_URL", "").strip()
+SUPABASE_KEY = os.getenv("SUPABASE_KEY", "").strip()
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "app-images").strip()
+
+supabase_client = None
+if SUPABASE_URL and SUPABASE_KEY:
+    try:
+        from supabase import create_client, Client
+        supabase_client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        print("✅ Supabase Storage connected")
+    except ImportError:
+        print("⚠️ supabase library not installed. Run: pip install supabase")
+    except Exception as e:
+        print(f"⚠️ Supabase Storage connection failed: {e}")
 
 def is_admin_email(email: Optional[str]) -> bool:
     return bool(email and email.strip().lower() in ADMIN_EMAILS)
@@ -79,7 +99,7 @@ def init_db_tables():
     """Create PostgreSQL tables if they don't exist."""
     conn = get_db()
     try:
-        cur = conn.cursor()
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id          TEXT PRIMARY KEY,
@@ -694,14 +714,48 @@ async def admin_upload_image(
         content = await file.read()
         ext = file.filename.split('.')[-1] if file.filename and '.' in file.filename else 'jpg'
         filename = f"uploaded_{int(time.time())}_{uuid.uuid4().hex[:6]}.{ext}"
+        
+        # Try Supabase Storage first
+        if supabase_client:
+            try:
+                # Determine content type
+                content_type = file.content_type or "image/jpeg"
+                if ext.lower() == 'png':
+                    content_type = "image/png"
+                elif ext.lower() == 'webp':
+                    content_type = "image/webp"
+                elif ext.lower() == 'gif':
+                    content_type = "image/gif"
+                
+                # Upload to Supabase Storage
+                result = supabase_client.storage.from_(SUPABASE_BUCKET).upload(
+                    filename,
+                    content,
+                    {"content-type": content_type, "upsert": "true"}
+                )
+                
+                # Get public URL
+                file_url = supabase_client.storage.from_(SUPABASE_BUCKET).get_public_url(filename)
+                
+                print(f"✅ Image uploaded to Supabase: {filename}")
+                return {"ok": True, "url": file_url, "storage": "supabase"}
+                
+            except Exception as supabase_error:
+                print(f"⚠️ Supabase upload failed: {supabase_error}, falling back to local storage")
+        
+        # Fallback: Save locally (for development or when Supabase is not configured)
         filepath = os.path.join("static", filename)
         with open(filepath, "wb") as f:
             f.write(content)
             
         api_base = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         file_url = f"{api_base}/static/{filename}"
-        return {"ok": True, "url": file_url}
+        
+        print(f"⚠️ Image saved locally: {filename}")
+        return {"ok": True, "url": file_url, "storage": "local"}
+        
     except Exception as e:
+        print(f"❌ Upload error: {e}")
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
 
 # =========================
