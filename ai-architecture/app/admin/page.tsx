@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Users, Layout, Settings, Plus, Pencil, Trash2, Save, X, Activity, CreditCard, CheckCircle2, Search, ArrowLeft, Coins, Image as ImageIcon, Upload, MessageSquare } from "lucide-react";
-import { apiGetMe, apiLogout } from "@/lib/mysql/client";
+import { apiGetMe, apiLogout, AUTH_NETWORK_ERROR } from "@/lib/mysql/client";
 
 // --- Types ---
 type Stats = { users: number; sessions: number };
@@ -57,9 +57,11 @@ export default function AdminDashboard() {
       }
 
       const me = await apiGetMe();
-      if (!me?.is_admin) {
-        await apiLogout();
-        router.replace("/admin/login?error=forbidden");
+      if (!me || me === AUTH_NETWORK_ERROR || !me.is_admin) {
+        if (me !== AUTH_NETWORK_ERROR) {
+          await apiLogout();
+          router.replace("/admin/login?error=forbidden");
+        }
         return;
       }
 

@@ -7,7 +7,7 @@ import {
   Search, LayoutGrid, Brush, Folder, Coins, Loader2, ImageIcon, ClapperboardIcon, ChevronDown
 } from "lucide-react";
 import Link from "next/link";
-import { apiGetMe, MySQLUser } from "@/lib/mysql/client";
+import { apiGetMe, MySQLUser, AUTH_NETWORK_ERROR } from "@/lib/mysql/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -43,7 +43,7 @@ export default function VideoGenerationPage() {
 
   useEffect(() => {
     apiGetMe().then((u) => {
-      if (u) setUser(u);
+      if (u && u !== AUTH_NETWORK_ERROR) setUser(u);
     }).catch(console.error);
   }, []);
 

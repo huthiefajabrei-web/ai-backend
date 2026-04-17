@@ -14,6 +14,7 @@ import { ApiResponse, ApiOk, UserSession } from "@/app/types";
 import {
   MySQLUser,
   apiGetMe,
+  AUTH_NETWORK_ERROR,
   apiLogout,
   apiGetSessions,
   apiCreateSession,
@@ -267,15 +268,24 @@ export default function Home() {
     const stored = getStoredUser();
     if (stored) setUser(stored);
 
+    const token = getToken();
+    if (!token) {
+      setUser(null);
+      return;
+    }
+
     apiGetMe().then((me) => {
-      if (me) {
+      if (me && me !== AUTH_NETWORK_ERROR) {
         setUser(me);
         setStoredUser(me);
-      } else {
-        // Token invalid/expired
-        removeToken();
-        setUser(null);
+      } else if (me === null) {
+        // Token definitively invalid (401/403)
+        if (!stored) {
+          removeToken();
+          setUser(null);
+        }
       }
+      // AUTH_NETWORK_ERROR = server unreachable, keep existing session
     }).catch(() => {
       if (!stored) setUser(null);
     });

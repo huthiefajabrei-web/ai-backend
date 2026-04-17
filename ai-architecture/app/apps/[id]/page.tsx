@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Upload, ChevronDown, Sparkles, Home, Wand2, Video, Search, LayoutGrid, Brush, Folder, Coins, ArrowRight, Loader2, X, Download, Menu } from "lucide-react";
 import Link from "next/link";
-import { apiGetMe, MySQLUser } from "@/lib/mysql/client";
+import { apiGetMe, MySQLUser, AUTH_NETWORK_ERROR } from "@/lib/mysql/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -46,7 +46,7 @@ export default function AppFeaturePage() {
     const fetchAppAndUser = async () => {
       try {
         const u = await apiGetMe();
-        if (u) setUser(u);
+        if (u && u !== AUTH_NETWORK_ERROR) setUser(u);
         const [appRes, heroRes] = await Promise.all([
           fetch(`${API_BASE}/content/apps`).then(r => r.json()).catch(() => ({})),
           fetch(`${API_BASE}/content/hero`).then(r => r.json()).catch(() => ({}))
@@ -192,7 +192,7 @@ export default function AppFeaturePage() {
             setIsGenerating(false);
             // Refresh user credits from server
             const updatedUser = await apiGetMe();
-            if (updatedUser) setUser(updatedUser);
+            if (updatedUser && updatedUser !== AUTH_NETWORK_ERROR) setUser(updatedUser);
           } else if (sData.status === "FAILED") {
             alert("Generation failed on server.");
             clearInterval(poll);

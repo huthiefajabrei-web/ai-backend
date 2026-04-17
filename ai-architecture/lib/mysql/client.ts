@@ -90,18 +90,25 @@ export async function apiLogout() {
   removeToken();
 }
 
-export async function apiGetMe(): Promise<AppUser | null> {
+// Sentinel to distinguish "network error" from "token invalid"
+export const AUTH_NETWORK_ERROR = Symbol("AUTH_NETWORK_ERROR");
+
+export async function apiGetMe(): Promise<AppUser | null | typeof AUTH_NETWORK_ERROR> {
   const token = getToken();
   if (!token) return null;
   try {
     const res = await fetch(`${API_BASE}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) return null;
+    // 401/403 = token definitively invalid
+    if (res.status === 401 || res.status === 403) return null;
+    // Other non-ok (5xx, network issues handled by catch) = treat as network error
+    if (!res.ok) return AUTH_NETWORK_ERROR;
     const data = await res.json();
     return data.ok ? data.user : null;
   } catch {
-    return null;
+    // Network unreachable / server down
+    return AUTH_NETWORK_ERROR;
   }
 }
 
