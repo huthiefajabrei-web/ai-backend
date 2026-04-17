@@ -72,6 +72,9 @@ def build_user_payload(user: dict) -> dict:
         "id": user["id"],
         "email": user["email"],
         "full_name": user.get("full_name"),
+        "credits": user.get("credits", 0),
+        "plan_name": user.get("plan_name", "free"),
+        "plan_id": user.get("plan_id"),
         "is_admin": is_admin_email(user.get("email")),
     }
 
@@ -185,6 +188,21 @@ def init_db_tables():
             type        TEXT NOT NULL,
             created_at  TEXT DEFAULT (now()::text)
         )""")
+        # Add credits & plan columns to users if missing (safe migration)
+        cur.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='credits') THEN
+                ALTER TABLE users ADD COLUMN credits INTEGER DEFAULT 0;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='plan_id') THEN
+                ALTER TABLE users ADD COLUMN plan_id TEXT DEFAULT NULL;
+            END IF;
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='plan_name') THEN
+                ALTER TABLE users ADD COLUMN plan_name TEXT DEFAULT 'free';
+            END IF;
+        END $$;
+        """)
         conn.commit()
 
         # Seed tools if empty
@@ -449,7 +467,111 @@ def auth_me(authorization: Optional[str] = Header(None)):
     user = get_user_from_token(token)
     if not user:
         return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
+    # Fetch fresh user data including credits
+    conn = get_db()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT id, email, full_name, credits, plan_id, plan_name FROM users WHERE id = %s", (user["id"],))
+        fresh = cur.fetchone()
+        cur.close()
+        if fresh:
+            user = dict(fresh)
+    except Exception:
+        pass
+    finally:
+        conn.close()
     return {"ok": True, "user": build_user_payload(user)}
+
+# =========================
+# Subscription / Credits Endpoints
+# =========================
+
+class SubscribeBody(BaseModel):
+    plan_id: str
+
+@app.post("/subscribe")
+def subscribe(body: SubscribeBody, authorization: Optional[str] = Header(None)):
+    """Subscribe to a plan - adds credits to user account (test mode, no payment)."""
+    token = (authorization or "").replace("Bearer ", "").strip()
+    user = get_user_from_token(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
+    conn = get_db()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        # Get plan details
+        cur.execute("SELECT id, name, credits FROM app_plans WHERE id = %s", (body.plan_id,))
+        plan = cur.fetchone()
+        if not plan:
+            return JSONResponse(status_code=404, content={"ok": False, "error": "Plan not found"})
+        plan = dict(plan)
+        # Add credits to user and update plan
+        cur.execute("""
+            UPDATE users SET credits = COALESCE(credits, 0) + %s, plan_id = %s, plan_name = %s
+            WHERE id = %s
+        """, (plan["credits"], plan["id"], plan["name"], user["id"]))
+        conn.commit()
+        # Return updated user
+        cur.execute("SELECT id, email, full_name, credits, plan_id, plan_name FROM users WHERE id = %s", (user["id"],))
+        updated = dict(cur.fetchone())
+        cur.close()
+        return {"ok": True, "user": build_user_payload(updated), "credits_added": plan["credits"], "plan": plan["name"]}
+    except Exception as e:
+        conn.rollback()
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
+    finally:
+        conn.close()
+
+@app.get("/credits")
+def get_credits(authorization: Optional[str] = Header(None)):
+    """Get current user credits balance."""
+    token = (authorization or "").replace("Bearer ", "").strip()
+    user = get_user_from_token(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
+    conn = get_db()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT credits, plan_id, plan_name FROM users WHERE id = %s", (user["id"],))
+        row = cur.fetchone()
+        cur.close()
+        if not row:
+            return JSONResponse(status_code=404, content={"ok": False, "error": "User not found"})
+        return {"ok": True, "credits": row["credits"] or 0, "plan_id": row["plan_id"], "plan_name": row["plan_name"] or "free"}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
+    finally:
+        conn.close()
+
+class AdminAdjustCreditsBody(BaseModel):
+    user_id: str
+    credits: int
+    reason: Optional[str] = "admin_adjustment"
+
+@app.post("/admin/adjust-credits")
+def admin_adjust_credits(body: AdminAdjustCreditsBody, authorization: Optional[str] = Header(None)):
+    """Admin: manually add or remove credits from a user."""
+    token = (authorization or "").replace("Bearer ", "").strip()
+    admin = require_admin_user(token)
+    if not admin:
+        return JSONResponse(status_code=403, content={"ok": False, "error": "Admin access required"})
+    conn = get_db()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT id, credits FROM users WHERE id = %s", (body.user_id,))
+        target = cur.fetchone()
+        if not target:
+            return JSONResponse(status_code=404, content={"ok": False, "error": "User not found"})
+        new_credits = max(0, (target["credits"] or 0) + body.credits)
+        cur.execute("UPDATE users SET credits = %s WHERE id = %s", (new_credits, body.user_id))
+        conn.commit()
+        cur.close()
+        return {"ok": True, "user_id": body.user_id, "credits": new_credits}
+    except Exception as e:
+        conn.rollback()
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
+    finally:
+        conn.close()
 
 # =========================
 # Sessions Endpoints

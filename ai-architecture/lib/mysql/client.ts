@@ -45,6 +45,8 @@ export interface AppUser {
   email: string;
   full_name?: string | null;
   credits?: number;
+  plan_id?: string | null;
+  plan_name?: string;
   is_pro?: number;
   is_admin?: boolean;
 }
@@ -168,3 +170,26 @@ export async function apiDeleteSession(id: string): Promise<boolean> {
 // Backward-compatible aliases for existing imports.
 export type MySQLUser = AppUser;
 export type MySQLSession = AppSession;
+
+// ─── Subscription / Credits ───────────────────────────────────────────────────
+export async function apiSubscribe(plan_id: string): Promise<{ ok: boolean; user?: AppUser; credits_added?: number; plan?: string; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/subscribe`, {
+      method: "POST",
+      headers: authHeaders(),
+      body: JSON.stringify({ plan_id }),
+    });
+    return res.json();
+  } catch {
+    return { ok: false, error: "Network error" };
+  }
+}
+
+export async function apiGetCredits(): Promise<{ ok: boolean; credits?: number; plan_name?: string; error?: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/credits`, { headers: authHeaders() });
+    return res.json();
+  } catch {
+    return { ok: false, error: "Network error" };
+  }
+}

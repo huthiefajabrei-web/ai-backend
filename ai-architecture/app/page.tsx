@@ -19,6 +19,7 @@ import {
   apiCreateSession,
   apiUpdateSession,
   apiDeleteSession,
+  apiSubscribe,
   getToken,
   getStoredUser,
   setStoredUser,
@@ -97,6 +98,8 @@ export default function Home() {
   const [dbTools, setDbTools] = useState<any[]>([]);
   const [dbApps, setDbApps] = useState<any[]>([]);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
+  const [subscribingPlanId, setSubscribingPlanId] = useState<string | null>(null);
+  const [subscribeMsg, setSubscribeMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -1115,14 +1118,27 @@ export default function Home() {
                 <h2 className="text-4xl font-bold mb-4 font-display">Choose Your <span className="text-purple-400">Plan</span></h2>
                 <p className="text-zinc-400 max-w-2xl mx-auto">Flexible subscription options designed to fit your workflow needs.</p>
               </div>
+              {subscribeMsg && (
+                <div className={`mb-6 p-4 rounded-xl text-center font-medium text-sm ${subscribeMsg.type === "success" ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400" : "bg-red-500/10 border border-red-500/30 text-red-400"}`}>
+                  {subscribeMsg.text}
+                </div>
+              )}
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {dbPlans.map((p) => (
+                {dbPlans.map((p) => {
+                  const isCurrentPlan = user?.plan_id === p.id;
+                  const isLoading = subscribingPlanId === p.id;
+                  return (
                   <div key={p.id} className={`bg-[#18181b] border ${p.is_popular ? 'border-purple-500 ring-1 ring-purple-500' : 'border-white/5'} rounded-3xl p-8 flex flex-col relative transition-all group hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.5)]`}>
                     {p.is_popular ? (
                       <div className="absolute top-0 right-8 -translate-y-1/2 px-4 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[11px] font-bold rounded-full uppercase tracking-widest shadow-lg">
                         Most Popular
                       </div>
                     ) : null}
+                    {isCurrentPlan && (
+                      <div className="absolute top-0 left-8 -translate-y-1/2 px-4 py-1.5 bg-emerald-500 text-white text-[11px] font-bold rounded-full uppercase tracking-widest shadow-lg">
+                        Current Plan
+                      </div>
+                    )}
                     <div className="mb-6">
                       <h3 className="text-2xl font-bold mb-2">{p.name}</h3>
                       <div className="flex items-end gap-1">
@@ -1142,11 +1158,33 @@ export default function Home() {
                         </li>
                       ))}
                     </ul>
-                    <button className={`w-full py-4 rounded-xl font-bold text-sm transition-all ${p.is_popular ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:opacity-90 shadow-lg' : 'bg-[#121214] border border-white/10 text-white hover:bg-white/5'}`}>
-                      Select Plan
+                    <button
+                      disabled={isLoading || isCurrentPlan}
+                      onClick={async () => {
+                        if (!user) { router.push("/login"); return; }
+                        setSubscribingPlanId(p.id);
+                        setSubscribeMsg(null);
+                        const res = await apiSubscribe(p.id);
+                        if (res.ok && res.user) {
+                          setUser(res.user);
+                          setStoredUser(res.user);
+                          setSubscribeMsg({ type: "success", text: `✅ تم الاشتراك في خطة ${res.plan}! تمت إضافة ${res.credits_added} كريدت لحسابك.` });
+                        } else {
+                          setSubscribeMsg({ type: "error", text: res.error || "فشل الاشتراك، حاول مرة أخرى." });
+                        }
+                        setSubscribingPlanId(null);
+                      }}
+                      className={`w-full py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2
+                        ${isCurrentPlan ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 cursor-default' :
+                          p.is_popular ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:opacity-90 shadow-lg disabled:opacity-50' :
+                          'bg-[#121214] border border-white/10 text-white hover:bg-white/5 disabled:opacity-50'}`}
+                    >
+                      {isLoading ? <Loader2 size={16} className="animate-spin" /> : null}
+                      {isCurrentPlan ? "Current Plan" : isLoading ? "Processing..." : "Select Plan"}
                     </button>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           </div>
