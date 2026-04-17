@@ -328,6 +328,30 @@ def migrate_db():
     pass
 
 
+def deduct_credits_on_success(job_id: str):
+    """Deduct credits from user after successful generation."""
+    job = jobs.get(job_id, {})
+    user_id = job.get("_user_id")
+    credit_cost = job.get("_credit_cost", 0)
+    if not user_id or not credit_cost:
+        return
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "UPDATE users SET credits = GREATEST(0, credits - %s) WHERE id = %s",
+            (credit_cost, user_id)
+        )
+        conn.commit()
+        cur.close()
+        print(f"✅ Deducted {credit_cost} credits from user {user_id} for job {job_id}")
+    except Exception as e:
+        conn.rollback()
+        print(f"⚠️ Failed to deduct credits for job {job_id}: {e}")
+    finally:
+        conn.close()
+
+
 # ذاكرة مؤقتة لتخزين حالة المهام
 jobs: Dict[str, dict] = {}
 
@@ -1437,6 +1461,8 @@ def process_gemini_job(
             current_job.update(update_payload)
             jobs[job_id] = current_job
             print(f"🎉 Job {job_id} completed successfully")
+            # Deduct credits ONLY on success
+            deduct_credits_on_success(job_id)
             
         except (KeyError, IndexError) as e:
             print(f"❌ Failed to parse Gemini response: {e}")
@@ -1771,6 +1797,9 @@ def process_video_journey(
             "filename": video_filename,
         })
         jobs[job_id] = current_job
+        print(f"🎉 Video job {job_id} completed successfully")
+        # Deduct credits ONLY on success
+        deduct_credits_on_success(job_id)
 
     except Exception as e:
         jobs[job_id] = {
@@ -1779,6 +1808,7 @@ def process_video_journey(
             "error": "Journey generation failed via Kling",
             "details": str(e),
         }
+        print(f"❌ Video job {job_id} failed - credits NOT deducted")
 
 
 # =========================
@@ -1839,7 +1869,7 @@ async def generate(
         else:
             total_cost = cost_per_video if is_video else (cost_per_image * total_images)
 
-        # Deduct credits if user is logged in
+        # Validate credits but DO NOT deduct yet - deduction happens on success
         if user:
             user_credits = user.get("credits", 0) or 0
             if user_credits < total_cost:
@@ -1853,21 +1883,6 @@ async def generate(
                         "available": user_credits
                     }
                 )
-            # Deduct credits
-            conn_d = get_db()
-            try:
-                cur_d = conn_d.cursor()
-                cur_d.execute(
-                    "UPDATE users SET credits = credits - %s WHERE id = %s",
-                    (total_cost, user["id"])
-                )
-                conn_d.commit()
-                cur_d.close()
-            except Exception as e:
-                conn_d.rollback()
-                print(f"⚠️ Failed to deduct credits: {e}")
-            finally:
-                conn_d.close()
         input_image_b64 = None
         mime_type = "image/png"
         if file is not None:
@@ -1903,6 +1918,8 @@ async def generate(
                 "perspective": video_perspective,
                 "is_video": True,
                 "aspect_ratio": video_ar,
+                "_user_id": user["id"] if user else None,
+                "_credit_cost": total_cost,
             }
             background_tasks.add_task(
                 process_video_journey,
@@ -1936,7 +1953,9 @@ async def generate(
                         "job_id": job_id,
                         "status": "IN_QUEUE",
                         "perspective": p,
-                        "aspect_ratio": ar
+                        "aspect_ratio": ar,
+                        "_user_id": user["id"] if user else None,
+                        "_credit_cost": total_cost,
                     }
                     
                     # تحويل مهمة التوليد إلى الخلفية
