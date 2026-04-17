@@ -1068,7 +1068,7 @@ def process_gemini_job(
         
         GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
         if not model_name: 
-            model_name = "nano-banana-pro-preview"
+            model_name = "gemini-3-pro-image-preview"
         URL = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
         
         r = None
@@ -1503,7 +1503,7 @@ async def generate(
     aspect_ratio: List[str] = Form(["9:16"]),
     image_count: List[Any] = Form([1]),
     is_video: bool = Form(False),
-    model_name: str = Form("nano-banana-pro-preview"),
+    model_name: str = Form("gemini-3-pro-image-preview"),
     duration: Optional[str] = Form(None),
     resolution: Optional[str] = Form(None),
     generateAudio: Optional[str] = Form(None),
