@@ -715,6 +715,10 @@ async def admin_upload_image(
         ext = file.filename.split('.')[-1] if file.filename and '.' in file.filename else 'jpg'
         filename = f"uploaded_{int(time.time())}_{uuid.uuid4().hex[:6]}.{ext}"
         
+        print(f"📤 Upload request: {filename}")
+        print(f"🔧 Supabase client status: {'Connected' if supabase_client else 'Not connected'}")
+        print(f"🪣 Bucket name: {SUPABASE_BUCKET}")
+        
         # Try Supabase Storage first
         if supabase_client:
             try:
@@ -727,21 +731,35 @@ async def admin_upload_image(
                 elif ext.lower() == 'gif':
                     content_type = "image/gif"
                 
+                print(f"📦 Content type: {content_type}, Size: {len(content)} bytes")
+                
                 # Upload to Supabase Storage
+                print(f"⬆️ Uploading to Supabase bucket: {SUPABASE_BUCKET}")
                 result = supabase_client.storage.from_(SUPABASE_BUCKET).upload(
                     filename,
                     content,
                     {"content-type": content_type, "upsert": "true"}
                 )
                 
+                print(f"✅ Upload result: {result}")
+                
                 # Get public URL
                 file_url = supabase_client.storage.from_(SUPABASE_BUCKET).get_public_url(filename)
                 
-                print(f"✅ Image uploaded to Supabase: {filename}")
-                return {"ok": True, "url": file_url, "storage": "supabase"}
+                print(f"🌐 Public URL: {file_url}")
+                print(f"✅ Image uploaded to Supabase successfully!")
+                
+                return {"ok": True, "url": file_url, "storage": "supabase", "filename": filename}
                 
             except Exception as supabase_error:
-                print(f"⚠️ Supabase upload failed: {supabase_error}, falling back to local storage")
+                print(f"❌ Supabase upload failed!")
+                print(f"❌ Error type: {type(supabase_error).__name__}")
+                print(f"❌ Error message: {str(supabase_error)}")
+                import traceback
+                traceback.print_exc()
+                print(f"⚠️ Falling back to local storage...")
+        else:
+            print(f"⚠️ Supabase client not initialized, using local storage")
         
         # Fallback: Save locally (for development or when Supabase is not configured)
         filepath = os.path.join("static", filename)
@@ -751,11 +769,15 @@ async def admin_upload_image(
         api_base = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         file_url = f"{api_base}/static/{filename}"
         
-        print(f"⚠️ Image saved locally: {filename}")
-        return {"ok": True, "url": file_url, "storage": "local"}
+        print(f"💾 Image saved locally: {filepath}")
+        print(f"🌐 Local URL: {file_url}")
+        
+        return {"ok": True, "url": file_url, "storage": "local", "filename": filename}
         
     except Exception as e:
         print(f"❌ Upload error: {e}")
+        import traceback
+        traceback.print_exc()
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
 
 # =========================
