@@ -313,6 +313,8 @@ app.add_middleware(
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+import asyncio
+
 @app.on_event("startup")
 async def on_startup():
     init_db_tables()
@@ -333,6 +335,23 @@ async def on_startup():
         cur.close()
     finally:
         conn.close()
+
+    # Start keep-alive background task to prevent Render from sleeping
+    asyncio.create_task(keep_alive_task())
+
+
+async def keep_alive_task():
+    """Ping the server every 10 minutes to prevent Render from sleeping."""
+    await asyncio.sleep(60)  # wait 1 min after startup
+    while True:
+        try:
+            api_base = os.getenv("API_BASE_URL", "").strip().rstrip("/")
+            if api_base and "onrender.com" in api_base:
+                requests.get(f"{api_base}/health", timeout=10)
+                print("🏓 Keep-alive ping sent")
+        except Exception:
+            pass
+        await asyncio.sleep(600)  # ping every 10 minutes
 
 
 @app.get("/")
