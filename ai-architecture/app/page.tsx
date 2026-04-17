@@ -1113,11 +1113,26 @@ export default function Home() {
                   <div key={a.id} className="flex flex-col gap-4">
                     <div className="aspect-[4/5] rounded-3xl overflow-hidden relative group cursor-pointer" onClick={() => router.push(`/apps/${a.id}`)}>
                       <div className="absolute top-4 left-4 z-10 px-3 py-1.5 rounded-full bg-purple-500 text-white text-[11px] font-bold shadow-lg">New</div>
+                      {/* Credit cost badge */}
+                      {a.credit_cost != null && (
+                        <div className="absolute top-4 right-4 z-10 flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm border border-yellow-500/30 text-yellow-400 text-[11px] font-bold shadow-lg">
+                          <Coins size={11} />
+                          <span>{a.credit_cost}</span>
+                        </div>
+                      )}
                       <img src={a.image_url} alt={a.title} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" />
                       <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
                     </div>
                     <div className="px-1">
-                      <div className="inline-block px-3 py-1 rounded-full border border-white/10 text-zinc-400 text-[11px] font-medium mb-3">{a.category}</div>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="inline-block px-3 py-1 rounded-full border border-white/10 text-zinc-400 text-[11px] font-medium">{a.category}</div>
+                        {a.credit_cost != null && (
+                          <div className="flex items-center gap-1 text-yellow-400 text-[11px] font-semibold">
+                            <Coins size={12} />
+                            <span>{a.credit_cost} credit{a.credit_cost !== 1 ? "s" : ""}</span>
+                          </div>
+                        )}
+                      </div>
                       <h3 className="text-lg font-bold text-white mb-2">{a.title}</h3>
                       <p className="text-zinc-500 text-[13px] mb-4 line-clamp-2 leading-relaxed">{a.description}</p>
                       <button onClick={() => router.push(`/apps/${a.id}`)} className="w-full py-2.5 rounded-xl border border-white/5 bg-[#121214] hover:bg-[#18181b] hover:border-white/10 transition-all flex items-center justify-center gap-2 text-sm font-medium hover:text-purple-300">

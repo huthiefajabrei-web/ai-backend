@@ -158,8 +158,18 @@ def init_db_tables():
             image_url   TEXT,
             category    TEXT,
             action_id   TEXT,
+            credit_cost INTEGER DEFAULT 1,
             created_at  TEXT DEFAULT (now()::text)
         )""")
+        # Safe migration: add credit_cost column if missing
+        cur.execute("""
+        DO $$
+        BEGIN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='app_cards' AND column_name='credit_cost') THEN
+                ALTER TABLE app_cards ADD COLUMN credit_cost INTEGER DEFAULT 1;
+            END IF;
+        END $$;
+        """)
         cur.execute("""
         CREATE TABLE IF NOT EXISTS app_plans (
             id          TEXT PRIMARY KEY,
@@ -221,11 +231,11 @@ def init_db_tables():
                 ('t1','AI Image Generation','Generate stunning interior and exterior designs from text prompts or reference images.','Wand2','generation'),
                 ('t2','Image to Video','Transform static designs into immersive walkthrough videos with cutting-edge AI.','Video','generation'),
                 ('t3','AI Upscaling','Enhance image quality up to 16x with Magnific AI for print-ready results.','ZoomIn','generation')""")
-            cur.execute("""INSERT INTO app_cards (id, title, description, image_url, category, action_id) VALUES
-                ('a1','Shot to CAD Board','Transform architectural photographs into professional CAD board layouts with plans.','https://images.unsplash.com/photo-1628169222588-444a1eb405d4?w=500&q=80','Architecture','generation'),
-                ('a2','Shot to Physical Model','Transform buildings into miniature white 3D printed architectural models on a display base.','https://images.unsplash.com/photo-1518384401463-d3876163c195?w=500&q=80','Architecture','generation'),
-                ('a3','Model to Full Scene','Transform 3D models or renders into fully realized architectural scenes with environment.','https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=500&q=80','Architecture','generation'),
-                ('a4','Multiple Angles','Generate multiple perspective views of a building from different angles seamlessly.','https://images.unsplash.com/photo-1545083036-728b9fb6f827?w=500&q=80','Architecture','generation')""")
+            cur.execute("""INSERT INTO app_cards (id, title, description, image_url, category, action_id, credit_cost) VALUES
+                ('a1','Shot to CAD Board','Transform architectural photographs into professional CAD board layouts with plans.','https://images.unsplash.com/photo-1628169222588-444a1eb405d4?w=500&q=80','Architecture','generation',1),
+                ('a2','Shot to Physical Model','Transform buildings into miniature white 3D printed architectural models on a display base.','https://images.unsplash.com/photo-1518384401463-d3876163c195?w=500&q=80','Architecture','generation',1),
+                ('a3','Model to Full Scene','Transform 3D models or renders into fully realized architectural scenes with environment.','https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=500&q=80','Architecture','generation',1),
+                ('a4','Multiple Angles','Generate multiple perspective views of a building from different angles seamlessly.','https://images.unsplash.com/photo-1545083036-728b9fb6f827?w=500&q=80','Architecture','generation',1)""")
             cur.execute("""INSERT INTO app_plans (id, name, price, credits, period, features, is_popular) VALUES
                 ('p1','Starter',19.99,100,'mo','["100 AI Generations","Standard Resolution","Community Support","Basic Styles"]',0),
                 ('p2','Pro',49.99,500,'mo','["500 AI Generations","High Resolution (4K)","Priority Support","All Architectural Styles","Video Generation"]',1),
@@ -851,11 +861,11 @@ def modify_content(content_type: str, body: ContentUpdateBody, authorization: Op
             """, (item_id, d.get("title",""), d.get("description",""), d.get("icon",""), d.get("action_id","generation")))
         elif content_type == "apps":
             cur.execute("""
-                INSERT INTO app_cards (id, title, description, image_url, category, action_id)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                INSERT INTO app_cards (id, title, description, image_url, category, action_id, credit_cost)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT(id) DO UPDATE SET
-                title=EXCLUDED.title, description=EXCLUDED.description, image_url=EXCLUDED.image_url, category=EXCLUDED.category, action_id=EXCLUDED.action_id
-            """, (item_id, d.get("title",""), d.get("description",""), d.get("image_url",""), d.get("category",""), d.get("action_id","generation")))
+                title=EXCLUDED.title, description=EXCLUDED.description, image_url=EXCLUDED.image_url, category=EXCLUDED.category, action_id=EXCLUDED.action_id, credit_cost=EXCLUDED.credit_cost
+            """, (item_id, d.get("title",""), d.get("description",""), d.get("image_url",""), d.get("category",""), d.get("action_id","generation"), int(d.get("credit_cost", 1))))
         elif content_type == "plans":
             features = json_lib.dumps(d.get("features",[])) if isinstance(d.get("features"), list) else d.get("features","[]")
             cur.execute("""

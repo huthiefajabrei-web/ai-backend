@@ -8,7 +8,7 @@ import { apiGetMe, apiLogout } from "@/lib/mysql/client";
 // --- Types ---
 type Stats = { users: number; sessions: number };
 type ToolData = { id: string; title: string; description: string; icon: string; action_id: string; created_at?: string };
-type AppData = { id: string; title: string; description: string; image_url: string; category: string; action_id: string; created_at?: string };
+type AppData = { id: string; title: string; description: string; image_url: string; category: string; action_id: string; credit_cost: number; created_at?: string };
 type PlanData = { id: string; name: string; price: number | string; credits: number | string; period: string; features: string[]; is_popular: number; created_at?: string };
 type HeroData = { id: string; title: string; image_url: string; created_at?: string };
 type PromptData = { id: string; title: string; prompt_text: string; type: string; created_at?: string };
@@ -351,7 +351,7 @@ export default function AdminDashboard() {
             <div className="space-y-6 animate-[fadeInUp_0.4s_ease-out]">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold font-display">Manage H_ARCH Apps</h2>
-                <button onClick={() => setEditApp({ id: "", title: "New App", description: "", image_url: "", category: "Architecture", action_id: "generation" })} className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm font-semibold transition-colors">
+                <button onClick={() => setEditApp({ id: "", title: "New App", description: "", image_url: "", category: "Architecture", action_id: "generation", credit_cost: 1 })} className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm font-semibold transition-colors">
                   <Plus size={16} /> Add App
                 </button>
               </div>
@@ -366,7 +366,14 @@ export default function AdminDashboard() {
                       </div>
                     </div>
                     <div className="p-4 flex flex-col flex-1">
-                      <span className="text-[10px] text-purple-400 uppercase tracking-wider font-bold mb-1">{a.category} • {a.action_id}</span>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[10px] text-purple-400 uppercase tracking-wider font-bold">{a.category} • {a.action_id}</span>
+                        {a.credit_cost != null && (
+                          <span className="flex items-center gap-1 text-yellow-400 text-[10px] font-bold">
+                            <Coins size={10} />{a.credit_cost} cr
+                          </span>
+                        )}
+                      </div>
                       <h3 className="font-bold text-white text-base mb-1">{a.title}</h3>
                       <p className="text-xs text-zinc-400 leading-relaxed line-clamp-2">{a.description}</p>
                     </div>
@@ -599,6 +606,20 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-2 gap-4">
                 <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Category</label><input required value={editApp.category} onChange={e=>setEditApp({...editApp, category: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" /></div>
                 <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Action ID</label><input required value={editApp.action_id} onChange={e=>setEditApp({...editApp, action_id: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" /></div>
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider flex items-center gap-2">
+                  <Coins size={12} className="text-yellow-400" /> Credit Cost (per use)
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  required
+                  value={editApp.credit_cost ?? 1}
+                  onChange={e => setEditApp({...editApp, credit_cost: parseInt(e.target.value) || 0})}
+                  className="w-full bg-[#121214] border border-yellow-500/30 rounded-xl px-4 py-2.5 text-sm text-yellow-400 font-bold focus:border-yellow-500 outline-none transition-colors"
+                />
+                <p className="text-[11px] text-zinc-500 mt-1">This will be shown on the app card. Users will be charged this many credits per use.</p>
               </div>
               <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={()=>setEditApp(null)} className="px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white/5 transition-colors">Cancel</button><button type="submit" className="px-6 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl text-sm font-semibold text-white hover:opacity-90 shadow-lg flex items-center gap-2"><Save size={16} /> Save</button></div>
             </form>
