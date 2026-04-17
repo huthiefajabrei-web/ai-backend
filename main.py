@@ -1161,20 +1161,35 @@ def process_gemini_job(
             base64_img = data["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]
             print(f"✅ Successfully extracted image from Gemini response")
             
-            # Save image to static so file_url persists after DB save (frontend strips base64)
+            # Save image to Supabase Storage (persistent) or local static (fallback)
             static_filename = f"{job_id}.jpg"
-            static_path = os.path.join("static", static_filename)
-            try:
-                raw = base64.b64decode(base64_img)
-                with open(static_path, "wb") as f:
-                    f.write(raw)
-                print(f"💾 Saved image to {static_path}")
-            except Exception as save_error:
-                print(f"⚠️ Failed to save image to static: {save_error}")
-                pass  # keep image_data_url for in-session display if static write fails
-                
-            api_base = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
-            file_url = f"{api_base}/static/{static_filename}" if os.path.isfile(static_path) else None
+            file_url = None
+            raw = base64.b64decode(base64_img)
+            
+            # Try Supabase Storage first
+            if supabase_client:
+                try:
+                    result = supabase_client.storage.from_(SUPABASE_BUCKET).upload(
+                        static_filename,
+                        raw,
+                        {"content-type": "image/jpeg", "upsert": "true"}
+                    )
+                    file_url = supabase_client.storage.from_(SUPABASE_BUCKET).get_public_url(static_filename)
+                    print(f"☁️ Gemini image saved to Supabase: {file_url}")
+                except Exception as sup_err:
+                    print(f"⚠️ Supabase save failed for generated image: {sup_err}, using local")
+            
+            # Fallback: save locally
+            if not file_url:
+                static_path = os.path.join("static", static_filename)
+                try:
+                    with open(static_path, "wb") as f:
+                        f.write(raw)
+                    api_base = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+                    file_url = f"{api_base}/static/{static_filename}"
+                    print(f"💾 Gemini image saved locally: {static_path}")
+                except Exception as save_error:
+                    print(f"⚠️ Failed to save image locally: {save_error}")
             current_job = jobs.get(job_id, {})
             update_payload = {
                 "ok": True,
