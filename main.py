@@ -1504,17 +1504,40 @@ def process_video_journey(
         jobs[job_id]["message"] = "Downloading generated video..."
         v_res = requests.get(video_url, stream=True, timeout=60)
         v_res.raise_for_status()
+        
+        # Read video content
+        video_content = b""
         with open(video_path, "wb") as f:
             for chunk in v_res.iter_content(chunk_size=8192):
+                video_content += chunk
                 f.write(chunk)
 
+        # Try to upload to Supabase Storage
+        final_video_url = None
+        if supabase_client:
+            try:
+                result = supabase_client.storage.from_(SUPABASE_BUCKET).upload(
+                    video_filename,
+                    video_content,
+                    {"content-type": "video/mp4", "upsert": "true"}
+                )
+                final_video_url = supabase_client.storage.from_(SUPABASE_BUCKET).get_public_url(video_filename)
+                print(f"☁️ Video saved to Supabase: {final_video_url}")
+            except Exception as sup_err:
+                print(f"⚠️ Supabase video upload failed: {sup_err}, using local URL")
+
+        # Fallback to local URL
+        if not final_video_url:
+            api_base = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+            final_video_url = f"{api_base}/static/{video_filename}"
+            print(f"💾 Video saved locally: {video_path}")
+
         current_job = jobs.get(job_id, {})
-        api_base = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         current_job.update({
             "ok": True,
             "status": "COMPLETED",
             "is_video": True,
-            "file_url": f"{api_base}/static/{video_filename}",
+            "file_url": final_video_url,
             "filename": video_filename,
         })
         jobs[job_id] = current_job
