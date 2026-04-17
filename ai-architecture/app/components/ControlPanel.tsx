@@ -72,6 +72,8 @@ interface ControlPanelProps {
   onSend: () => void;
   onGenerateVideo: () => void;
   onClear: () => void;
+  userCredits?: number;
+  creditCosts?: { image_generation: number; video_generation: number };
 }
 
 export default function ControlPanel({
@@ -98,6 +100,8 @@ export default function ControlPanel({
   onSend,
   onGenerateVideo,
   onClear,
+  userCredits = 0,
+  creditCosts = { image_generation: 1, video_generation: 5 },
 }: ControlPanelProps) {
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
@@ -759,7 +763,31 @@ export default function ControlPanel({
         </div>
       </div>
 
-      <div className="p-6 border-t border-white/5 bg-black/30 shrink-0 z-10 flex gap-3 backdrop-blur-md">
+      <div className="p-6 border-t border-white/5 bg-black/30 shrink-0 z-10 flex flex-col gap-3 backdrop-blur-md">
+        {/* Credit cost preview */}
+        {(() => {
+          const totalImages = mode === "image"
+            ? selectedPerspectives.reduce((sum, sp) => sum + (sp.imageCount || 1), 0)
+            : 0;
+          const totalCost = mode === "video"
+            ? creditCosts.video_generation
+            : creditCosts.image_generation * totalImages;
+          const hasEnough = userCredits >= totalCost;
+          return (
+            <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium border ${hasEnough ? "bg-yellow-500/5 border-yellow-500/20 text-yellow-400" : "bg-red-500/10 border-red-500/30 text-red-400"}`}>
+              <span className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                {mode === "video"
+                  ? `Video generation costs ${totalCost} credit${totalCost !== 1 ? "s" : ""}`
+                  : `${totalImages} image${totalImages !== 1 ? "s" : ""} × ${creditCosts.image_generation} = ${totalCost} credit${totalCost !== 1 ? "s" : ""}`}
+              </span>
+              <span className={`font-bold ${hasEnough ? "text-yellow-300" : "text-red-300"}`}>
+                {hasEnough ? `Balance: ${userCredits}` : `Need ${totalCost - userCredits} more`}
+              </span>
+            </div>
+          );
+        })()}
+        <div className="flex gap-3">
         <button
           className={`flex-1 relative overflow-hidden rounded-xl font-semibold text-sm transition-all duration-300 shadow-lg group ${loading ? "opacity-80 cursor-not-allowed" : "hover:-translate-y-0.5"
             } ${mode === "image"
@@ -826,6 +854,7 @@ export default function ControlPanel({
         >
           Clear
         </button>
+        </div>
       </div>
 
       {jobIds.length > 0 && (

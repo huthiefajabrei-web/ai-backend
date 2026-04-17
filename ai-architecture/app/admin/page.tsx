@@ -26,7 +26,7 @@ function fetchWithAuth(url: string, options: RequestInit = {}) {
 
 export default function AdminDashboard() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"overview" | "hero" | "tools" | "apps" | "plans" | "prompts">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "hero" | "tools" | "apps" | "plans" | "prompts" | "credit_costs">("overview");
   const [loading, setLoading] = useState(true);
   const [authChecked, setAuthChecked] = useState(false);
   
@@ -38,6 +38,8 @@ export default function AdminDashboard() {
   const [plans, setPlans] = useState<PlanData[]>([]);
   const [prompts, setPrompts] = useState<PromptData[]>([]);
   const [promptSearch, setPromptSearch] = useState("");
+  const [creditCosts, setCreditCosts] = useState<{ id: string; operation: string; label: string; cost: number }[]>([]);
+  const [savingCost, setSavingCost] = useState<string | null>(null);
 
   // Modals for add/edit
   const [editHero, setEditHero] = useState<HeroData | null>(null);
@@ -74,13 +76,14 @@ export default function AdminDashboard() {
       const token = localStorage.getItem("harch_token");
       const headers = { Authorization: `Bearer ${token}` };
 
-      const [statsRes, heroesRes, toolsRes, appsRes, plansRes, promptsRes] = await Promise.all([
+      const [statsRes, heroesRes, toolsRes, appsRes, plansRes, promptsRes, ccRes] = await Promise.all([
         fetch(`${API_URL}/admin/stats`, { headers }).then(r => r.json()),
         fetch(`${API_URL}/content/hero`).then(r => r.json()),
         fetch(`${API_URL}/content/tools`).then(r => r.json()),
         fetch(`${API_URL}/content/apps`).then(r => r.json()),
         fetch(`${API_URL}/content/plans`).then(r => r.json()),
         fetch(`${API_URL}/content/prompts`).then(r => r.json()),
+        fetch(`${API_URL}/credit-costs`).then(r => r.json()),
       ]);
 
       if (statsRes.ok) setStats(statsRes.stats);
@@ -89,6 +92,7 @@ export default function AdminDashboard() {
       if (appsRes.ok) setApps(appsRes.data);
       if (plansRes.ok) setPlans(plansRes.data);
       if (promptsRes.ok) setPrompts(promptsRes.data);
+      if (ccRes.ok) setCreditCosts(ccRes.data);
       if (statsRes?.error === "Admin access required") {
         await apiLogout();
         router.replace("/admin/login?error=forbidden");
@@ -230,6 +234,7 @@ export default function AdminDashboard() {
             { id: "apps", icon: Search, label: "H_ARCH Apps" },
             { id: "plans", icon: CreditCard, label: "Pricing Plans" },
             { id: "prompts", icon: MessageSquare, label: "AI Prompts" },
+            { id: "credit_costs", icon: Coins, label: "Credit Costs" },
           ].map((item) => {
             const isActive = activeTab === item.id;
             const Icon = item.icon;
@@ -457,6 +462,68 @@ export default function AdminDashboard() {
                        </div>
                      </div>
                      <p className="text-sm text-zinc-400 leading-relaxed line-clamp-3">{p.prompt_text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* CREDIT COSTS TAB */}
+          {activeTab === "credit_costs" && (
+            <div className="space-y-6 animate-[fadeInUp_0.4s_ease-out]">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h2 className="text-2xl font-bold font-display">Credit Costs</h2>
+                  <p className="text-zinc-400 text-sm mt-1">Set how many credits each operation costs. Users see this before generating.</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {creditCosts.map((cc) => (
+                  <div key={cc.id} className="bg-[#18181b] border border-white/5 rounded-xl p-6 flex flex-col gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-yellow-500/10 flex items-center justify-center">
+                        <Coins size={18} className="text-yellow-400" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-white">{cc.label}</h3>
+                        <span className="text-[10px] text-zinc-500 uppercase tracking-widest">{cc.operation}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="number"
+                        min={0}
+                        defaultValue={cc.cost}
+                        id={`cost-${cc.operation}`}
+                        className="w-24 bg-[#121214] border border-white/10 rounded-xl px-4 py-2 text-sm text-white focus:border-yellow-500 outline-none transition-colors text-center font-bold"
+                      />
+                      <span className="text-zinc-400 text-sm">credits per operation</span>
+                      <button
+                        disabled={savingCost === cc.operation}
+                        onClick={async () => {
+                          const input = document.getElementById(`cost-${cc.operation}`) as HTMLInputElement;
+                          const newCost = parseInt(input.value);
+                          if (isNaN(newCost) || newCost < 0) return;
+                          setSavingCost(cc.operation);
+                          try {
+                            const token = localStorage.getItem("harch_token");
+                            const res = await fetch(`${API_URL}/admin/credit-costs`, {
+                              method: "POST",
+                              headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+                              body: JSON.stringify({ operation: cc.operation, cost: newCost, label: cc.label }),
+                            });
+                            const data = await res.json();
+                            if (data.ok) { fetchAllData(); }
+                          } finally {
+                            setSavingCost(null);
+                          }
+                        }}
+                        className="ml-auto flex items-center gap-2 px-4 py-2 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/30 text-yellow-400 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+                      >
+                        {savingCost === cc.operation ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                        Save
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

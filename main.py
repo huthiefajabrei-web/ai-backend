@@ -203,6 +203,15 @@ def init_db_tables():
             END IF;
         END $$;
         """)
+        # Credit costs table - admin controls cost per operation
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS app_credit_costs (
+            id          TEXT PRIMARY KEY,
+            operation   TEXT UNIQUE NOT NULL,
+            label       TEXT NOT NULL,
+            cost        INTEGER NOT NULL DEFAULT 1,
+            updated_at  TEXT DEFAULT (now()::text)
+        )""")
         conn.commit()
 
         # Seed tools if empty
@@ -230,6 +239,14 @@ def init_db_tables():
                 ('h1','Modern Mansion','Transform exterior photographs into photorealistic architectural renders.','https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80','generation'),
                 ('h2','Curved Architecture','Generate stunning architectural visualizations with full material and lighting control.','https://images.unsplash.com/photo-1613490908679-b3a5105220fa?w=800&q=80','generation'),
                 ('h3','Interior Design','Create beautiful photorealistic interior renders from basic 3D models or photos.','https://images.unsplash.com/photo-1512917774080-9991f1c4c750?w=800&q=80','generation')""")
+            conn.commit()
+
+        # Seed credit costs if empty
+        cur.execute("SELECT COUNT(*) as cnt FROM app_credit_costs")
+        if cur.fetchone()["cnt"] == 0:
+            cur.execute("""INSERT INTO app_credit_costs (id, operation, label, cost) VALUES
+                ('cc1', 'image_generation', 'Image Generation (per image)', 1),
+                ('cc2', 'video_generation', 'Video Generation', 5)""")
             conn.commit()
 
         cur.close()
@@ -569,6 +586,66 @@ def admin_adjust_credits(body: AdminAdjustCreditsBody, authorization: Optional[s
         conn.commit()
         cur.close()
         return {"ok": True, "user_id": body.user_id, "credits": new_credits}
+    except Exception as e:
+        conn.rollback()
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
+    finally:
+        conn.close()
+
+
+# =========================
+# Credit Costs Endpoints
+# =========================
+
+@app.get("/credit-costs")
+def get_credit_costs():
+    """Public: get credit cost per operation."""
+    conn = get_db()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT id, operation, label, cost FROM app_credit_costs ORDER BY operation ASC")
+        rows = [dict(r) for r in cur.fetchall()]
+        cur.close()
+        return {"ok": True, "data": rows}
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
+    finally:
+        conn.close()
+
+
+class CreditCostUpdateBody(BaseModel):
+    operation: str
+    cost: int
+    label: Optional[str] = None
+
+@app.post("/admin/credit-costs")
+def update_credit_cost(body: CreditCostUpdateBody, authorization: Optional[str] = Header(None)):
+    """Admin: update credit cost for an operation."""
+    token = (authorization or "").replace("Bearer ", "").strip()
+    admin = require_admin_user(token)
+    if not admin:
+        return JSONResponse(status_code=403, content={"ok": False, "error": "Admin access required"})
+    if body.cost < 0:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "Cost must be >= 0"})
+    conn = get_db()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT id, label FROM app_credit_costs WHERE operation = %s", (body.operation,))
+        existing = cur.fetchone()
+        if existing:
+            label = body.label or existing["label"]
+            cur.execute(
+                "UPDATE app_credit_costs SET cost = %s, label = %s, updated_at = %s WHERE operation = %s",
+                (body.cost, label, datetime.utcnow().isoformat(), body.operation)
+            )
+        else:
+            cur.execute(
+                "INSERT INTO app_credit_costs (id, operation, label, cost) VALUES (%s, %s, %s, %s)",
+                (str(uuid.uuid4()), body.operation, body.label or body.operation, body.cost)
+            )
+        conn.commit()
+        cur.close()
+        return {"ok": True, "operation": body.operation, "cost": body.cost}
     except Exception as e:
         conn.rollback()
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
@@ -1712,8 +1789,70 @@ async def generate(
     generateAudio: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None),
     refs: List[UploadFile] = File(None),
+    authorization: Optional[str] = Header(None),
 ):
     try:
+        # --- Credit check & deduction ---
+        token = (authorization or "").replace("Bearer ", "").strip()
+        user = get_user_from_token(token) if token else None
+
+        # Calculate total images to generate
+        total_images = 0
+        if not is_video:
+            for idx in range(len(perspective)):
+                raw_c = image_count[idx] if idx < len(image_count) else 1
+                try:
+                    c = max(1, min(int(raw_c) if raw_c not in (None, "") else 1, 10))
+                except (TypeError, ValueError):
+                    c = 1
+                total_images += c
+
+        # Get credit costs from DB
+        conn_c = get_db()
+        try:
+            cur_c = conn_c.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+            cur_c.execute("SELECT operation, cost FROM app_credit_costs")
+            costs_rows = cur_c.fetchall()
+            cur_c.close()
+            costs = {r["operation"]: r["cost"] for r in costs_rows}
+        except Exception:
+            costs = {"image_generation": 1, "video_generation": 5}
+        finally:
+            conn_c.close()
+
+        cost_per_image = costs.get("image_generation", 1)
+        cost_per_video = costs.get("video_generation", 5)
+        total_cost = cost_per_video if is_video else (cost_per_image * total_images)
+
+        # Deduct credits if user is logged in
+        if user:
+            user_credits = user.get("credits", 0) or 0
+            if user_credits < total_cost:
+                return JSONResponse(
+                    status_code=402,
+                    content={
+                        "ok": False,
+                        "error": "insufficient_credits",
+                        "message": f"Not enough credits. Required: {total_cost}, Available: {user_credits}",
+                        "required": total_cost,
+                        "available": user_credits
+                    }
+                )
+            # Deduct credits
+            conn_d = get_db()
+            try:
+                cur_d = conn_d.cursor()
+                cur_d.execute(
+                    "UPDATE users SET credits = credits - %s WHERE id = %s",
+                    (total_cost, user["id"])
+                )
+                conn_d.commit()
+                cur_d.close()
+            except Exception as e:
+                conn_d.rollback()
+                print(f"⚠️ Failed to deduct credits: {e}")
+            finally:
+                conn_d.close()
         input_image_b64 = None
         mime_type = "image/png"
         if file is not None:
@@ -1812,6 +1951,46 @@ async def generate(
             status_code=500,
             content={"error": "Failed to create jobs", "details": str(e)}
         )
+
+@app.get("/estimate-cost")
+def estimate_cost(
+    is_video: bool = False,
+    image_count: int = 1,
+    perspective_count: int = 1,
+):
+    """Get estimated credit cost before generation."""
+    conn = get_db()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT operation, cost, label FROM app_credit_costs")
+        rows = cur.fetchall()
+        cur.close()
+        costs = {r["operation"]: {"cost": r["cost"], "label": r["label"]} for r in rows}
+    except Exception:
+        costs = {
+            "image_generation": {"cost": 1, "label": "Image Generation (per image)"},
+            "video_generation": {"cost": 5, "label": "Video Generation"}
+        }
+    finally:
+        conn.close()
+
+    if is_video:
+        total = costs.get("video_generation", {}).get("cost", 5)
+        return {"ok": True, "total_cost": total, "breakdown": {"video": total}, "costs": costs}
+    else:
+        cost_per_image = costs.get("image_generation", {}).get("cost", 1)
+        total = cost_per_image * image_count * perspective_count
+        return {
+            "ok": True,
+            "total_cost": total,
+            "breakdown": {
+                "per_image": cost_per_image,
+                "images": image_count,
+                "perspectives": perspective_count
+            },
+            "costs": costs
+        }
+
 
 @app.get("/status/{job_id}")
 def check_status(job_id: str):

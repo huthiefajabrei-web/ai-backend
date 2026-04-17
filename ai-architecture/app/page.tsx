@@ -98,6 +98,7 @@ export default function Home() {
   const [dbTools, setDbTools] = useState<any[]>([]);
   const [dbApps, setDbApps] = useState<any[]>([]);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
+  const [creditCosts, setCreditCosts] = useState({ image_generation: 1, video_generation: 5 });
   const [subscribingPlanId, setSubscribingPlanId] = useState<string | null>(null);
   const [subscribeMsg, setSubscribeMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -106,8 +107,9 @@ export default function Home() {
       fetch(`${API_BASE}/content/hero`).then((r) => r.json()).catch(() => ({})),
       fetch(`${API_BASE}/content/tools`).then((r) => r.json()).catch(() => ({})),
       fetch(`${API_BASE}/content/apps`).then((r) => r.json()).catch(() => ({})),
-      fetch(`${API_BASE}/content/plans`).then((r) => r.json()).catch(() => ({}))
-    ]).then(([hRes, tRes, aRes, pRes]) => {
+      fetch(`${API_BASE}/content/plans`).then((r) => r.json()).catch(() => ({})),
+      fetch(`${API_BASE}/credit-costs`).then((r) => r.json()).catch(() => ({})),
+    ]).then(([hRes, tRes, aRes, pRes, ccRes]) => {
       if (hRes?.data) {
         setDbHero(
           hRes.data.map((item: Record<string, unknown>) => ({
@@ -126,6 +128,14 @@ export default function Home() {
         );
       }
       if (pRes?.data) setDbPlans(pRes.data);
+      if (ccRes?.data) {
+        const costsMap: Record<string, number> = {};
+        ccRes.data.forEach((c: { operation: string; cost: number }) => { costsMap[c.operation] = c.cost; });
+        setCreditCosts({
+          image_generation: costsMap["image_generation"] ?? 1,
+          video_generation: costsMap["video_generation"] ?? 5,
+        });
+      }
     });
   }, []);
 
@@ -632,6 +642,7 @@ export default function Home() {
 
       const res = await fetch(`${API_BASE}/generate`, {
         method: "POST",
+        headers: { Authorization: `Bearer ${getToken()}` },
         body: fd,
       });
 
@@ -639,8 +650,14 @@ export default function Home() {
 
       if (!initialData.ok || !initialData.job_ids) {
         if (currentSessionIdRef.current === targetSessionId) setLoading(false);
+        if (initialData.error === "insufficient_credits") {
+          alert(`❌ رصيد الكريدات غير كافٍ!\nمطلوب: ${initialData.required}\nمتاح: ${initialData.available}\n\nيرجى الاشتراك في خطة للحصول على المزيد من الكريدات.`);
+        }
         return;
       }
+
+      // Refresh user credits after generation
+      apiGetMe().then((me) => { if (me) { setUser(me); setStoredUser(me); } });
 
       const newJobIds: string[] = initialData.job_ids;
       if (newJobIds.length === 0) {
@@ -1415,6 +1432,8 @@ export default function Home() {
                     void onSend(true, videoGenerationMode);
                   }}
                   onClear={onClear}
+                  userCredits={user?.credits ?? 0}
+                  creditCosts={creditCosts}
                 />
               </div>
             </div>
