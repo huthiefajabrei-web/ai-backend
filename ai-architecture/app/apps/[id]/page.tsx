@@ -15,6 +15,7 @@ interface AppData {
   image_url: string;
   category: string;
   action_id: string;
+  credit_cost?: number;
 }
 
 export default function AppFeaturePage() {
@@ -108,11 +109,23 @@ export default function AppFeaturePage() {
       alert("Please upload an image first.");
       return;
     }
+    if (!user) {
+      alert("Please login to generate images.");
+      return;
+    }
+
+    const appCreditCost = appData?.credit_cost ?? 1;
+    const userCredits = user.credits ?? 0;
+
+    if (userCredits < appCreditCost) {
+      alert(`❌ رصيد الكريدات غير كافٍ!\nمطلوب: ${appCreditCost}\nمتاح: ${userCredits}\n\nيرجى الاشتراك في خطة للحصول على المزيد من الكريدات.`);
+      return;
+    }
+
     setIsGenerating(true);
     setResultImage(null);
     try {
       const formData = new FormData();
-      // Require list of perspective
       formData.append("perspective", appData?.title || "Custom Scene");
       
       let promptMods = [];
@@ -121,7 +134,6 @@ export default function AppFeaturePage() {
       
       let extendedPrompt = `Transform architecture into ${appData?.title || 'new design'}, high quality, 8k resolution, highly detailed`;
       
-      // Override or prepend if it's a Hero and user wrote a custom prompt
       if ((appData as any)?.is_hero && customPrompt.trim()) {
         extendedPrompt = `${customPrompt.trim()}, high quality, 8k resolution, highly detailed`;
       }
@@ -135,6 +147,8 @@ export default function AppFeaturePage() {
       formData.append("is_video", "false");
       formData.append("model_name", model);
       formData.append("file", file);
+      // Pass app credit cost so backend deducts the correct amount
+      formData.append("app_credit_cost", String(appCreditCost));
 
       referenceImages.forEach(ref => {
         formData.append("refs", ref.file);
@@ -148,13 +162,22 @@ export default function AppFeaturePage() {
       });
       const data = await res.json();
 
+      if (!data.ok || !data.job_ids) {
+        if (data.error === "insufficient_credits") {
+          alert(`❌ رصيد الكريدات غير كافٍ!\nمطلوب: ${data.required}\nمتاح: ${data.available}`);
+        } else {
+          alert("Failed to start generation. Make sure you are logged in and have credits.");
+        }
+        setIsGenerating(false);
+        return;
+      }
+
       if (data.job_ids && data.job_ids.length > 0) {
         const jobId = data.job_ids[0];
         const poll = setInterval(async () => {
           const sRes = await fetch(`${API_BASE}/status/${jobId}`);
           const sData = await sRes.json();
           if (sData.status === "COMPLETED") {
-            // Extract the image URL or Base64
             const output_val = sData.output_url || sData.result_url || sData.image_url || sData.image_data_url;
             if (output_val) {
               setResultImage(output_val);
@@ -167,8 +190,9 @@ export default function AppFeaturePage() {
             }
             clearInterval(poll);
             setIsGenerating(false);
-            // Decrement local credits roughly
-            if (user) setUser({ ...user, credits: Math.max(0, (user.credits || 0) - 1) });
+            // Refresh user credits from server
+            const updatedUser = await apiGetMe();
+            if (updatedUser) setUser(updatedUser);
           } else if (sData.status === "FAILED") {
             alert("Generation failed on server.");
             clearInterval(poll);
@@ -176,7 +200,7 @@ export default function AppFeaturePage() {
           }
         }, 3000);
       } else {
-        alert("Failed to start generation. Make sure you are logged in and have credits.");
+        alert("Failed to start generation.");
         setIsGenerating(false);
       }
     } catch (err) {
@@ -437,8 +461,21 @@ export default function AppFeaturePage() {
               <div className="mt-2">
                 <button disabled={isGenerating} onClick={handleGenerate} className={`w-full py-3.5 rounded-xl font-bold text-[15px] tracking-wide transition-all flex items-center justify-center gap-2 shadow-lg ${isGenerating ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-[#14b8a6] text-white hover:bg-teal-400 hover:shadow-[0_0_25px_rgba(20,184,166,0.3)] hover:-translate-y-0.5'}`}>
                   {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
-                  {isGenerating ? "GENERATING..." : <>Generate Image <span className="opacity-80 flex items-center gap-1 ml-1"><Coins size={14}/> 38</span></>}
+                  {isGenerating ? "GENERATING..." : (
+                    <>
+                      Generate Image
+                      <span className="opacity-80 flex items-center gap-1 ml-1">
+                        <Coins size={14}/> {appData?.credit_cost ?? 1}
+                      </span>
+                    </>
+                  )}
                 </button>
+                {/* Credit balance warning */}
+                {user && (appData?.credit_cost ?? 1) > (user.credits ?? 0) && (
+                  <p className="text-red-400 text-xs text-center mt-2 font-medium">
+                    ❌ رصيد غير كافٍ — لديك {user.credits ?? 0} كريدت، مطلوب {appData?.credit_cost ?? 1}
+                  </p>
+                )}
               </div>
             </div>
 

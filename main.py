@@ -1800,6 +1800,7 @@ async def generate(
     file: Optional[UploadFile] = File(None),
     refs: List[UploadFile] = File(None),
     authorization: Optional[str] = Header(None),
+    app_credit_cost: Optional[int] = Form(None),
 ):
     try:
         # --- Credit check & deduction ---
@@ -1832,7 +1833,11 @@ async def generate(
 
         cost_per_image = costs.get("image_generation", 1)
         cost_per_video = costs.get("video_generation", 5)
-        total_cost = cost_per_video if is_video else (cost_per_image * total_images)
+        # If app_credit_cost is provided (from app card), use it directly
+        if app_credit_cost is not None and app_credit_cost >= 0:
+            total_cost = app_credit_cost
+        else:
+            total_cost = cost_per_video if is_video else (cost_per_image * total_images)
 
         # Deduct credits if user is logged in
         if user:
