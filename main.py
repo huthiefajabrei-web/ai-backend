@@ -1018,7 +1018,7 @@ def process_gemini_job(
     reference_images: Optional[list] = None,
     aspect_ratio: str = "9:16",
     perspective: str = "",
-    model_name: str = "nano-banana-pro-preview",
+    model_name: str = "gemini-3-pro-image-preview",
 ):
     try:
         jobs[job_id]["status"] = "PROCESSING"
