@@ -974,7 +974,7 @@ export default function Home() {
             <div className="flex items-center gap-3 shrink-0">
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/10 text-yellow-500 font-medium text-sm">
                 <Coins size={14} />
-                <span>0</span>
+                <span>{user?.credits ?? 0}</span>
                 <Plus size={14} className="opacity-50" />
               </div>
               {user ? (

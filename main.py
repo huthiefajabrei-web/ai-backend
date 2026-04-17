@@ -271,7 +271,9 @@ def get_user_from_token(token: str) -> Optional[dict]:
         cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         now = datetime.utcnow().isoformat()
         cur.execute("""
-            SELECT u.id, u.email, u.full_name, u.created_at
+            SELECT u.id, u.email, u.full_name, u.created_at,
+                   COALESCE(u.credits, 0) as credits,
+                   u.plan_id, u.plan_name
             FROM auth_tokens t
             JOIN users u ON t.user_id = u.id
             WHERE t.token = %s AND t.expires_at > %s
