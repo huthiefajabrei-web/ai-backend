@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Home, Lock, Mail, ShieldCheck } from "lucide-react";
-import { apiGetMe, apiLogin, removeToken, setStoredUser, setToken } from "@/lib/mysql/client";
+import { apiGetMe, apiLogin, removeToken, setStoredUser, setToken, AUTH_NETWORK_ERROR } from "@/lib/mysql/client";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -21,7 +21,7 @@ export default function AdminLoginPage() {
       }
 
       const me = await apiGetMe();
-      if (me?.is_admin) {
+      if (me && me !== AUTH_NETWORK_ERROR && me.is_admin) {
         router.replace("/admin");
       }
     };
