@@ -40,11 +40,34 @@ export default function VideoGenerationPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultVideo, setResultVideo] = useState<string | null>(null);
   const [generateAudio, setGenerateAudio] = useState(true);
+  
+  // Credit costs
+  const [creditCosts, setCreditCosts] = useState({
+    video_image_to_video: 5,
+    video_frame_to_frame: 7,
+  });
 
   useEffect(() => {
     apiGetMe().then((u) => {
       if (u && u !== AUTH_NETWORK_ERROR) setUser(u);
     }).catch(console.error);
+    
+    // Fetch credit costs
+    fetch(`${API_BASE}/credit-costs`)
+      .then(r => r.json())
+      .then(data => {
+        if (data?.data) {
+          const costsMap: Record<string, number> = {};
+          data.data.forEach((c: { operation: string; cost: number }) => {
+            costsMap[c.operation] = c.cost;
+          });
+          setCreditCosts({
+            video_image_to_video: costsMap["video_image_to_video"] ?? 5,
+            video_frame_to_frame: costsMap["video_frame_to_frame"] ?? 7,
+          });
+        }
+      })
+      .catch(console.error);
   }, []);
 
   const handleImgFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -369,9 +392,19 @@ export default function VideoGenerationPage() {
               <button
                 onClick={handleGenerate}
                 disabled={isGenerating}
-                className={`w-11 h-11 rounded-full flex items-center justify-center transition-all ${isGenerating ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-[#2dd4bf] text-[#09090b] hover:bg-teal-300 hover:scale-105 shadow-[0_0_15px_rgba(45,212,191,0.5)]'}`}
+                className={`h-11 rounded-full px-5 flex items-center justify-center gap-2 transition-all ${isGenerating ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-[#2dd4bf] text-[#09090b] hover:bg-teal-300 hover:scale-105 shadow-[0_0_15px_rgba(45,212,191,0.5)]'}`}
               >
-                {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} className="-ml-1 mt-0.5" />}
+                {isGenerating ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <>
+                    <Send size={18} className="-ml-1" />
+                    <span className="text-sm font-bold flex items-center gap-1">
+                      <Coins size={14} />
+                      {videoMode === "frame_to_frame" ? creditCosts.video_frame_to_frame : creditCosts.video_image_to_video}
+                    </span>
+                  </>
+                )}
               </button>
             </div>
           </div>
