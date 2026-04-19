@@ -667,7 +667,7 @@ export default function Home() {
       }
 
       // Refresh user credits after generation
-      apiGetMe().then((me) => { if (me) { setUser(me); setStoredUser(me); } });
+      apiGetMe().then((me) => { if (me && me !== AUTH_NETWORK_ERROR) { setUser(me); setStoredUser(me); } });
 
       const newJobIds: string[] = initialData.job_ids;
       if (newJobIds.length === 0) {
