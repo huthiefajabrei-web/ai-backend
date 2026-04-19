@@ -256,7 +256,18 @@ def init_db_tables():
         if cur.fetchone()["cnt"] == 0:
             cur.execute("""INSERT INTO app_credit_costs (id, operation, label, cost) VALUES
                 ('cc1', 'image_generation', 'Image Generation (per image)', 1),
-                ('cc2', 'video_generation', 'Video Generation', 5)""")
+                ('cc2', 'video_generation', 'Video Generation (Legacy)', 5),
+                ('cc3', 'video_image_to_video', 'Video: Image to Video', 5),
+                ('cc4', 'video_frame_to_frame', 'Video: Frame to Frame', 7)""")
+            conn.commit()
+        else:
+            # Add new video types if they don't exist
+            cur.execute("SELECT operation FROM app_credit_costs WHERE operation IN ('video_image_to_video', 'video_frame_to_frame')")
+            existing = {row["operation"] for row in cur.fetchall()}
+            if 'video_image_to_video' not in existing:
+                cur.execute("INSERT INTO app_credit_costs (id, operation, label, cost) VALUES ('cc3', 'video_image_to_video', 'Video: Image to Video', 5)")
+            if 'video_frame_to_frame' not in existing:
+                cur.execute("INSERT INTO app_credit_costs (id, operation, label, cost) VALUES ('cc4', 'video_frame_to_frame', 'Video: Frame to Frame', 7)")
             conn.commit()
 
         cur.close()
@@ -1862,7 +1873,20 @@ async def generate(
             conn_c.close()
 
         cost_per_image = costs.get("image_generation", 1)
-        cost_per_video = costs.get("video_generation", 5)
+        
+        # Determine video type and cost
+        if is_video:
+            # Check if it's frame-to-frame (has reference images) or image-to-video
+            has_refs = refs and any(r.filename for r in refs)
+            if has_refs:
+                # Frame to Frame mode
+                cost_per_video = costs.get("video_frame_to_frame", costs.get("video_generation", 7))
+            else:
+                # Image to Video mode
+                cost_per_video = costs.get("video_image_to_video", costs.get("video_generation", 5))
+        else:
+            cost_per_video = costs.get("video_generation", 5)
+        
         # If app_credit_cost is provided (from app card), use it directly
         if app_credit_cost is not None and app_credit_cost >= 0:
             total_cost = app_credit_cost
