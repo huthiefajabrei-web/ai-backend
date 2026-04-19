@@ -73,7 +73,12 @@ interface ControlPanelProps {
   onGenerateVideo: () => void;
   onClear: () => void;
   userCredits?: number;
-  creditCosts?: { image_generation: number; video_generation: number };
+  creditCosts?: { 
+    image_generation: number; 
+    video_generation: number;
+    video_image_to_video: number;
+    video_frame_to_frame: number;
+  };
 }
 
 export default function ControlPanel({
@@ -101,7 +106,12 @@ export default function ControlPanel({
   onGenerateVideo,
   onClear,
   userCredits = 0,
-  creditCosts = { image_generation: 1, video_generation: 5 },
+  creditCosts = { 
+    image_generation: 1, 
+    video_generation: 5,
+    video_image_to_video: 5,
+    video_frame_to_frame: 7
+  },
 }: ControlPanelProps) {
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
@@ -769,17 +779,33 @@ export default function ControlPanel({
           const totalImages = mode === "image"
             ? selectedPerspectives.reduce((sum, sp) => sum + (sp.imageCount || 1), 0)
             : 0;
-          const totalCost = mode === "video"
-            ? creditCosts.video_generation
-            : creditCosts.image_generation * totalImages;
+          
+          let totalCost = 0;
+          let costLabel = "";
+          
+          if (mode === "video") {
+            // Determine video type based on refs
+            const hasRefs = refs && refs.length > 0;
+            if (videoGenerationMode === "frame_start_to_end" || hasRefs) {
+              // Frame to Frame
+              totalCost = creditCosts.video_frame_to_frame;
+              costLabel = `Video (Frame to Frame) costs ${totalCost} credit${totalCost !== 1 ? "s" : ""}`;
+            } else {
+              // Image to Video
+              totalCost = creditCosts.video_image_to_video;
+              costLabel = `Video (Image to Video) costs ${totalCost} credit${totalCost !== 1 ? "s" : ""}`;
+            }
+          } else {
+            totalCost = creditCosts.image_generation * totalImages;
+            costLabel = `${totalImages} image${totalImages !== 1 ? "s" : ""} × ${creditCosts.image_generation} = ${totalCost} credit${totalCost !== 1 ? "s" : ""}`;
+          }
+          
           const hasEnough = userCredits >= totalCost;
           return (
             <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium border ${hasEnough ? "bg-yellow-500/5 border-yellow-500/20 text-yellow-400" : "bg-red-500/10 border-red-500/30 text-red-400"}`}>
               <span className="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                {mode === "video"
-                  ? `Video generation costs ${totalCost} credit${totalCost !== 1 ? "s" : ""}`
-                  : `${totalImages} image${totalImages !== 1 ? "s" : ""} × ${creditCosts.image_generation} = ${totalCost} credit${totalCost !== 1 ? "s" : ""}`}
+                {costLabel}
               </span>
               <span className={`font-bold ${hasEnough ? "text-yellow-300" : "text-red-300"}`}>
                 {hasEnough ? `Balance: ${userCredits}` : `Need ${totalCost - userCredits} more`}

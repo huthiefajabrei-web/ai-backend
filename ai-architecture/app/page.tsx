@@ -99,7 +99,12 @@ export default function Home() {
   const [dbTools, setDbTools] = useState<any[]>([]);
   const [dbApps, setDbApps] = useState<any[]>([]);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
-  const [creditCosts, setCreditCosts] = useState({ image_generation: 1, video_generation: 5 });
+  const [creditCosts, setCreditCosts] = useState({ 
+    image_generation: 1, 
+    video_generation: 5,
+    video_image_to_video: 5,
+    video_frame_to_frame: 7
+  });
   const [subscribingPlanId, setSubscribingPlanId] = useState<string | null>(null);
   const [subscribeMsg, setSubscribeMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -135,6 +140,8 @@ export default function Home() {
         setCreditCosts({
           image_generation: costsMap["image_generation"] ?? 1,
           video_generation: costsMap["video_generation"] ?? 5,
+          video_image_to_video: costsMap["video_image_to_video"] ?? 5,
+          video_frame_to_frame: costsMap["video_frame_to_frame"] ?? 7,
         });
       }
     });
