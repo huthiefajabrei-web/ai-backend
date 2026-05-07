@@ -213,6 +213,30 @@ def init_db_tables():
             END IF;
         END $$;
         """)
+        # Jobs table to replace in-memory dictionary
+        cur.execute("""
+        CREATE TABLE IF NOT EXISTS app_jobs (
+            id              TEXT PRIMARY KEY,
+            user_id         TEXT,
+            status          TEXT NOT NULL,
+            perspective     TEXT,
+            aspect_ratio    TEXT,
+            credit_cost     INTEGER DEFAULT 0,
+            is_video        INTEGER DEFAULT 0,
+            prompt_used     TEXT,
+            image_base64    TEXT,
+            image_data_url  TEXT,
+            filename        TEXT,
+            file_url        TEXT,
+            error           TEXT,
+            details         TEXT,
+            message         TEXT,
+            kling_task_id   TEXT,
+            created_at      TEXT DEFAULT (now()::text),
+            updated_at      TEXT DEFAULT (now()::text)
+        )""")
+        conn.commit()
+
         # Credit costs table - admin controls cost per operation
         cur.execute("""
         CREATE TABLE IF NOT EXISTS app_credit_costs (
@@ -341,7 +365,7 @@ def migrate_db():
 
 def deduct_credits_on_success(job_id: str):
     """Deduct credits from user after successful generation."""
-    job = jobs.get(job_id, {})
+    job = get_job(job_id) or {}
     user_id = job.get("_user_id")
     credit_cost = job.get("_credit_cost", 0)
     if not user_id or not credit_cost:
@@ -363,8 +387,101 @@ def deduct_credits_on_success(job_id: str):
         conn.close()
 
 
-# ذاكرة مؤقتة لتخزين حالة المهام
-jobs: Dict[str, dict] = {}
+# =========================
+# Job Tracking (Database-backed)
+# =========================
+def create_job(job_data: dict):
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO app_jobs (
+                id, user_id, status, perspective, aspect_ratio, credit_cost, is_video, message
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (id) DO NOTHING
+        """, (
+            job_data.get("job_id"),
+            job_data.get("_user_id"),
+            job_data.get("status", "IN_QUEUE"),
+            job_data.get("perspective"),
+            job_data.get("aspect_ratio"),
+            job_data.get("_credit_cost", 0),
+            1 if job_data.get("is_video") else 0,
+            job_data.get("message")
+        ))
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print(f"❌ create_job error: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
+
+def update_job(job_id: str, updates: dict):
+    conn = get_db()
+    try:
+        cur = conn.cursor()
+        fields = []
+        values = []
+        valid_cols = ["status", "prompt_used", "image_base64", "image_data_url", 
+                      "filename", "file_url", "error", "details", "message", "kling_task_id"]
+        
+        for k, v in updates.items():
+            if k in valid_cols:
+                fields.append(f"{k} = %s")
+                values.append(v)
+        
+        if not fields:
+            return
+            
+        fields.append("updated_at = %s")
+        values.append(datetime.utcnow().isoformat())
+        values.append(job_id)
+        
+        sql = f"UPDATE app_jobs SET {', '.join(fields)} WHERE id = %s"
+        cur.execute(sql, tuple(values))
+        conn.commit()
+        cur.close()
+    except Exception as e:
+        print(f"❌ update_job error: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
+
+def get_job(job_id: str) -> dict:
+    conn = get_db()
+    try:
+        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cur.execute("SELECT * FROM app_jobs WHERE id = %s", (job_id,))
+        row = cur.fetchone()
+        cur.close()
+        if not row:
+            return None
+        d = dict(row)
+        return {
+            "ok": d["status"] != "FAILED",
+            "job_id": d["id"],
+            "status": d["status"],
+            "perspective": d["perspective"],
+            "aspect_ratio": d["aspect_ratio"],
+            "_user_id": d["user_id"],
+            "_credit_cost": d["credit_cost"],
+            "is_video": bool(d["is_video"]),
+            "prompt_used": d["prompt_used"],
+            "image_base64": d["image_base64"],
+            "image_data_url": d["image_data_url"],
+            "filename": d["filename"],
+            "file_url": d["file_url"],
+            "error": d["error"],
+            "details": d["details"],
+            "message": d["message"],
+            "kling_task_id": d["kling_task_id"]
+        }
+    except Exception as e:
+        print(f"❌ get_job error: {e}")
+        return None
+    finally:
+        conn.close()
 
 # =========================
 # 1) إعدادات RunPod
@@ -1308,7 +1425,7 @@ def process_gemini_job(
     model_name: str = "nano-banana-pro-preview",
 ):
     try:
-        jobs[job_id]["status"] = "PROCESSING"
+        update_job(job_id, {"status": "PROCESSING"})
         time.sleep(1)
 
         # For Custom Scene: do NOT add any fixed text beyond what user typed.
@@ -1379,15 +1496,7 @@ def process_gemini_job(
                         time.sleep(5)
                         continue
                         
-                jobs[job_id] = {
-                    "ok": False,
-                    "status": "FAILED",
-                    "error": f"Gemini API error {r.status_code}",
-                    "details": error_text,
-                    "job_id": job_id,
-                    "perspective": perspective,
-                    "aspect_ratio": aspect_ratio
-                }
+                update_job(job_id, {"status": "FAILED", "error": f"Gemini API error {r.status_code}", "details": error_text})
                 return
             except requests.Timeout:
                 print(f"⏱️ Gemini API timeout on attempt {attempt + 1}")
@@ -1408,15 +1517,7 @@ def process_gemini_job(
             if r:
                 error_msg = f"Gemini API returned status {r.status_code}: {r.text[:500]}"
             print(f"❌ {error_msg}")
-            jobs[job_id] = {
-                "ok": False,
-                "status": "FAILED",
-                "error": "Gemini API error",
-                "details": error_msg,
-                "job_id": job_id,
-                "perspective": perspective,
-                "aspect_ratio": aspect_ratio
-            }
+            update_job(job_id, {"status": "FAILED", "error": "Gemini API error", "details": error_msg})
             return
 
         data = r.json()
@@ -1455,22 +1556,16 @@ def process_gemini_job(
                     print(f"💾 Gemini image saved locally: {static_path}")
                 except Exception as save_error:
                     print(f"⚠️ Failed to save image locally: {save_error}")
-            current_job = jobs.get(job_id, {})
             update_payload = {
-                "ok": True,
                 "status": "COMPLETED",
                 "prompt_used": final_prompt,
                 "image_base64": base64_img,
                 "image_data_url": f"data:image/jpeg;base64,{base64_img}",
-                "filename": f"{job_id}.jpg",
-                "job_id": job_id,
-                "perspective": perspective,
-                "aspect_ratio": aspect_ratio
+                "filename": f"{job_id}.jpg"
             }
             if file_url:
                 update_payload["file_url"] = file_url
-            current_job.update(update_payload)
-            jobs[job_id] = current_job
+            update_job(job_id, update_payload)
             print(f"🎉 Job {job_id} completed successfully")
             # Deduct credits ONLY on success
             deduct_credits_on_success(job_id)
@@ -1478,39 +1573,16 @@ def process_gemini_job(
         except (KeyError, IndexError) as e:
             print(f"❌ Failed to parse Gemini response: {e}")
             print(f"📄 Response data: {data}")
-            jobs[job_id] = {
-                "ok": False,
-                "status": "FAILED",
-                "error": "Unexpected response format from Gemini",
-                "details": f"{str(e)} - Response: {str(data)[:500]}",
-                "job_id": job_id,
-                "perspective": perspective,
-                "aspect_ratio": aspect_ratio
-            }
+            update_job(job_id, {"status": "FAILED", "error": "Unexpected response format from Gemini", "details": f"{str(e)} - Response: {str(data)[:500]}"})
             
     except requests.Timeout:
         print(f"⏱️ Gemini API timeout for job {job_id}")
-        jobs[job_id] = {
-            "ok": False,
-            "status": "TIMEOUT",
-            "error": "Nano Banana API Timeout.",
-            "job_id": job_id,
-            "perspective": perspective,
-            "aspect_ratio": aspect_ratio
-        }
+        update_job(job_id, {"status": "TIMEOUT", "error": "Nano Banana API Timeout."})
     except Exception as e:
         print(f"❌ Unexpected error in process_gemini_job: {e}")
         import traceback
         traceback.print_exc()
-        jobs[job_id] = {
-            "ok": False,
-            "status": "FAILED",
-            "error": "Server error",
-            "details": str(e),
-            "job_id": job_id,
-            "perspective": perspective,
-            "aspect_ratio": aspect_ratio
-        }
+        update_job(job_id, {"status": "FAILED", "error": "Server error", "details": str(e)})
 
 # =========================
 # 7) Video Journey Task
@@ -1624,8 +1696,8 @@ def process_video_journey(
     import os
 
     try:
-        jobs[job_id]["status"] = "PROCESSING"
-        jobs[job_id]["message"] = "Initializing Kling AI video generation..."
+        update_job(job_id, {"status": "PROCESSING"})
+        update_job(job_id, {"message": "Initializing Kling AI video generation..."})
 
         # =========================
         # A) Kling API video generation (preferred, matches official quality)
@@ -1721,8 +1793,8 @@ def process_video_journey(
         if not task_id:
             raise Exception("No task_id returned from Kling API")
 
-        jobs[job_id]["message"] = "Video generation started..."
-        jobs[job_id]["kling_task_id"] = task_id
+        update_job(job_id, {"message": "Video generation started..."})
+        update_job(job_id, {"kling_task_id": task_id})
 
         # Polling
         poll_url = f"{url}/{task_id}"
@@ -1755,7 +1827,7 @@ def process_video_journey(
                     task_error = p_data.get("data", {}).get("task_status_msg", "Unknown error")
                     raise Exception(f"Task failed: {task_error}")
                 
-                jobs[job_id]["message"] = f"Video generating... (Status: {task_status})"
+                update_job(job_id, {"message": f"Video generating... (Status: {task_status})"})
             except Exception as e:
                 if "failed" in str(e).lower():
                     raise e
@@ -1768,7 +1840,7 @@ def process_video_journey(
         video_filename = f"{job_id}.mp4"
         video_path = os.path.join("static", video_filename)
         
-        jobs[job_id]["message"] = "Downloading generated video..."
+        update_job(job_id, {"message": "Downloading generated video..."})
         v_res = requests.get(video_url, stream=True, timeout=60)
         v_res.raise_for_status()
         
@@ -1799,26 +1871,17 @@ def process_video_journey(
             final_video_url = f"{api_base}/static/{video_filename}"
             print(f"💾 Video saved locally: {video_path}")
 
-        current_job = jobs.get(job_id, {})
-        current_job.update({
-            "ok": True,
+        update_job(job_id, {
             "status": "COMPLETED",
-            "is_video": True,
             "file_url": final_video_url,
             "filename": video_filename,
         })
-        jobs[job_id] = current_job
         print(f"🎉 Video job {job_id} completed successfully")
         # Deduct credits ONLY on success
         deduct_credits_on_success(job_id)
 
     except Exception as e:
-        jobs[job_id] = {
-            "ok": False,
-            "status": "FAILED",
-            "error": "Journey generation failed via Kling",
-            "details": str(e),
-        }
+        update_job(job_id, {"status": "FAILED", "error": "Journey generation failed via Kling", "details": str(e)})
         print(f"❌ Video job {job_id} failed - credits NOT deducted")
 
 
@@ -1934,8 +1997,7 @@ async def generate(
             job_id = f"journey_{base_time}"
             video_perspective = perspective[0] if perspective else "Custom Scene"
             video_ar = aspect_ratio[0] if len(aspect_ratio) > 0 else "9:16"
-            jobs[job_id] = {
-                "ok": True,
+            create_job({
                 "job_id": job_id,
                 "status": "IN_QUEUE",
                 "message": "Initializing Video Journey...",
@@ -1944,7 +2006,7 @@ async def generate(
                 "aspect_ratio": video_ar,
                 "_user_id": user["id"] if user else None,
                 "_credit_cost": total_cost,
-            }
+            })
             background_tasks.add_task(
                 process_video_journey,
                 job_id,
@@ -1972,15 +2034,14 @@ async def generate(
                     job_id = f"gemini_{base_time}_{idx}_{c_idx}"
                     
                     # إنشاء السجل المبدئي
-                    jobs[job_id] = {
-                        "ok": True,
+                    create_job({
                         "job_id": job_id,
                         "status": "IN_QUEUE",
                         "perspective": p,
                         "aspect_ratio": ar,
                         "_user_id": user["id"] if user else None,
                         "_credit_cost": total_cost,
-                    }
+                    })
                     
                     # تحويل مهمة التوليد إلى الخلفية
                     background_tasks.add_task(
@@ -2052,9 +2113,10 @@ def estimate_cost(
 
 @app.get("/status/{job_id}")
 def check_status(job_id: str):
-    if job_id not in jobs:
+    job = get_job(job_id)
+    if not job:
         return JSONResponse(
             status_code=404,
             content={"error": "Job not found", "status": "FAILED"}
         )
-    return jobs[job_id]
+    return job
