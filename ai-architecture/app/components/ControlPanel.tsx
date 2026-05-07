@@ -203,7 +203,7 @@ export default function ControlPanel({
         </div>
       </div>
 
-      <div className="px-5 py-5 flex flex-col gap-5 z-10 overflow-visible">
+      <div className="px-5 py-5 flex flex-col gap-5 z-[50] overflow-visible relative">
         <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 relative">
           <div
             className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-lg transition-all duration-300 ease-in-out shadow-lg border ${mode === "image"
@@ -527,7 +527,7 @@ export default function ControlPanel({
           </div>
         </div>
 
-        <div className="flex flex-col gap-2 relative">
+        <div className="flex flex-col gap-2 relative z-[100]">
           <label className="text-sm font-medium text-slate-200">
             Perspective Styles ({designType})
           </label>
