@@ -536,14 +536,9 @@ export default function ControlPanel({
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="bg-black/30 border border-white/10 rounded-xl px-4 py-3 cursor-pointer flex justify-between items-center shadow-inner hover:border-purple-500/40 transition-colors"
             >
-              <span
-                className={`text-sm ${selectedPerspectives.length > 0
-                  ? "text-slate-100"
-                  : "text-slate-500"
-                  }`}
-              >
+              <span className="text-sm text-slate-400">
                 {selectedPerspectives.length > 0
-                  ? `${selectedPerspectives.length} perspective(s) selected`
+                  ? `${selectedPerspectives.length} style(s) selected`
                   : "Select Perspectives..."}
               </span>
               <svg
@@ -562,61 +557,105 @@ export default function ControlPanel({
               </svg>
             </div>
 
-            <div className={`absolute top-[calc(100%+0.5rem)] left-0 w-full z-50 bg-[#0a0c13]/95 backdrop-blur-xl border border-white/10 rounded-xl max-h-[300px] overflow-y-auto custom-scrollbar shadow-[0_20px_50px_rgba(0,0,0,0.9)] p-2 transition-all duration-300 origin-top ${isDropdownOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible pointer-events-none'}`}>
+            <div className={`absolute top-[calc(100%+0.5rem)] left-0 w-full z-50 bg-[#0a0c13]/95 backdrop-blur-xl border border-white/10 rounded-xl max-h-[400px] overflow-y-auto custom-scrollbar shadow-[0_20px_50px_rgba(0,0,0,0.9)] p-2 transition-all duration-300 origin-top ${isDropdownOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible pointer-events-none'}`}>
               {activePromptList.map((p) => {
-                const isSelected = selectedPerspectives.some(
-                  (sp) => sp.perspective === p,
-                );
+                const selectedItem = selectedPerspectives.find((sp) => sp.perspective === p);
+                const isSelected = !!selectedItem;
                 return (
-                  <div
-                    key={p}
-                    onClick={() => {
-                      if (isSelected) {
-                        if (selectedPerspectives.length > 1) {
-                          setSelectedPerspectives(
-                            selectedPerspectives.filter(
-                              (x) => x.perspective !== p,
-                            ),
-                          );
-                        }
-                      } else {
-                        setSelectedPerspectives([
-                          ...selectedPerspectives,
-                          {
-                            perspective: p,
-                            imageCount: 1,
-                            aspectRatio: "9:16",
-                          },
-                        ]);
-                        if (p === "Floor Plan to 3D") setDenoise(0.85);
-                      }
-                    }}
-                    className={`px-3 py-2.5 rounded-lg cursor-pointer flex items-center gap-3 text-sm transition-colors mb-1 ${isSelected
-                      ? "bg-purple-500/20 text-purple-200"
-                      : "text-slate-300 hover:bg-white/5"
-                      }`}
-                  >
+                  <div key={p} className="flex flex-col mb-2">
                     <div
-                      className={`w-[18px] h-[18px] rounded flex items-center justify-center border transition-colors ${isSelected
-                        ? "bg-purple-500 border-purple-500"
-                        : "border-white/20 bg-black/40"
-                        }`}
+                      onClick={() => {
+                        if (isSelected) {
+                          setSelectedPerspectives(selectedPerspectives.filter((x) => x.perspective !== p));
+                        } else {
+                          setSelectedPerspectives([
+                            ...selectedPerspectives,
+                            { perspective: p, imageCount: 1, aspectRatio: "9:16" },
+                          ]);
+                          if (p === "Floor Plan to 3D") setDenoise(0.85);
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-lg cursor-pointer flex items-center gap-3 text-sm transition-colors ${isSelected ? "bg-purple-500/20 text-purple-200" : "text-slate-300 hover:bg-white/5"}`}
                     >
-                      {isSelected && (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          width="14"
-                          height="14"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="white"
-                          strokeWidth="3"
-                        >
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                      )}
+                      <div className={`w-[18px] h-[18px] rounded flex items-center justify-center border transition-colors ${isSelected ? "bg-purple-500 border-purple-500" : "border-white/20 bg-black/40"}`}>
+                        {isSelected && <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>}
+                      </div>
+                      {p}
                     </div>
-                    {p}
+                    {isSelected && selectedItem && (
+                      <div
+                        className="mx-1 mb-1 bg-purple-950/40 border border-purple-500/25 border-t-0 rounded-b-lg px-3 py-2.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <div className="flex items-end gap-2">
+                          {/* Aspect Ratio */}
+                          <div className="flex-1">
+                            <label className="block text-[9px] text-purple-400/70 mb-1 uppercase tracking-widest font-semibold">Size</label>
+                            <div className="relative">
+                              <select
+                                value={selectedItem.aspectRatio}
+                                onChange={(e) => {
+                                  setSelectedPerspectives(
+                                    selectedPerspectives.map(x =>
+                                      x.perspective === p ? { ...x, aspectRatio: e.target.value } : x
+                                    )
+                                  );
+                                }}
+                                className="w-full appearance-none bg-black/60 border border-white/10 rounded-lg py-1.5 pl-2.5 pr-6 text-xs text-slate-200 outline-none focus:border-purple-500/50 cursor-pointer"
+                              >
+                                <option value="9:16">9:16 — Story</option>
+                                <option value="1:1">1:1 — Square</option>
+                                <option value="16:9">16:9 — Wide</option>
+                                <option value="4:5">4:5 — Portrait</option>
+                              </select>
+                              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                              </svg>
+                            </div>
+                          </div>
+
+                          {/* Image Count */}
+                          {mode === "image" && (
+                            <div className="flex-1">
+                              <label className="block text-[9px] text-purple-400/70 mb-1 uppercase tracking-widest font-semibold">Images (1–4)</label>
+                              <div className="flex items-center bg-black/60 border border-white/10 rounded-lg overflow-hidden">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSelectedPerspectives(
+                                      selectedPerspectives.map(x =>
+                                        x.perspective === p && x.imageCount > 1
+                                          ? { ...x, imageCount: x.imageCount - 1 }
+                                          : x
+                                      )
+                                    )
+                                  }
+                                  disabled={selectedItem.imageCount <= 1}
+                                  className="px-2.5 py-1.5 text-slate-400 hover:text-white hover:bg-purple-500/20 transition-colors text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+                                >−</button>
+                                <span className="flex-1 text-center text-xs font-bold text-purple-300 font-mono">
+                                  {selectedItem.imageCount}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSelectedPerspectives(
+                                      selectedPerspectives.map(x =>
+                                        x.perspective === p && x.imageCount < 4
+                                          ? { ...x, imageCount: x.imageCount + 1 }
+                                          : x
+                                      )
+                                    )
+                                  }
+                                  disabled={selectedItem.imageCount >= 4}
+                                  className="px-2.5 py-1.5 text-slate-400 hover:text-white hover:bg-purple-500/20 transition-colors text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+                                >+</button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -624,111 +663,6 @@ export default function ControlPanel({
           </div>
         </div>
 
-        {selectedPerspectives.length > 0 && (
-          <div className="flex flex-col gap-3">
-            {selectedPerspectives.map((sp, i) => (
-              <div
-                key={sp.perspective}
-                className="bg-black/20 border border-white/5 rounded-xl p-4 shadow-inner relative"
-              >
-                <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/5 border-dashed">
-                  <span className="font-semibold text-purple-300 text-sm">
-                    {sp.perspective}
-                  </span>
-                  {selectedPerspectives.length > 1 && (
-                    <button
-                      onClick={() =>
-                        setSelectedPerspectives(
-                          selectedPerspectives.filter(
-                            (x) => x.perspective !== sp.perspective,
-                          ),
-                        )
-                      }
-                      className="text-slate-500 hover:text-red-400 transition-colors"
-                    >
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="16"
-                        height="16"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                      >
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1.5">
-                      Aspect Ratio
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={sp.aspectRatio}
-                        onChange={(e) => {
-                          const newOpts = [...selectedPerspectives];
-                          newOpts[i] = {
-                            ...newOpts[i],
-                            aspectRatio: e.target.value,
-                          };
-                          setSelectedPerspectives(newOpts);
-                        }}
-                        className="w-full appearance-none bg-black/40 border border-white/10 rounded-lg py-2 pl-3 pr-8 text-sm text-slate-200 outline-none focus:border-purple-500/50 transition-colors cursor-pointer"
-                      >
-                        <option value="9:16">9:16 (Story)</option>
-                        <option value="1:1">1:1 (Square)</option>
-                        <option value="16:9">16:9 (Landscape)</option>
-                        <option value="4:5">4:5 (Portrait)</option>
-                      </select>
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none"
-                      >
-                        <polyline points="6 9 12 15 18 9"></polyline>
-                      </svg>
-                    </div>
-                  </div>
-
-                  <div className={`${mode === "image" ? "block" : "hidden"}`}>
-                    <div className="flex justify-between items-center mb-1.5">
-                      <label className="text-xs text-slate-400">Images</label>
-                      <span className="text-xs font-mono text-purple-300 bg-purple-500/10 px-1.5 rounded">
-                        {sp.imageCount}
-                      </span>
-                    </div>
-                    <input
-                      type="range"
-                      min="1"
-                      max="4"
-                      step="1"
-                      value={sp.imageCount}
-                      onChange={(e) => {
-                        const newOpts = [...selectedPerspectives];
-                        newOpts[i] = {
-                          ...newOpts[i],
-                          imageCount: parseInt(e.target.value),
-                        };
-                        setSelectedPerspectives(newOpts);
-                      }}
-                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-purple-500 [&::-webkit-slider-thumb]:rounded-full hover:[&::-webkit-slider-thumb]:scale-110"
-                    />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
 
         <div
           className={`flex flex-col gap-2 ${mode === "image" ? "block" : "hidden"}`}
