@@ -13,7 +13,7 @@ load_dotenv()
 import requests
 from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, Header, Depends
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 
@@ -2120,3 +2120,41 @@ def check_status(job_id: str):
             content={"error": "Job not found", "status": "FAILED"}
         )
     return job
+
+@app.get("/status-stream")
+async def check_status_stream(job_ids: str):
+    """
+    SSE endpoint to monitor multiple jobs.
+    `job_ids` should be comma-separated.
+    """
+    jids = [jid.strip() for jid in job_ids.split(",") if jid.strip()]
+    
+    async def event_stream():
+        import json
+        import asyncio
+        completed = set()
+        while len(completed) < len(jids):
+            updates = []
+            for jid in jids:
+                if jid in completed:
+                    continue
+                # Use asyncio.to_thread to avoid blocking event loop with sync DB call
+                job = await asyncio.to_thread(get_job, jid)
+                if job:
+                    updates.append(job)
+                    if job["status"] in ["COMPLETED", "FAILED", "TIMEOUT"]:
+                        completed.add(jid)
+                else:
+                    # If job not found, treat as failed
+                    updates.append({"job_id": jid, "status": "FAILED", "error": "Job not found"})
+                    completed.add(jid)
+            
+            if updates:
+                yield f"data: {json.dumps(updates)}\n\n"
+            
+            if len(completed) == len(jids):
+                break
+                
+            await asyncio.sleep(2)
+            
+    return StreamingResponse(event_stream(), media_type="text/event-stream")

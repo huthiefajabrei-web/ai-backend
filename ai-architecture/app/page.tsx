@@ -159,8 +159,7 @@ export default function Home() {
   // Per-session loading indicators (fetch in progress)
   const [sessionLoadingIds, setSessionLoadingIds] = useState<Set<string>>(new Set());
 
-  const pollingIntervalsRef = React.useRef<Record<string, NodeJS.Timeout>>({});
-  const pollFunctionsRef = React.useRef<Record<string, () => void>>({});
+  const eventSourcesRef = React.useRef<Record<string, EventSource>>({});
   const currentSessionIdRef = React.useRef(currentSessionId);
   const respsSessionIdRef = React.useRef<string | null>(null);
   // Tracks sessions whose resps have been successfully loaded from DB (no re-fetch needed)
@@ -173,9 +172,7 @@ export default function Home() {
 
   useEffect(() => {
     const handleVisChange = () => {
-      if (document.visibilityState === "visible") {
-        Object.values(pollFunctionsRef.current).forEach(poll => poll());
-      }
+      // With SSE, connection usually stays alive, but we can handle reconnects if needed
     };
     document.addEventListener("visibilitychange", handleVisChange);
     return () => document.removeEventListener("visibilitychange", handleVisChange);
@@ -184,42 +181,40 @@ export default function Home() {
   const pendingJobIdsRef = React.useRef<Record<string, string[]>>({});
 
   const startPolling = (sid: string, pendingJobIds: string[]) => {
-    // Merge new job IDs with any still-pending ones from a previous generation run on this session
+    // Close existing SSE for this session if any
+    if (eventSourcesRef.current[sid]) {
+      eventSourcesRef.current[sid].close();
+      delete eventSourcesRef.current[sid];
+    }
+
     const existingPendingIds = pendingJobIdsRef.current[sid] || [];
     const mergedJobIds = Array.from(new Set([...existingPendingIds, ...pendingJobIds]));
     pendingJobIdsRef.current[sid] = mergedJobIds;
 
-    if (pollingIntervalsRef.current[sid]) {
-      clearInterval(pollingIntervalsRef.current[sid]);
-    }
+    if (mergedJobIds.length === 0) return;
 
-    const pollOnce = async () => {
-      // Use the latest merged IDs (may have grown if another generation started)
-      const jobIds = pendingJobIdsRef.current[sid] || [];
-      if (jobIds.length === 0) return;
+    const jidsParam = mergedJobIds.join(",");
+    const sseUrl = `${API_BASE}/status-stream?job_ids=${encodeURIComponent(jidsParam)}`;
+    const eventSource = new EventSource(sseUrl);
+
+    eventSource.onmessage = (event) => {
       try {
-        const updates = await Promise.all(
-          jobIds.map(async (jid) => {
-            const statusRes = await fetch(`${API_BASE}/status/${jid}`);
-            return await statusRes.json();
-          })
-        );
-
-        let allDone = true;
-        updates.forEach((data) => {
-          if (data && !['COMPLETED', 'FAILED', 'TIMEOUT'].includes((data as ApiOk).status || '')) {
-            allDone = false;
-          }
-        });
-
+        const updates = JSON.parse(event.data); // array of job objects
         let latestSessionResps: Record<string, ApiResponse> | null = null;
+        let allDone = true;
+
+        const currentPending = new Set(pendingJobIdsRef.current[sid] || []);
+
         setSessions((prev) => prev.map(s => {
           if (s.id === sid) {
             const nextResps = { ...s.resps };
-            updates.forEach((data, index) => {
-              const jid = jobIds[index];
+            updates.forEach((data: any) => {
+              const jid = data.job_id;
               if (jid && data !== null) {
-                nextResps[jid] = { ...nextResps[jid], ...(data as ApiResponse) };
+                nextResps[jid] = { ...nextResps[jid], ...data };
+                if (['COMPLETED', 'FAILED', 'TIMEOUT'].includes(data.status || '')) {
+                  currentPending.delete(jid);
+                }
               }
             });
             latestSessionResps = nextResps;
@@ -231,35 +226,41 @@ export default function Home() {
         if (currentSessionIdRef.current === sid) {
           setResps((prev) => {
             const next = { ...prev };
-            updates.forEach((data, index) => {
-              const jid = jobIds[index];
+            updates.forEach((data: any) => {
+              const jid = data.job_id;
               if (jid && data !== null) {
-                next[jid] = { ...next[jid], ...(data as ApiResponse) };
+                next[jid] = { ...next[jid], ...data };
               }
             });
             return next;
           });
         }
 
-        if (allDone) {
-          clearInterval(pollingIntervalsRef.current[sid]);
-          delete pollingIntervalsRef.current[sid];
-          delete pollFunctionsRef.current[sid];
+        pendingJobIdsRef.current[sid] = Array.from(currentPending);
+
+        if (currentPending.size === 0) {
+          eventSource.close();
+          delete eventSourcesRef.current[sid];
           delete pendingJobIdsRef.current[sid];
           if (currentSessionIdRef.current === sid) setLoading(false);
 
           if (latestSessionResps) {
-            // Save to backend DB session store
-            // SUPABASE WAS: const supabase = createClient(); supabase.from("user_sessions").update({ resps: ... }).eq("id", sid).then();
             apiUpdateSession(sid, { resps: stripBase64ForSave(latestSessionResps) as Record<string, unknown> }).catch(() => { });
           }
         }
-      } catch { }
+      } catch (err) {
+        console.error("Error parsing SSE data", err);
+      }
     };
 
-    pollOnce();
-    pollFunctionsRef.current[sid] = pollOnce;
-    pollingIntervalsRef.current[sid] = setInterval(pollOnce, 3000);
+    eventSource.onerror = () => {
+      console.warn("SSE error, closing connection");
+      eventSource.close();
+      delete eventSourcesRef.current[sid];
+      if (currentSessionIdRef.current === sid) setLoading(false);
+    };
+
+    eventSourcesRef.current[sid] = eventSource;
   };
 
   // ── Auth initialization (MySQL replaces Supabase) ─────────────────────────
@@ -502,7 +503,7 @@ export default function Home() {
     if (hasCachedResps) {
       respsSessionIdRef.current = id;
       setResps(effectiveResps as Record<string, ApiResponse>);
-      if (!pollingIntervalsRef.current[id]) setLoading(false);
+      if (!eventSourcesRef.current[id]) setLoading(false);
       setSessionLoadingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
     } else {
       respsSessionIdRef.current = null;
@@ -539,9 +540,9 @@ export default function Home() {
         });
         if (pendingJobIds.length > 0) {
           setLoading(true);
-          if (!pollingIntervalsRef.current[id]) startPolling(id, pendingJobIds);
+          if (!eventSourcesRef.current[id]) startPolling(id, pendingJobIds);
         } else {
-          if (!pollingIntervalsRef.current[id]) setLoading(false);
+          if (!eventSourcesRef.current[id]) setLoading(false);
         }
       } finally {
         setSessionLoadingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
@@ -554,9 +555,9 @@ export default function Home() {
       });
       if (pendingJobIds.length > 0) {
         setLoading(true);
-        if (!pollingIntervalsRef.current[id]) startPolling(id, pendingJobIds);
+        if (!eventSourcesRef.current[id]) startPolling(id, pendingJobIds);
       } else {
-        if (!pollingIntervalsRef.current[id]) setLoading(false);
+        if (!eventSourcesRef.current[id]) setLoading(false);
       }
       setSessionLoadingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
     }
