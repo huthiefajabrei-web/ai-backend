@@ -186,7 +186,7 @@ export default function ControlPanel({
   }
 
   return (
-    <section className="h-fit flex flex-col bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.3)] relative">
+    <section className="h-fit flex flex-col bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.3)] relative">
       <div className="absolute -top-24 -right-24 w-48 h-48 bg-purple-600/15 rounded-full blur-[60px] pointer-events-none" aria-hidden />
       <div className="px-5 py-4 border-b border-white/5 flex justify-between items-center bg-black/20 shrink-0 z-10 backdrop-blur-sm">
         <div>
@@ -203,7 +203,7 @@ export default function ControlPanel({
         </div>
       </div>
 
-      <div className="px-5 py-5 flex flex-col gap-5 z-10 custom-scrollbar">
+      <div className="px-5 py-5 flex flex-col gap-5 z-10 overflow-visible">
         <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 relative">
           <div
             className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-lg transition-all duration-300 ease-in-out shadow-lg border ${mode === "image"
@@ -557,7 +557,7 @@ export default function ControlPanel({
               </svg>
             </div>
 
-            <div className={`absolute top-[calc(100%+0.5rem)] left-0 w-full z-50 bg-[#0a0c13]/95 backdrop-blur-xl border border-white/10 rounded-xl max-h-[400px] overflow-y-auto custom-scrollbar shadow-[0_20px_50px_rgba(0,0,0,0.9)] p-2 transition-all duration-300 origin-top ${isDropdownOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible pointer-events-none'}`}>
+            <div className={`absolute top-[calc(100%+0.5rem)] left-0 w-full z-[999] bg-[#0a0c13]/98 backdrop-blur-xl border border-white/10 rounded-xl max-h-[420px] overflow-y-auto custom-scrollbar shadow-[0_20px_60px_rgba(0,0,0,0.95)] p-2 transition-all duration-300 origin-top ${isDropdownOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible pointer-events-none'}`}>
               {activePromptList.map((p) => {
                 const selectedItem = selectedPerspectives.find((sp) => sp.perspective === p);
                 const isSelected = !!selectedItem;
