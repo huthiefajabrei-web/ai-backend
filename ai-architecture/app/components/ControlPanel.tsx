@@ -557,12 +557,12 @@ export default function ControlPanel({
               </svg>
             </div>
 
-            <div className={`absolute top-[calc(100%+0.5rem)] left-0 w-full z-[999] bg-[#0a0c13]/98 backdrop-blur-xl border border-white/10 rounded-xl max-h-[420px] overflow-y-auto custom-scrollbar shadow-[0_20px_60px_rgba(0,0,0,0.95)] p-2 transition-all duration-300 origin-top ${isDropdownOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible pointer-events-none'}`}>
+            <div className={`absolute top-[calc(100%+0.5rem)] left-0 w-full z-[99999] bg-[#0a0c13]/98 backdrop-blur-xl border border-white/10 rounded-xl max-h-[420px] overflow-y-auto custom-scrollbar dropdown-scroll-container dropdown-z-index-fix dropdown-transition dropdown-performance dropdown-paint-optimized dropdown-chrome-fix shadow-[0_20px_60px_rgba(0,0,0,0.95)] p-2 transition-all duration-300 origin-top ${isDropdownOpen ? 'opacity-100 scale-100 translate-y-0 visible' : 'opacity-0 scale-95 -translate-y-2 invisible pointer-events-none'}`}>
               {activePromptList.map((p) => {
                 const selectedItem = selectedPerspectives.find((sp) => sp.perspective === p);
                 const isSelected = !!selectedItem;
                 return (
-                  <div key={p} className="flex flex-col mb-2">
+                  <div key={p} className="flex flex-col mb-2 dropdown-item-container dropdown-item-stable">
                     <div
                       onClick={() => {
                         if (isSelected) {
@@ -575,12 +575,12 @@ export default function ControlPanel({
                           if (p === "Floor Plan to 3D") setDenoise(0.85);
                         }
                       }}
-                      className={`px-3 py-2 rounded-lg cursor-pointer flex items-center gap-3 text-sm transition-colors ${isSelected ? "bg-purple-500/20 text-purple-200" : "text-slate-300 hover:bg-white/5"}`}
+                      className={`px-3 py-2 rounded-lg cursor-pointer flex items-center gap-3 text-sm transition-colors dropdown-item-text ${isSelected ? "bg-purple-500/20 text-purple-200" : "text-slate-300 hover:bg-white/5"}`}
                     >
-                      <div className={`w-[18px] h-[18px] rounded flex items-center justify-center border transition-colors ${isSelected ? "bg-purple-500 border-purple-500" : "border-white/20 bg-black/40"}`}>
+                      <div className={`w-[18px] h-[18px] rounded flex items-center justify-center border transition-colors flex-shrink-0 ${isSelected ? "bg-purple-500 border-purple-500" : "border-white/20 bg-black/40"}`}>
                         {isSelected && <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                       </div>
-                      {p}
+                      <span className="truncate">{p}</span>
                     </div>
                     {isSelected && selectedItem && (
                       <div
@@ -589,7 +589,7 @@ export default function ControlPanel({
                       >
                         <div className="flex items-end gap-2">
                           {/* Aspect Ratio */}
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <label className="block text-[9px] text-purple-400/70 mb-1 uppercase tracking-widest font-semibold">Size</label>
                             <div className="relative">
                               <select
@@ -601,7 +601,7 @@ export default function ControlPanel({
                                     )
                                   );
                                 }}
-                                className="w-full appearance-none bg-black/60 border border-white/10 rounded-lg py-1.5 pl-2.5 pr-6 text-xs text-slate-200 outline-none focus:border-purple-500/50 cursor-pointer"
+                                className="w-full appearance-none bg-black/60 border border-white/10 rounded-lg py-1.5 pl-2.5 pr-6 text-xs text-slate-200 outline-none focus:border-purple-500/50 cursor-pointer truncate"
                               >
                                 <option value="9:16">9:16 — Story</option>
                                 <option value="1:1">1:1 — Square</option>
@@ -616,7 +616,7 @@ export default function ControlPanel({
 
                           {/* Image Count */}
                           {mode === "image" && (
-                            <div className="flex-1">
+                            <div className="flex-1 min-w-0">
                               <label className="block text-[9px] text-purple-400/70 mb-1 uppercase tracking-widest font-semibold">Images (1–4)</label>
                               <div className="flex items-center bg-black/60 border border-white/10 rounded-lg overflow-hidden">
                                 <button
@@ -631,9 +631,9 @@ export default function ControlPanel({
                                     )
                                   }
                                   disabled={selectedItem.imageCount <= 1}
-                                  className="px-2.5 py-1.5 text-slate-400 hover:text-white hover:bg-purple-500/20 transition-colors text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+                                  className="px-2.5 py-1.5 text-slate-400 hover:text-white hover:bg-purple-500/20 transition-colors text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
                                 >−</button>
-                                <span className="flex-1 text-center text-xs font-bold text-purple-300 font-mono">
+                                <span className="flex-1 text-center text-xs font-bold text-purple-300 font-mono truncate">
                                   {selectedItem.imageCount}
                                 </span>
                                 <button
@@ -648,7 +648,7 @@ export default function ControlPanel({
                                     )
                                   }
                                   disabled={selectedItem.imageCount >= 4}
-                                  className="px-2.5 py-1.5 text-slate-400 hover:text-white hover:bg-purple-500/20 transition-colors text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+                                  className="px-2.5 py-1.5 text-slate-400 hover:text-white hover:bg-purple-500/20 transition-colors text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed flex-shrink-0"
                                 >+</button>
                               </div>
                             </div>
