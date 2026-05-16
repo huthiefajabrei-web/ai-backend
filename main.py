@@ -84,11 +84,51 @@ def require_admin_user(token: str) -> Optional[dict]:
         return None
     return user
 
+from psycopg2 import pool
+
+db_pool = None
+
+class PooledConnection:
+    def __init__(self, pool_obj):
+        self._pool = pool_obj
+        import time
+        for attempt in range(3):
+            try:
+                self._conn = pool_obj.getconn()
+                with self._conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+                break
+            except Exception:
+                if hasattr(self, '_conn') and self._conn:
+                    try:
+                        pool_obj.putconn(self._conn, close=True)
+                    except Exception:
+                        pass
+                if attempt == 2:
+                    raise
+                time.sleep(0.5)
+
+    def __getattr__(self, name):
+        return getattr(self._conn, name)
+
+    def close(self):
+        try:
+            # If the connection is broken, close it completely
+            if self._conn.closed:
+                self._pool.putconn(self._conn, close=True)
+            else:
+                self._pool.putconn(self._conn)
+        except Exception:
+            pass
+
 def get_db():
-    """Return a new PostgreSQL connection with RealDict cursor support."""
+    """Return a pooled PostgreSQL connection with RealDict cursor support."""
+    global db_pool
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL is missing. Set your Supabase Postgres connection string.")
-    conn = psycopg2.connect(DATABASE_URL)
+    if not db_pool:
+        db_pool = psycopg2.pool.ThreadedConnectionPool(1, 20, DATABASE_URL)
+    conn = PooledConnection(db_pool)
     conn.autocommit = False
     return conn
 
@@ -1428,21 +1468,20 @@ def process_gemini_job(
         update_job(job_id, {"status": "PROCESSING"})
         time.sleep(1)
 
-        # For Custom Scene: do NOT add any fixed text beyond what user typed.
-        # For other perspectives: we may include aspect ratio guidance to reduce odd cropping.
+        # For Custom Scene: we still must include aspect ratio guidance to respect the size choice.
         final_prompt = (prompt or "").strip()
-        if (perspective or "").strip() != "Custom Scene":
-            ratio_instructions = {
-                "1:1": "Aspect ratio 1:1 (square).",
-                "9:16": "Aspect ratio 9:16 (vertical).",
-                "16:9": "Aspect ratio 16:9 (landscape).",
-                "4:5": "Aspect ratio 4:5 (portrait).",
-            }
-            size_hint = ratio_instructions.get(aspect_ratio, ratio_instructions["9:16"])
-            if final_prompt:
-                final_prompt = f"{final_prompt}\n{size_hint}"
-            else:
-                final_prompt = size_hint
+        
+        ratio_instructions = {
+            "1:1": "Aspect ratio 1:1 (square).",
+            "9:16": "Aspect ratio 9:16 (vertical).",
+            "16:9": "Aspect ratio 16:9 (landscape).",
+            "4:5": "Aspect ratio 4:5 (portrait).",
+        }
+        size_hint = ratio_instructions.get(aspect_ratio, ratio_instructions["9:16"])
+        if final_prompt:
+            final_prompt = f"{final_prompt}\n{size_hint}"
+        else:
+            final_prompt = size_hint
 
         parts = [{"text": final_prompt}]
         if input_image_b64:
