@@ -99,8 +99,8 @@ export default function Home() {
   const [dbTools, setDbTools] = useState<any[]>([]);
   const [dbApps, setDbApps] = useState<any[]>([]);
   const [dbPlans, setDbPlans] = useState<any[]>([]);
-  const [creditCosts, setCreditCosts] = useState({ 
-    image_generation: 1, 
+  const [creditCosts, setCreditCosts] = useState({
+    image_generation: 1,
     video_generation: 5,
     video_image_to_video: 5,
     video_frame_to_frame: 7
@@ -1028,7 +1028,7 @@ export default function Home() {
                 </a>
               )}
               {/* Mobile Menu Toggle */}
-              <button 
+              <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="md:hidden p-2 -mr-2 text-zinc-400 hover:text-white transition-colors"
               >
@@ -1037,7 +1037,7 @@ export default function Home() {
             </div>
           </nav>
         </div>
-        
+
         {/* Mobile Nav Dropdown */}
         {mobileMenuOpen && (
           <div className="md:hidden absolute top-full left-0 w-full bg-[#09090b]/95 backdrop-blur-xl border-b border-white/5 flex flex-col p-4 gap-2 shadow-2xl animate-in slide-in-from-top-2">
@@ -1103,12 +1103,12 @@ export default function Home() {
                   const Icon = IconMap[t.icon] || Sparkles;
                   return (
                     <div key={t.id} onClick={() => {
-                        if (t.title?.toLowerCase().includes("video")) {
-                          router.push("/video");
-                        } else {
-                          setActiveApp(t.action_id || "generation");
-                        }
-                      }} className="bg-[#121214] border border-white/5 rounded-3xl p-6 cursor-pointer hover:border-purple-500/30 hover:bg-[#18181b] transition-all group">
+                      if (t.title?.toLowerCase().includes("video")) {
+                        router.push("/video");
+                      } else {
+                        setActiveApp(t.action_id || "generation");
+                      }
+                    }} className="bg-[#121214] border border-white/5 rounded-3xl p-6 cursor-pointer hover:border-purple-500/30 hover:bg-[#18181b] transition-all group">
                       <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                         <Icon className="text-purple-400" size={24} />
                       </div>
@@ -1178,61 +1178,61 @@ export default function Home() {
                   const isCurrentPlan = user?.plan_id === p.id;
                   const isLoading = subscribingPlanId === p.id;
                   return (
-                  <div key={p.id} className={`bg-[#18181b] border ${p.is_popular ? 'border-purple-500 ring-1 ring-purple-500' : 'border-white/5'} rounded-3xl p-8 flex flex-col relative transition-all group hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.5)]`}>
-                    {p.is_popular ? (
-                      <div className="absolute top-0 right-8 -translate-y-1/2 px-4 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[11px] font-bold rounded-full uppercase tracking-widest shadow-lg">
-                        Most Popular
+                    <div key={p.id} className={`bg-[#18181b] border ${p.is_popular ? 'border-purple-500 ring-1 ring-purple-500' : 'border-white/5'} rounded-3xl p-8 flex flex-col relative transition-all group hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.5)]`}>
+                      {p.is_popular ? (
+                        <div className="absolute top-0 right-8 -translate-y-1/2 px-4 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[11px] font-bold rounded-full uppercase tracking-widest shadow-lg">
+                          Most Popular
+                        </div>
+                      ) : null}
+                      {isCurrentPlan && (
+                        <div className="absolute top-0 left-8 -translate-y-1/2 px-4 py-1.5 bg-emerald-500 text-white text-[11px] font-bold rounded-full uppercase tracking-widest shadow-lg">
+                          Current Plan
+                        </div>
+                      )}
+                      <div className="mb-6">
+                        <h3 className="text-2xl font-bold mb-2">{p.name}</h3>
+                        <div className="flex items-end gap-1">
+                          <span className="text-4xl font-black">${p.price}</span>
+                          <span className="text-zinc-500 mb-1">/{p.period}</span>
+                        </div>
                       </div>
-                    ) : null}
-                    {isCurrentPlan && (
-                      <div className="absolute top-0 left-8 -translate-y-1/2 px-4 py-1.5 bg-emerald-500 text-white text-[11px] font-bold rounded-full uppercase tracking-widest shadow-lg">
-                        Current Plan
+                      <div className="bg-[#121214] border border-white/5 rounded-2xl p-4 mb-8 flex flex-col gap-1 items-center justify-center text-center">
+                        <span className="text-3xl font-bold text-emerald-400">{p.credits} <Coins size={20} className="inline opacity-80" /></span>
+                        <span className="text-xs font-medium text-zinc-400 uppercase tracking-widest">Credits included</span>
                       </div>
-                    )}
-                    <div className="mb-6">
-                      <h3 className="text-2xl font-bold mb-2">{p.name}</h3>
-                      <div className="flex items-end gap-1">
-                        <span className="text-4xl font-black">${p.price}</span>
-                        <span className="text-zinc-500 mb-1">/{p.period}</span>
-                      </div>
-                    </div>
-                    <div className="bg-[#121214] border border-white/5 rounded-2xl p-4 mb-8 flex flex-col gap-1 items-center justify-center text-center">
-                      <span className="text-3xl font-bold text-emerald-400">{p.credits} <Coins size={20} className="inline opacity-80" /></span>
-                      <span className="text-xs font-medium text-zinc-400 uppercase tracking-widest">Credits included</span>
-                    </div>
-                    <ul className="flex flex-col gap-4 flex-1 mb-8">
-                      {p.features.map((f: string, i: number) => (
-                        <li key={i} className="flex items-start gap-3 text-sm text-zinc-300">
-                          <CheckCircle2 size={18} className="text-purple-400 shrink-0 mt-0.5" />
-                          <span className="leading-relaxed">{f}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <button
-                      disabled={isLoading || isCurrentPlan}
-                      onClick={async () => {
-                        if (!user) { router.push("/login"); return; }
-                        setSubscribingPlanId(p.id);
-                        setSubscribeMsg(null);
-                        const res = await apiSubscribe(p.id);
-                        if (res.ok && res.user) {
-                          setUser(res.user);
-                          setStoredUser(res.user);
-                          setSubscribeMsg({ type: "success", text: `✅ تم الاشتراك في خطة ${res.plan}! تمت إضافة ${res.credits_added} كريدت لحسابك.` });
-                        } else {
-                          setSubscribeMsg({ type: "error", text: res.error || "فشل الاشتراك، حاول مرة أخرى." });
-                        }
-                        setSubscribingPlanId(null);
-                      }}
-                      className={`w-full py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2
+                      <ul className="flex flex-col gap-4 flex-1 mb-8">
+                        {p.features.map((f: string, i: number) => (
+                          <li key={i} className="flex items-start gap-3 text-sm text-zinc-300">
+                            <CheckCircle2 size={18} className="text-purple-400 shrink-0 mt-0.5" />
+                            <span className="leading-relaxed">{f}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <button
+                        disabled={isLoading || isCurrentPlan}
+                        onClick={async () => {
+                          if (!user) { router.push("/login"); return; }
+                          setSubscribingPlanId(p.id);
+                          setSubscribeMsg(null);
+                          const res = await apiSubscribe(p.id);
+                          if (res.ok && res.user) {
+                            setUser(res.user);
+                            setStoredUser(res.user);
+                            setSubscribeMsg({ type: "success", text: `✅ تم الاشتراك في خطة ${res.plan}! تمت إضافة ${res.credits_added} كريدت لحسابك.` });
+                          } else {
+                            setSubscribeMsg({ type: "error", text: res.error || "فشل الاشتراك، حاول مرة أخرى." });
+                          }
+                          setSubscribingPlanId(null);
+                        }}
+                        className={`w-full py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2
                         ${isCurrentPlan ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 cursor-default' :
-                          p.is_popular ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:opacity-90 shadow-lg disabled:opacity-50' :
-                          'bg-[#121214] border border-white/10 text-white hover:bg-white/5 disabled:opacity-50'}`}
-                    >
-                      {isLoading ? <Loader2 size={16} className="animate-spin" /> : null}
-                      {isCurrentPlan ? "Current Plan" : isLoading ? "Processing..." : "Select Plan"}
-                    </button>
-                  </div>
+                            p.is_popular ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:opacity-90 shadow-lg disabled:opacity-50' :
+                              'bg-[#121214] border border-white/10 text-white hover:bg-white/5 disabled:opacity-50'}`}
+                      >
+                        {isLoading ? <Loader2 size={16} className="animate-spin" /> : null}
+                        {isCurrentPlan ? "Current Plan" : isLoading ? "Processing..." : "Select Plan"}
+                      </button>
+                    </div>
                   );
                 })}
               </div>
@@ -1250,7 +1250,7 @@ export default function Home() {
 
             {/* Studio Workspace - Layout: History (left, toggleable) | Gallery (center) | Settings (right) */}
             <div id="create" className={`relative w-full grid gap-8 xl:gap-14 2xl:gap-20 animate-[fadeInUp_0.8s_ease-out_0.2s_both] scroll-mt-24 ${user && historySidebarOpen
-              ? "grid-cols-1 xl:grid-cols-[240px_1fr_300px] 2xl:grid-cols-[260px_1fr_320px]"
+              ? "grid-cols-1 xl:grid-cols-[240px_1fr_300px] 2xl:grid-cols-[260px_1fr_390px]"
               : "grid-cols-1 xl:grid-cols-[1fr_300px] 2xl:grid-cols-[1fr_320px]"
               }`}>
               {/* Show History toggle button when sidebar is hidden */}
