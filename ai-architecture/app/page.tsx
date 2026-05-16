@@ -639,6 +639,7 @@ export default function Home() {
         fd.append("perspective", sp.perspective);
         fd.append("aspect_ratio", sp.aspectRatio);
         fd.append("image_count", sp.imageCount.toString());
+        fd.append("model_name", sp.model || "nano-banana-pro-preview");
       });
       fd.append("custom_prompt", customPrompt || "");
       fd.append("denoise", denoise.toString());
@@ -1250,7 +1251,7 @@ export default function Home() {
 
             {/* Studio Workspace - Layout: History (left, toggleable) | Gallery (center) | Settings (right) */}
             <div id="create" className={`relative w-full grid gap-8 xl:gap-14 2xl:gap-20 animate-[fadeInUp_0.8s_ease-out_0.2s_both] scroll-mt-24 ${user && historySidebarOpen
-              ? "grid-cols-1 xl:grid-cols-[240px_1fr_300px] 2xl:grid-cols-[260px_1fr_390px]"
+              ? "grid-cols-1 xl:grid-cols-[240px_1fr_300px] 2xl:grid-cols-[260px_1fr_570px]"
               : "grid-cols-1 xl:grid-cols-[1fr_300px] 2xl:grid-cols-[1fr_320px]"
               }`}>
               {/* Show History toggle button when sidebar is hidden */}

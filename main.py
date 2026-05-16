@@ -1897,7 +1897,7 @@ async def generate(
     aspect_ratio: List[str] = Form(["9:16"]),
     image_count: List[Any] = Form([1]),
     is_video: bool = Form(False),
-    model_name: str = Form("nano-banana-pro-preview"),
+    model_name: List[str] = Form(["nano-banana-pro-preview"]),
     duration: Optional[str] = Form(None),
     resolution: Optional[str] = Form(None),
     generateAudio: Optional[str] = Form(None),
@@ -2016,7 +2016,7 @@ async def generate(
                 mime_type,
                 reference_images,
                 video_ar,
-                model_name,
+                model_name[0] if len(model_name) > 0 else "nano-banana-pro-preview",
             )
             job_ids.append(job_id)
         else:
@@ -2053,7 +2053,7 @@ async def generate(
                         reference_images,
                         ar,
                         p,
-                        model_name
+                        model_name[idx] if idx < len(model_name) else (model_name[0] if len(model_name) > 0 else "nano-banana-pro-preview")
                     )
                     job_ids.append(job_id)
         

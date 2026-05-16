@@ -44,6 +44,7 @@ export interface SelectedPerspective {
   perspective: Perspective;
   imageCount: number;
   aspectRatio: string;
+  model?: string;
 }
 
 interface ControlPanelProps {
@@ -570,7 +571,7 @@ export default function ControlPanel({
                         } else {
                           setSelectedPerspectives([
                             ...selectedPerspectives,
-                            { perspective: p, imageCount: 1, aspectRatio: "9:16" },
+                            { perspective: p, imageCount: 1, aspectRatio: "9:16", model: "nano-banana-pro-preview" },
                           ]);
                           if (p === "Floor Plan to 3D") setDenoise(0.85);
                         }
@@ -614,6 +615,36 @@ export default function ControlPanel({
                               </svg>
                             </div>
                           </div>
+
+                          {/* Model Selection */}
+                          {mode === "image" && (
+                            <div className="flex items-center gap-1 bg-black/40 px-1.5 py-1 rounded-md border border-purple-500/20">
+                              <span className="text-[9px] text-purple-400/80 font-bold uppercase tracking-wider">Model:</span>
+                            <div className="relative flex items-center">
+                              <select
+                                value={selectedItem.model || "nano-banana-pro-preview"}
+                                onChange={(e) => {
+                                  setSelectedPerspectives(
+                                    selectedPerspectives.map(x =>
+                                      x.perspective === p ? { ...x, model: e.target.value } : x
+                                    )
+                                  );
+                                }}
+                                className="appearance-none bg-transparent text-[11px] text-purple-100 outline-none cursor-pointer pr-3 font-semibold w-[120px] text-ellipsis"
+                              >
+                                <option value="gemini-2.5-flash" className="bg-slate-900">Gemini 2.5 Flash</option>
+                                <option value="gemini-2.0-flash" className="bg-slate-900">Gemini 2.0 Flash</option>
+                                <option value="gemini-2.5-pro" className="bg-slate-900">Gemini 2.5 Pro</option>
+                                <option value="nano-banana-pro-preview" className="bg-slate-900">Nano Banana Pro</option>
+                                <option value="gemini-3.1-flash-image-preview" className="bg-slate-900">Gemini 3.1 Flash Image</option>
+                                <option value="gemini-3-pro-image-preview" className="bg-slate-900">Gemini 3.0 Pro Image</option>
+                              </select>
+                              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute right-0 text-purple-400/60 pointer-events-none">
+                                <polyline points="6 9 12 15 18 9"></polyline>
+                              </svg>
+                            </div>
+                          </div>
+                          )}
 
                           {/* Image Count */}
                           {mode === "image" && (
