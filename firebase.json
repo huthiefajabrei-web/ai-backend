@@ -1,0 +1,33 @@
+{
+  "functions": [
+    {
+      "source": "functions",
+      "runtime": "python310",
+      "codebase": "default",
+      "ignore": [
+        "venv",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ],
+  "hosting": {
+    "source": "ai-architecture",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "rewrites": [
+      {
+        "source": "/api/**",
+        "function": "api"
+      }
+    ],
+    "frameworksBackend": {
+      "region": "europe-west3"
+    }
+  }
+}

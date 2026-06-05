@@ -22,6 +22,7 @@ import {
   apiDeleteSession,
   apiSubscribe,
   getToken,
+  getValidToken,
   getStoredUser,
   setStoredUser,
   removeToken,
@@ -87,9 +88,7 @@ export default function Home() {
       aspectRatio: "16:9",
     },
   ]);
-  const [customPrompt, setCustomPrompt] = useState<string>(
-    "modern architectural masterpiece, twilight lighting, ambient occlusion, global illumination, highly detailed",
-  );
+  const [customPrompt, setCustomPrompt] = useState<string>("");
   const [denoise, setDenoise] = useState<number>(0.75);
   const [mode, setMode] = useState<"image" | "video">("image");
   const [videoGenerationMode, setVideoGenerationMode] = useState<"image_to_video" | "frame_start_to_end">("image_to_video");
@@ -288,10 +287,8 @@ export default function Home() {
         setStoredUser(me);
       } else if (me === null) {
         // Token definitively invalid (401/403)
-        if (!stored) {
-          removeToken();
-          setUser(null);
-        }
+        removeToken();
+        setUser(null);
       }
       // AUTH_NETWORK_ERROR = server unreachable, keep existing session
     }).catch(() => {
@@ -407,7 +404,7 @@ export default function Home() {
       setResps({});
       onClear();
     } else {
-      alert("تعذر إنشاء الجلسة. تحقق من اتصال قاعدة بيانات Supabase (DATABASE_URL) ثم أعد المحاولة.");
+      alert("تعذر إنشاء الجلسة. قد تكون جلستك منتهية الصلاحية أو هناك مشكلة في قاعدة البيانات، يرجى تسجيل الخروج والدخول مجدداً.");
     }
   };
 
@@ -659,9 +656,10 @@ export default function Home() {
         }
       }
 
+      const currentValidToken = await getValidToken();
       const res = await fetch(`${API_BASE}/generate`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${getToken()}` },
+        headers: { Authorization: `Bearer ${currentValidToken}` },
         body: fd,
       });
 

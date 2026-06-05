@@ -24,3 +24,18 @@ static/
 # Build and IDE
 .vscode/
 .idea/
+
+# Security
+firebase-credentials.json
+*.key
+*.pem
+
+# Node.js and Next.js
+node_modules/
+.next/
+out/
+
+# Firebase Build
+.firebase/
+firebase-debug.log
+
