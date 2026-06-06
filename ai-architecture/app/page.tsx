@@ -893,10 +893,21 @@ export default function Home() {
 
   function onDownload(url: string) {
     if (!url) return;
-    const downloadUrl = `/api/proxy-download?url=${encodeURIComponent(url)}`;
+    
+    let downloadUrl = url;
+    let ext = "png";
+    if (url.startsWith("data:video")) ext = "mp4";
+    else if (url.startsWith("data:image/jpeg")) ext = "jpg";
+    else if (url.endsWith(".mp4")) ext = "mp4";
+    else if (url.endsWith(".jpg") || url.endsWith(".jpeg")) ext = "jpg";
+
+    if (!url.startsWith("data:")) {
+      downloadUrl = `/api/proxy-download?url=${encodeURIComponent(url)}`;
+    }
+    
     const a = document.createElement("a");
     a.href = downloadUrl;
-    a.download = "studio_creation";
+    a.download = `studio_creation.${ext}`;
     document.body.appendChild(a);
     a.click();
     a.remove();
