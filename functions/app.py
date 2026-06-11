@@ -463,7 +463,12 @@ def get_credit_costs():
     try:
         costs = db_client.collection('app_credit_costs').order_by('operation').stream()
         rows = [c.to_dict() for c in costs]
-        return {"ok": True, "data": rows}
+        
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            content={"ok": True, "data": rows},
+            headers={"Cache-Control": "public, max-age=300"}
+        )
     except Exception as e:
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
 
@@ -658,7 +663,11 @@ def get_content(content_type: str):
         if content_type == "prompts":
             result.sort(key=lambda x: (x.get("type", ""), x.get("created_at", "")))
         
-        return {"ok": True, "data": result}
+        from fastapi.responses import JSONResponse
+        return JSONResponse(
+            content={"ok": True, "data": result},
+            headers={"Cache-Control": "public, max-age=300"}
+        )
     except Exception as e:
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
 

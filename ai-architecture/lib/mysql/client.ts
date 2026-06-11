@@ -116,7 +116,7 @@ export async function apiLogout() {
 export const AUTH_NETWORK_ERROR = Symbol("AUTH_NETWORK_ERROR");
 
 export async function apiGetMe(): Promise<AppUser | null | typeof AUTH_NETWORK_ERROR> {
-  const token = getToken();
+  const token = await getValidToken();
   if (!token) return null;
   try {
     // Optionally refresh token here if using Firebase listener, but relying on backend verification is fine
@@ -140,10 +140,13 @@ export async function apiGetMe(): Promise<AppUser | null | typeof AUTH_NETWORK_E
 
 // ─── Sessions ─────────────────────────────────────────────────────────────────
 export async function getValidToken() {
+  if (typeof window !== "undefined") {
+    await auth.authStateReady();
+  }
   let token = getToken();
   if (auth.currentUser) {
     try {
-      token = await auth.currentUser.getIdToken();
+      token = await auth.currentUser.getIdToken(true);
       setToken(token);
     } catch (e) {}
   }
