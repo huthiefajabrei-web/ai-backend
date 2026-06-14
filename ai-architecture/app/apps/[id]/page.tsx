@@ -402,9 +402,14 @@ export default function AppFeaturePage() {
                       <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
                       <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
                       <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
-                      <option value="nano-banana-pro-preview">Nano Banana Pro (Preview)</option>
+                      <option value="nano-banana-pro-preview">Nano Banana (Gemini 2.5 Flash Preview Image)</option>
                       <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash Image</option>
                       <option value="gemini-3-pro-image-preview">Gemini 3.0 Pro Image</option>
+                      <option value="gemini-2.5-flash-tts">Gemini 2.5 Flash TTS</option>
+                      <option value="gemini-2.5-pro-tts">Gemini 2.5 Pro TTS</option>
+                      <option value="imagen-4-generate">Imagen 4 Generate</option>
+                      <option value="imagen-4-ultra-generate">Imagen 4 Ultra Generate</option>
+                      <option value="gemini-3.1-flash-tts">Gemini 3.1 Flash TTS</option>
                     </select>
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
                       <Wand2 size={16} className="text-[#f97316]" />
