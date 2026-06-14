@@ -30,7 +30,7 @@ export default function AppFeaturePage() {
   // Generation States
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string>("");
-  const [referenceImages, setReferenceImages] = useState<{file: File, preview: string}[]>([]);
+  const [referenceImages, setReferenceImages] = useState<{ file: File, preview: string }[]>([]);
   const [aspectRatio, setAspectRatio] = useState("match");
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultImage, setResultImage] = useState<string | null>(null);
@@ -51,13 +51,13 @@ export default function AppFeaturePage() {
           fetch(`${API_BASE}/content/apps`).then(r => r.json()).catch(() => ({})),
           fetch(`${API_BASE}/content/hero`).then(r => r.json()).catch(() => ({}))
         ]);
-        
+
         const allItems = [
           ...(appRes.data || []).map((a: any) => ({ ...a, is_hero: false })),
           ...(heroRes.data || []).map((h: any) => ({ ...h, is_hero: true }))
         ];
         const found = allItems.find((a: any) => a.id === id);
-        
+
         if (found) {
           setAppData(found);
         } else {
@@ -127,13 +127,13 @@ export default function AppFeaturePage() {
     try {
       const formData = new FormData();
       formData.append("perspective", appData?.title || "Custom Scene");
-      
+
       let promptMods = [];
       if (lighting !== "default") promptMods.push(`Lighting limit to: ${lighting}`);
       if (mood !== "default") promptMods.push(`Mood vibe: ${mood}`);
-      
+
       let extendedPrompt = `Transform architecture into ${appData?.title || 'new design'}, high quality, 8k resolution, highly detailed`;
-      
+
       if ((appData as any)?.is_hero && customPrompt.trim()) {
         extendedPrompt = `${customPrompt.trim()}, high quality, 8k resolution, highly detailed`;
       }
@@ -257,7 +257,7 @@ export default function AppFeaturePage() {
           <button className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><Search size={20} /></button>
           <button className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><LayoutGrid size={20} /></button>
           {/* Active Tool visually represented */}
-          <button className="p-2.5 text-[#09090b] bg-[#14b8a6] rounded-xl transition-all shadow-md"><Brush size={20} strokeWidth={2.5}/></button>
+          <button className="p-2.5 text-[#09090b] bg-[#14b8a6] rounded-xl transition-all shadow-md"><Brush size={20} strokeWidth={2.5} /></button>
           <button className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><Folder size={20} /></button>
         </div>
 
@@ -274,7 +274,7 @@ export default function AppFeaturePage() {
             <span className="text-xs font-semibold text-zinc-300 hidden sm:block">{user ? user.email.split('@')[0] : 'User'}</span>
           </div>
           {/* Mobile Menu Toggle */}
-          <button 
+          <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="md:hidden p-2 -mr-2 text-zinc-400 hover:text-white transition-colors"
           >
@@ -318,7 +318,7 @@ export default function AppFeaturePage() {
 
             {/* Left Column (Inputs) */}
             <div className="flex flex-col gap-8 lg:col-span-5 xl:col-span-4">
-              
+
               {/* Upload Box */}
               <div className="w-full aspect-[4/3] rounded-[2rem] border-[1.5px] border-dashed border-[#14b8a6]/20 bg-[#121214]/50 hover:bg-[#121214] transition-colors flex flex-col items-center justify-center gap-4 cursor-pointer group px-6 text-center relative overflow-hidden">
                 <input type="file" onChange={handleFileChange} accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
@@ -338,19 +338,19 @@ export default function AppFeaturePage() {
 
               {/* Form Controls */}
               <div className="flex flex-col gap-5">
-                
+
                 {/* Optional Reference Box */}
                 <div className="flex flex-col gap-2.5 animate-[fadeIn_0.3s_ease-out]">
                   <label className="text-xs font-medium text-[#a1a1aa] tracking-wide flex items-center justify-between">
                     <span>Reference Images</span>
                     <span className="text-zinc-600 text-[10px] uppercase font-bold tracking-widest bg-zinc-800/50 px-2 py-0.5 rounded-md">Optional</span>
                   </label>
-                  
+
                   <div className="flex flex-wrap gap-3">
                     {referenceImages.map((ref, idx) => (
                       <div key={idx} className="relative w-20 h-20 rounded-xl border border-[#27272a] overflow-hidden group">
-                        <img src={ref.preview} alt={`Ref ${idx+1}`} className="w-full h-full object-cover" />
-                        <button 
+                        <img src={ref.preview} alt={`Ref ${idx + 1}`} className="w-full h-full object-cover" />
+                        <button
                           type="button"
                           onClick={(e) => { e.preventDefault(); handleRemoveRef(idx); }}
                           className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all scale-75 hover:scale-100"
@@ -384,8 +384,8 @@ export default function AppFeaturePage() {
                 {(appData as any)?.is_hero && (
                   <div className="flex flex-col gap-2.5 animate-[fadeIn_0.3s_ease-out]">
                     <label className="text-xs font-medium text-[#a1a1aa] tracking-wide">Custom Prompt</label>
-                    <textarea 
-                      value={customPrompt} 
+                    <textarea
+                      value={customPrompt}
                       onChange={e => setCustomPrompt(e.target.value)}
                       placeholder="Describe the design, aesthetic, and architectural style you want..."
                       className="w-full bg-[#111111] border border-[#27272a] rounded-xl px-4 py-3 text-sm font-semibold text-[#ececf1] focus:outline-none focus:border-teal-500/50 hover:bg-[#18181b] transition-colors resize-none placeholder:text-zinc-600 focus:shadow-[0_0_15px_rgba(20,184,166,0.1)] custom-scrollbar"
@@ -399,7 +399,7 @@ export default function AppFeaturePage() {
                   <label className="text-xs font-medium text-[#a1a1aa] tracking-wide">Model Selection</label>
                   <div className="relative group">
                     <select value={model} onChange={e => setModel(e.target.value)} className="w-full appearance-none bg-[#111111] border border-[#27272a] rounded-xl px-4 py-3.5 text-sm font-semibold text-[#ececf1] focus:outline-none focus:border-teal-500/50 hover:bg-[#18181b] transition-colors cursor-pointer pl-10 tracking-wide">
-                      <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+                      <option value="gemini-2.5-flash-image">gemini 2.5 flash image</option>
                       <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
                       <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                       <option value="nano-banana-pro-preview">Nano Banana (Gemini 2.5 Flash Preview Image)</option>
@@ -409,7 +409,7 @@ export default function AppFeaturePage() {
                       <option value="gemini-2.5-pro-tts">Gemini 2.5 Pro TTS</option>
                       <option value="imagen-4-generate">Imagen 4 Generate</option>
                       <option value="imagen-4-ultra-generate">Imagen 4 Ultra Generate</option>
-                      <option value="gemini-3.1-flash-tts">Gemini 3.1 Flash TTS</option>
+                      <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash lite</option>
                     </select>
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
                       <Wand2 size={16} className="text-[#f97316]" />
@@ -470,7 +470,7 @@ export default function AppFeaturePage() {
                     <>
                       Generate Image
                       <span className="opacity-80 flex items-center gap-1 ml-1">
-                        <Coins size={14}/> {appData?.credit_cost ?? 1}
+                        <Coins size={14} /> {appData?.credit_cost ?? 1}
                       </span>
                     </>
                   )}
@@ -506,7 +506,7 @@ export default function AppFeaturePage() {
                     <div className="w-[45%] aspect-[4/3] rounded-2xl overflow-hidden border-2 border-[#18181b] shadow-2xl relative bg-[#18181b]">
                       <img src={filePreview || "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=500&q=80"} alt="Original" className="w-full h-full object-cover" />
                     </div>
-                    
+
                     <div className="w-8 flex items-center justify-center shrink-0">
                       {isGenerating ? <Loader2 size={24} className="text-[#14b8a6] animate-spin" /> : <ArrowRight size={24} className="text-zinc-600" />}
                     </div>
@@ -542,7 +542,7 @@ export default function AppFeaturePage() {
       {isFullscreen && resultImage && (
         <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col items-center justify-center transition-all animate-in fade-in duration-300">
           <div className="absolute top-6 right-6 flex items-center gap-4">
-            <button 
+            <button
               onClick={() => {
                 const a = document.createElement("a");
                 a.href = resultImage;
@@ -556,18 +556,18 @@ export default function AppFeaturePage() {
               <Download size={20} className="group-hover:-translate-y-0.5 transition-transform" />
               <span className="text-sm font-semibold pr-1 hidden sm:block">Save Image</span>
             </button>
-            <button 
-              onClick={() => setIsFullscreen(false)} 
+            <button
+              onClick={() => setIsFullscreen(false)}
               className="bg-red-500/10 hover:bg-red-500/20 text-red-400 rounded-full p-3 backdrop-blur-md transition-all border border-red-500/20 group shadow-lg"
             >
               <X size={20} className="group-hover:scale-110 transition-transform" />
             </button>
           </div>
           <div className="w-[90vw] h-[85vh] relative max-w-7xl animate-in zoom-in-95 duration-300">
-            <img 
-              src={resultImage} 
-              alt="Generated Fullsize" 
-              className="w-full h-full object-contain drop-shadow-2xl rounded-xl" 
+            <img
+              src={resultImage}
+              alt="Generated Fullsize"
+              className="w-full h-full object-contain drop-shadow-2xl rounded-xl"
             />
           </div>
         </div>

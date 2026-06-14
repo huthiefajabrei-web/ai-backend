@@ -74,8 +74,8 @@ interface ControlPanelProps {
   onGenerateVideo: () => void;
   onClear: () => void;
   userCredits?: number;
-  creditCosts?: { 
-    image_generation: number; 
+  creditCosts?: {
+    image_generation: number;
     video_generation: number;
     video_image_to_video: number;
     video_frame_to_frame: number;
@@ -107,8 +107,8 @@ export default function ControlPanel({
   onGenerateVideo,
   onClear,
   userCredits = 0,
-  creditCosts = { 
-    image_generation: 1, 
+  creditCosts = {
+    image_generation: 1,
     video_generation: 5,
     video_image_to_video: 5,
     video_frame_to_frame: 7
@@ -117,7 +117,7 @@ export default function ControlPanel({
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
   const [designType, setDesignType] = React.useState<"Exterior" | "Interior">("Exterior");
-  const [customPromptsList, setCustomPromptsList] = React.useState<{title: string, type: string}[]>([]);
+  const [customPromptsList, setCustomPromptsList] = React.useState<{ title: string, type: string }[]>([]);
 
   React.useEffect(() => {
     fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000"}/content/prompts`)
@@ -131,14 +131,14 @@ export default function ControlPanel({
   }, []);
 
   const activePromptList = React.useMemo(() => {
-      let titles = customPromptsList.length > 0 
-           ? customPromptsList.filter(p => p.type === designType).map(p => p.title)
-           : (designType === "Exterior" ? EXTERIOR_PERSPECTIVES : INTERIOR_PERSPECTIVES);
-           
-      if (!titles.includes("Custom Scene")) {
-          titles = [...titles, "Custom Scene"];
-      }
-      return titles;
+    let titles = customPromptsList.length > 0
+      ? customPromptsList.filter(p => p.type === designType).map(p => p.title)
+      : (designType === "Exterior" ? EXTERIOR_PERSPECTIVES : INTERIOR_PERSPECTIVES);
+
+    if (!titles.includes("Custom Scene")) {
+      titles = [...titles, "Custom Scene"];
+    }
+    return titles;
   }, [designType, customPromptsList]);
 
   React.useEffect(() => {
@@ -493,18 +493,16 @@ export default function ControlPanel({
           </label>
           <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 relative">
             <div
-              className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-lg transition-all duration-300 ease-in-out shadow-lg border ${
-                designType === "Exterior"
-                  ? "left-1.5 bg-blue-500/20 border-blue-500/40"
-                  : "left-[calc(50%+4.5px)] bg-rose-500/20 border-rose-500/40"
-              }`}
+              className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-lg transition-all duration-300 ease-in-out shadow-lg border ${designType === "Exterior"
+                ? "left-1.5 bg-blue-500/20 border-blue-500/40"
+                : "left-[calc(50%+4.5px)] bg-rose-500/20 border-rose-500/40"
+                }`}
             />
             <button
-              className={`flex-1 relative z-10 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
-                designType === "Exterior"
-                  ? "text-blue-100"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
+              className={`flex-1 relative z-10 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${designType === "Exterior"
+                ? "text-blue-100"
+                : "text-slate-400 hover:text-slate-200"
+                }`}
               onClick={(e) => {
                 e.preventDefault();
                 setDesignType("Exterior");
@@ -513,11 +511,10 @@ export default function ControlPanel({
               Exterior
             </button>
             <button
-              className={`flex-1 relative z-10 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${
-                designType === "Interior"
-                  ? "text-rose-100"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
+              className={`flex-1 relative z-10 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${designType === "Interior"
+                ? "text-rose-100"
+                : "text-slate-400 hover:text-slate-200"
+                }`}
               onClick={(e) => {
                 e.preventDefault();
                 setDesignType("Interior");
@@ -584,9 +581,9 @@ export default function ControlPanel({
                         </div>
                         <span className="leading-snug break-words text-xs font-medium">{p}</span>
                       </div>
-                      
+
                       {isSelected && selectedItem && (
-                        <div 
+                        <div
                           className="flex flex-wrap items-center justify-end gap-1.5 shrink-0"
                           onClick={(e) => e.stopPropagation()}
                         >
@@ -620,35 +617,35 @@ export default function ControlPanel({
                           {mode === "image" && (
                             <div className="flex items-center gap-1 bg-black/40 px-1.5 py-1 rounded-md border border-purple-500/20">
                               <span className="text-[9px] text-purple-400/80 font-bold uppercase tracking-wider">Model:</span>
-                            <div className="relative flex items-center">
-                              <select
-                                value={selectedItem.model || "nano-banana-pro-preview"}
-                                onChange={(e) => {
-                                  setSelectedPerspectives(
-                                    selectedPerspectives.map(x =>
-                                      x.perspective === p ? { ...x, model: e.target.value } : x
-                                    )
-                                  );
-                                }}
-                                className="appearance-none bg-transparent text-[11px] text-purple-100 outline-none cursor-pointer pr-3 font-semibold w-[120px] text-ellipsis"
-                              >
-                                <option value="gemini-2.5-flash" className="bg-slate-900">Gemini 2.5 Flash</option>
-                                <option value="gemini-2.0-flash" className="bg-slate-900">Gemini 2.0 Flash</option>
-                                <option value="gemini-2.5-pro" className="bg-slate-900">Gemini 2.5 Pro</option>
-                                <option value="nano-banana-pro-preview" className="bg-slate-900">Nano Banana (Gemini 2.5 Flash Preview Image)</option>
-                                <option value="gemini-3.1-flash-image-preview" className="bg-slate-900">Gemini 3.1 Flash Image</option>
-                                <option value="gemini-3-pro-image-preview" className="bg-slate-900">Gemini 3.0 Pro Image</option>
-                                <option value="gemini-2.5-flash-tts" className="bg-slate-900">Gemini 2.5 Flash TTS</option>
-                                <option value="gemini-2.5-pro-tts" className="bg-slate-900">Gemini 2.5 Pro TTS</option>
-                                <option value="imagen-4-generate" className="bg-slate-900">Imagen 4 Generate</option>
-                                <option value="imagen-4-ultra-generate" className="bg-slate-900">Imagen 4 Ultra Generate</option>
-                                <option value="gemini-3.1-flash-tts" className="bg-slate-900">Gemini 3.1 Flash TTS</option>
-                              </select>
-                              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute right-0 text-purple-400/60 pointer-events-none">
-                                <polyline points="6 9 12 15 18 9"></polyline>
-                              </svg>
+                              <div className="relative flex items-center">
+                                <select
+                                  value={selectedItem.model || "nano-banana-pro-preview"}
+                                  onChange={(e) => {
+                                    setSelectedPerspectives(
+                                      selectedPerspectives.map(x =>
+                                        x.perspective === p ? { ...x, model: e.target.value } : x
+                                      )
+                                    );
+                                  }}
+                                  className="appearance-none bg-transparent text-[11px] text-purple-100 outline-none cursor-pointer pr-3 font-semibold w-[120px] text-ellipsis"
+                                >
+                                  <option value="gemini-2.5-flash-image" className="bg-slate-900">gemini 2.5 flash image</option>
+                                  <option value="gemini-2.0-flash" className="bg-slate-900">Gemini 2.0 Flash</option>
+                                  <option value="gemini-2.5-pro" className="bg-slate-900">Gemini 2.5 Pro</option>
+                                  <option value="nano-banana-pro-preview" className="bg-slate-900">Nano Banana (Gemini 2.5 Flash Preview Image)</option>
+                                  <option value="gemini-3.1-flash-image-preview" className="bg-slate-900">Gemini 3.1 Flash Image</option>
+                                  <option value="gemini-3-pro-image-preview" className="bg-slate-900">Gemini 3.0 Pro Image</option>
+                                  <option value="gemini-2.5-flash-tts" className="bg-slate-900">Gemini 2.5 Flash TTS</option>
+                                  <option value="gemini-2.5-pro-tts" className="bg-slate-900">Gemini 2.5 Pro TTS</option>
+                                  <option value="imagen-4-generate" className="bg-slate-900">Imagen 4 Generate</option>
+                                  <option value="imagen-4-ultra-generate" className="bg-slate-900">Imagen 4 Ultra Generate</option>
+                                  <option value="gemini-2.5-flash-lite" className="bg-slate-900">Gemini 2.5 Flash lite</option>
+                                </select>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute right-0 text-purple-400/60 pointer-events-none">
+                                  <polyline points="6 9 12 15 18 9"></polyline>
+                                </svg>
+                              </div>
                             </div>
-                          </div>
                           )}
 
                           {/* Image Count */}
@@ -750,10 +747,10 @@ export default function ControlPanel({
           const totalImages = mode === "image"
             ? selectedPerspectives.reduce((sum, sp) => sum + (sp.imageCount || 1), 0)
             : 0;
-          
+
           let totalCost = 0;
           let costLabel = "";
-          
+
           if (mode === "video") {
             // Determine video type based on refs
             const hasRefs = refs && refs.length > 0;
@@ -770,12 +767,12 @@ export default function ControlPanel({
             totalCost = creditCosts.image_generation * totalImages;
             costLabel = `${totalImages} image${totalImages !== 1 ? "s" : ""} × ${creditCosts.image_generation} = ${totalCost} credit${totalCost !== 1 ? "s" : ""}`;
           }
-          
+
           const hasEnough = userCredits >= totalCost;
           return (
             <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium border ${hasEnough ? "bg-yellow-500/5 border-yellow-500/20 text-yellow-400" : "bg-red-500/10 border-red-500/30 text-red-400"}`}>
               <span className="flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
                 {costLabel}
               </span>
               <span className={`font-bold ${hasEnough ? "text-yellow-300" : "text-red-300"}`}>
@@ -785,86 +782,86 @@ export default function ControlPanel({
           );
         })()}
         <div className="flex gap-3">
-        <button
-          className={`flex-1 relative overflow-hidden rounded-xl font-semibold text-sm transition-all duration-300 shadow-lg group ${loading ? "opacity-80 cursor-not-allowed" : "hover:-translate-y-0.5"
-            } ${mode === "image"
-              ? "bg-gradient-to-r from-purple-600 to-blue-600 hover:shadow-[0_10px_20px_rgba(139,92,246,0.3)] text-white"
-              : "bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-[0_10px_20px_rgba(16,185,129,0.3)] text-white"
-            }`}
-          onClick={() => (mode === "image" ? onSend() : onGenerateVideo())}
-          disabled={loading}
-        >
-          <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite]"></div>
+          <button
+            className={`flex-1 relative overflow-hidden rounded-xl font-semibold text-sm transition-all duration-300 shadow-lg group ${loading ? "opacity-80 cursor-not-allowed" : "hover:-translate-y-0.5"
+              } ${mode === "image"
+                ? "bg-gradient-to-r from-purple-600 to-blue-600 hover:shadow-[0_10px_20px_rgba(139,92,246,0.3)] text-white"
+                : "bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-[0_10px_20px_rgba(16,185,129,0.3)] text-white"
+              }`}
+            onClick={() => (mode === "image" ? onSend() : onGenerateVideo())}
+            disabled={loading}
+          >
+            <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite]"></div>
 
-          <div className="relative z-10 flex items-center justify-center gap-2 py-3 px-4">
-            {loading ? (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            ) : mode === "image" ? (
-              <>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <path d="M12 2v4"></path>
-                  <path d="M12 18v4"></path>
-                  <path d="M4.93 4.93l2.83 2.83"></path>
-                  <path d="M16.24 16.24l2.83 2.83"></path>
-                  <path d="M2 12h4"></path>
-                  <path d="M18 12h4"></path>
-                  <path d="M4.93 19.07l2.83-2.83"></path>
-                  <path d="M16.24 7.76l2.83-2.83"></path>
-                </svg>
-                Generate Masterpiece
-                <span className="ml-2 flex items-center gap-1 opacity-90">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>
-                  {(() => {
-                    const totalImages = selectedPerspectives.reduce((sum, sp) => sum + (sp.imageCount || 1), 0);
-                    return creditCosts.image_generation * totalImages;
-                  })()}
-                </span>
-              </>
-            ) : (
-              <>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="16"
-                  height="16"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <polygon points="23 7 16 12 23 17 23 7"></polygon>
-                  <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
-                </svg>
-                Generate Video Journey
-                <span className="ml-2 flex items-center gap-1 opacity-90">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/></svg>
-                  {(() => {
-                    const hasRefs = refs && refs.length > 0;
-                    return hasRefs ? creditCosts.video_frame_to_frame : creditCosts.video_image_to_video;
-                  })()}
-                </span>
-              </>
-            )}
-          </div>
-        </button>
-        <button
-          className="px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-slate-400 hover:text-white transition-colors text-sm font-semibold disabled:opacity-50"
-          onClick={onClear}
-          disabled={loading}
-        >
-          Clear
-        </button>
+            <div className="relative z-10 flex items-center justify-center gap-2 py-3 px-4">
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+              ) : mode === "image" ? (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M12 2v4"></path>
+                    <path d="M12 18v4"></path>
+                    <path d="M4.93 4.93l2.83 2.83"></path>
+                    <path d="M16.24 16.24l2.83 2.83"></path>
+                    <path d="M2 12h4"></path>
+                    <path d="M18 12h4"></path>
+                    <path d="M4.93 19.07l2.83-2.83"></path>
+                    <path d="M16.24 7.76l2.83-2.83"></path>
+                  </svg>
+                  Generate Masterpiece
+                  <span className="ml-2 flex items-center gap-1 opacity-90">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6" /><path d="M18.09 10.37A6 6 0 1 1 10.34 18" /><path d="M7 6h1v4" /><path d="m16.71 13.88.7.71-2.82 2.82" /></svg>
+                    {(() => {
+                      const totalImages = selectedPerspectives.reduce((sum, sp) => sum + (sp.imageCount || 1), 0);
+                      return creditCosts.image_generation * totalImages;
+                    })()}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                  </svg>
+                  Generate Video Journey
+                  <span className="ml-2 flex items-center gap-1 opacity-90">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="8" cy="8" r="6" /><path d="M18.09 10.37A6 6 0 1 1 10.34 18" /><path d="M7 6h1v4" /><path d="m16.71 13.88.7.71-2.82 2.82" /></svg>
+                    {(() => {
+                      const hasRefs = refs && refs.length > 0;
+                      return hasRefs ? creditCosts.video_frame_to_frame : creditCosts.video_image_to_video;
+                    })()}
+                  </span>
+                </>
+              )}
+            </div>
+          </button>
+          <button
+            className="px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-slate-400 hover:text-white transition-colors text-sm font-semibold disabled:opacity-50"
+            onClick={onClear}
+            disabled={loading}
+          >
+            Clear
+          </button>
         </div>
       </div>
 
