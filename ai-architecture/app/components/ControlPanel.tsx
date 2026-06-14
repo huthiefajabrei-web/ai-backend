@@ -630,15 +630,9 @@ export default function ControlPanel({
                                   className="appearance-none bg-transparent text-[11px] text-purple-100 outline-none cursor-pointer pr-3 font-semibold w-[120px] text-ellipsis"
                                 >
                                   <option value="gemini-2.5-flash-image" className="bg-slate-900">gemini 2.5 flash image</option>
-                                  <option value="gemini-2.0-flash" className="bg-slate-900">Gemini 2.0 Flash</option>
-                                  <option value="gemini-2.5-pro" className="bg-slate-900">Gemini 2.5 Pro</option>
                                   <option value="nano-banana-pro-preview" className="bg-slate-900">Nano Banana (Gemini 2.5 Flash Preview Image)</option>
                                   <option value="gemini-3.1-flash-image-preview" className="bg-slate-900">Gemini 3.1 Flash Image</option>
                                   <option value="gemini-3-pro-image-preview" className="bg-slate-900">Gemini 3.0 Pro Image</option>
-                                  <option value="gemini-2.5-flash-tts" className="bg-slate-900">Gemini 2.5 Flash TTS</option>
-                                  <option value="gemini-2.5-pro-tts" className="bg-slate-900">Gemini 2.5 Pro TTS</option>
-                                  <option value="imagen-4-generate" className="bg-slate-900">Imagen 4 Generate</option>
-                                  <option value="imagen-4-ultra-generate" className="bg-slate-900">Imagen 4 Ultra Generate</option>
                                   <option value="gemini-2.5-flash-lite" className="bg-slate-900">Gemini 2.5 Flash lite</option>
                                 </select>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute right-0 text-purple-400/60 pointer-events-none">

@@ -400,15 +400,9 @@ export default function AppFeaturePage() {
                   <div className="relative group">
                     <select value={model} onChange={e => setModel(e.target.value)} className="w-full appearance-none bg-[#111111] border border-[#27272a] rounded-xl px-4 py-3.5 text-sm font-semibold text-[#ececf1] focus:outline-none focus:border-teal-500/50 hover:bg-[#18181b] transition-colors cursor-pointer pl-10 tracking-wide">
                       <option value="gemini-2.5-flash-image">gemini 2.5 flash image</option>
-                      <option value="gemini-2.0-flash">Gemini 2.0 Flash</option>
-                      <option value="gemini-2.5-pro">Gemini 2.5 Pro</option>
                       <option value="nano-banana-pro-preview">Nano Banana (Gemini 2.5 Flash Preview Image)</option>
                       <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash Image</option>
                       <option value="gemini-3-pro-image-preview">Gemini 3.0 Pro Image</option>
-                      <option value="gemini-2.5-flash-tts">Gemini 2.5 Flash TTS</option>
-                      <option value="gemini-2.5-pro-tts">Gemini 2.5 Pro TTS</option>
-                      <option value="imagen-4-generate">Imagen 4 Generate</option>
-                      <option value="imagen-4-ultra-generate">Imagen 4 Ultra Generate</option>
                       <option value="gemini-2.5-flash-lite">Gemini 2.5 Flash lite</option>
                     </select>
                     <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
