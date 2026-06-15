@@ -178,9 +178,11 @@ export default function AppFeaturePage() {
           const sRes = await fetch(`${API_BASE}/status/${jobId}`);
           const sData = await sRes.json();
           if (sData.status === "COMPLETED") {
-            const output_val = sData.output_url || sData.result_url || sData.image_url || sData.image_data_url;
+            const output_val = sData.file_url || sData.output_url || sData.result_url || sData.image_url || sData.image_data_url;
             if (output_val) {
               setResultImage(output_val);
+            } else if (sData.image_base64) {
+              setResultImage(`data:image/png;base64,${sData.image_base64}`);
             } else if (sData.output && sData.output.images && sData.output.images.length > 0) {
               const firstImg = sData.output.images[0];
               const b64 = firstImg.data || firstImg.b64;
