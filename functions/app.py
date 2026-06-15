@@ -1110,10 +1110,14 @@ def process_gemini_job(
             "4:5": "Aspect ratio 4:5 (portrait).",
         }
         size_hint = ratio_instructions.get(aspect_ratio, ratio_instructions["9:16"])
+        
+        # Explicitly instruct the model to return ONLY the image, preventing wasteful output text tokens
+        no_text_hint = "\nIMPORTANT: Generate ONLY the image. Do not output any descriptive text, explanations, or reasoning."
+        
         if final_prompt:
-            final_prompt = f"{final_prompt}\n{size_hint}"
+            final_prompt = f"{final_prompt}\n{size_hint}{no_text_hint}"
         else:
-            final_prompt = size_hint
+            final_prompt = f"{size_hint}{no_text_hint}"
 
         parts = [{"text": final_prompt}]
         if input_image_b64:
@@ -1164,7 +1168,13 @@ def process_gemini_job(
                     {
                         "parts": parts
                     }
-                ]
+                ],
+                # Request image-only output modality to suppress extra descriptive text tokens.
+                # responseModalities IMAGE tells the model to return the image without a text companion.
+                # Note: responseMimeType "image/jpeg" is NOT supported here (causes 400).
+                "generationConfig": {
+                    "responseModalities": ["IMAGE"]
+                }
             }
         
         r = None
