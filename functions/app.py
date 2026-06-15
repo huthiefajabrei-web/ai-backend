@@ -1072,18 +1072,35 @@ def process_gemini_job(
                     }
                 })
                 
-        payload = {
-            "contents": [
-                {
-                    "parts": parts
-                }
-            ]
-        }
-        
         GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
         if not model_name: 
             model_name = "nano-banana-pro-preview"
-        URL = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
+
+        is_imagen = model_name.startswith("imagen")
+        
+        if is_imagen:
+            URL = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:predict?key={GEMINI_API_KEY}"
+            payload = {
+                "instances": [
+                    {"prompt": final_prompt}
+                ],
+                "parameters": {
+                    "sampleCount": 1,
+                    "aspectRatio": aspect_ratio if aspect_ratio in ["1:1", "3:4", "4:3", "9:16", "16:9"] else "1:1",
+                    "outputOptions": {
+                        "mimeType": "image/jpeg"
+                    }
+                }
+            }
+        else:
+            URL = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={GEMINI_API_KEY}"
+            payload = {
+                "contents": [
+                    {
+                        "parts": parts
+                    }
+                ]
+            }
         
         r = None
         for attempt in range(2):
@@ -1134,8 +1151,11 @@ def process_gemini_job(
         print(f" Gemini API response data keys: {list(data.keys())}")
         
         try:
-            base64_img = data["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]
-            print(f" Successfully extracted image from Gemini response")
+            if is_imagen:
+                base64_img = data["predictions"][0]["bytesBase64"]
+            else:
+                base64_img = data["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]
+            print(f" Successfully extracted image from API response")
             
             # Save image to Supabase Storage (persistent) or local static (fallback)
             static_filename = f"{job_id}.jpg"

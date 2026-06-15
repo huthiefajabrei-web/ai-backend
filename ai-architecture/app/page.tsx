@@ -891,26 +891,41 @@ export default function Home() {
     }
   }
 
-  function onDownload(url: string) {
+  async function onDownload(url: string) {
     if (!url) return;
     
-    let downloadUrl = url;
     let ext = "png";
     if (url.startsWith("data:video")) ext = "mp4";
     else if (url.startsWith("data:image/jpeg")) ext = "jpg";
     else if (url.endsWith(".mp4")) ext = "mp4";
     else if (url.endsWith(".jpg") || url.endsWith(".jpeg")) ext = "jpg";
 
-    if (!url.startsWith("data:")) {
-      downloadUrl = `/api/proxy-download?url=${encodeURIComponent(url)}`;
+    if (url.startsWith("data:")) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `studio_creation.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      return;
     }
-    
-    const a = document.createElement("a");
-    a.href = downloadUrl;
-    a.download = `studio_creation.${ext}`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Network response was not ok");
+      const blob = await response.blob();
+      const objectUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = `studio_creation.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(objectUrl);
+    } catch (e) {
+      console.error("Download failed, opening in new tab", e);
+      window.open(url, "_blank");
+    }
   }
 
   function onClear() {
