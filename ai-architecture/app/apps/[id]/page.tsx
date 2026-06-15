@@ -537,33 +537,13 @@ export default function AppFeaturePage() {
         <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col items-center justify-center transition-all animate-in fade-in duration-300">
           <div className="absolute top-6 right-6 flex items-center gap-4">
             <button
-              onClick={async () => {
-                if (resultImage.startsWith("data:")) {
-                  const a = document.createElement("a");
-                  a.href = resultImage;
-                  a.download = `harch-app-${Date.now()}.jpg`;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  return;
-                }
-                
-                try {
-                  const response = await fetch(resultImage);
-                  if (!response.ok) throw new Error("Network response was not ok");
-                  const blob = await response.blob();
-                  const url = window.URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = url;
-                  a.download = `harch-app-${Date.now()}.jpg`;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
-                  window.URL.revokeObjectURL(url);
-                } catch (e) {
-                  console.error("Download failed, opening in new tab", e);
-                  window.open(resultImage, "_blank");
-                }
+              onClick={() => {
+                const a = document.createElement("a");
+                a.href = resultImage;
+                a.download = `harch-app-${Date.now()}.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
               }}
               className="bg-white/10 hover:bg-white/20 text-white rounded-full p-3 backdrop-blur-md transition-all border border-white/10 flex items-center gap-2 group shadow-lg"
             >
