@@ -206,6 +206,41 @@ def deduct_credits_on_success(job_id: str):
         print(f" Failed to deduct credits for job {job_id}: {e}")
 
 
+def compress_image_b64(b64_data: str, max_size: int = 1024, quality: int = 80) -> str:
+    """
+    Compress and resize an image encoded as base64 to reduce Gemini API input token costs.
+    - max_size: maximum width or height in pixels (default 1024)
+    - quality: JPEG compression quality 0-100 (default 80)
+    Returns a compressed base64 JPEG string.
+    """
+    try:
+        from PIL import Image
+        import io
+        raw = base64.b64decode(b64_data)
+        img = Image.open(io.BytesIO(raw))
+        # Convert to RGB if needed (removes alpha channel for JPEG)
+        if img.mode in ("RGBA", "P", "LA"):
+            img = img.convert("RGB")
+        # Resize only if larger than max_size
+        w, h = img.size
+        if w > max_size or h > max_size:
+            ratio = min(max_size / w, max_size / h)
+            new_w = max(1, int(w * ratio))
+            new_h = max(1, int(h * ratio))
+            img = img.resize((new_w, new_h), Image.LANCZOS)
+        # Re-encode as JPEG
+        out_buf = io.BytesIO()
+        img.save(out_buf, format="JPEG", quality=quality, optimize=True)
+        compressed = base64.b64encode(out_buf.getvalue()).decode("utf-8")
+        original_len = len(b64_data)
+        new_len = len(compressed)
+        print(f" Image compressed: {original_len} -> {new_len} bytes ({100 * new_len // original_len}% of original)")
+        return compressed
+    except Exception as e:
+        print(f" compress_image_b64 failed (using original): {e}")
+        return b64_data
+
+
 # =========================
 # Job Tracking (Database-backed)
 # =========================
@@ -1082,19 +1117,23 @@ def process_gemini_job(
 
         parts = [{"text": final_prompt}]
         if input_image_b64:
+            # Compress input image to reduce Gemini API token costs
+            compressed_input = compress_image_b64(input_image_b64, max_size=1024, quality=80)
             parts.append({
                 "inlineData": {
-                    "mimeType": mime_type,
-                    "data": input_image_b64
+                    "mimeType": "image/jpeg",
+                    "data": compressed_input
                 }
             })
             
         if reference_images:
             for ref in reference_images:
+                # Compress reference images to reduce input token costs
+                compressed_ref = compress_image_b64(ref["b64"], max_size=1024, quality=75)
                 parts.append({
                     "inlineData": {
-                        "mimeType": ref["mime_type"],
-                        "data": ref["b64"]
+                        "mimeType": "image/jpeg",
+                        "data": compressed_ref
                     }
                 })
                 
@@ -1129,6 +1168,8 @@ def process_gemini_job(
             }
         
         r = None
+        # Only retry on rate-limit (429) or network errors — NOT on 5xx server errors
+        # because 5xx often means the model already processed the request (billed) and retrying doubles the cost.
         for attempt in range(2):
             try:
                 print(f" Gemini API attempt {attempt + 1} for job {job_id}")
@@ -1143,15 +1184,18 @@ def process_gemini_job(
                 error_text = r.text[:500] if r.text else "No error text"
                 print(f" Gemini API error {r.status_code}: {error_text}")
                 
-                if r.status_code in (429,) or (500 <= r.status_code < 600):
+                # Retry ONLY on 429 (rate limit) — safe, not billed on rate limit
+                # Do NOT retry on 5xx: the model may have already processed & billed the request
+                if r.status_code == 429:
                     if attempt == 0:
-                        print(f" Retrying after 5 seconds...")
-                        time.sleep(5)
+                        print(f" Rate limited (429). Retrying after 10 seconds...")
+                        time.sleep(10)
                         continue
                         
                 update_job(job_id, {"status": "FAILED", "error": f"Gemini API error {r.status_code}", "details": error_text})
                 return
             except requests.Timeout:
+                # Timeout means no response received — safe to retry once
                 print(f" Gemini API timeout on attempt {attempt + 1}")
                 if attempt == 0:
                     time.sleep(3)
@@ -1686,14 +1730,15 @@ async def generate(
                 for c_idx in range(c):
                     job_id = f"gemini_{base_time}_{idx}_{c_idx}"
                     
-                    #   
+                    # Store cost_per_image (not total_cost) so each job deducts only its own share.
+                    # total_cost is the sum for ALL images; storing it per job would multiply deductions.
                     create_job({
                         "job_id": job_id,
                         "status": "IN_QUEUE",
                         "perspective": p,
                         "aspect_ratio": ar,
                         "_user_id": user["id"] if user else None,
-                        "_credit_cost": total_cost,
+                        "_credit_cost": cost_per_image,  # Fixed: was total_cost (caused N×N credit deductions)
                     })
                     
                     #     
