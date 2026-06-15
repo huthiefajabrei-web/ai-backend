@@ -331,6 +331,32 @@ def root():
 def health():
     return {"ok": True}
 
+@app.get("/proxy-download")
+def proxy_download(url: str):
+    if not url:
+        return JSONResponse(status_code=400, content={"error": "No URL provided"})
+    try:
+        response = requests.get(url, stream=True, timeout=15)
+        response.raise_for_status()
+        
+        content_type = response.headers.get("Content-Type", "application/octet-stream")
+        ext = "mp4" if "video" in content_type else "png"
+        filename = f"studio_creation_{int(time.time())}.{ext}"
+        
+        def iterfile():
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    yield chunk
+
+        headers = {
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Access-Control-Allow-Origin": "*"
+        }
+        
+        return StreamingResponse(iterfile(), media_type=content_type, headers=headers)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
 # =========================
 # Auth Endpoints
 # =========================

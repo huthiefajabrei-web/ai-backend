@@ -726,14 +726,18 @@ export default function Home() {
 
   async function urlToFile(url: string, filename: string): Promise<File> {
     try {
-      const res = await fetch(`/api/proxy-download?url=${encodeURIComponent(url)}`);
-      if (!res.ok) throw new Error("Failed to fetch proxy image");
+      // First try direct fetch (fastest if CORS allows it)
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Failed to fetch direct image");
       const blob = await res.blob();
       return new File([blob], filename, { type: blob.type || "image/png" });
     } catch (err) {
-      console.warn("Proxy fetch failed, falling back to direct URL fetch:", err);
-      const res = await fetch(url);
-      const blob = await res.blob();
+      console.warn("Direct fetch failed, falling back to proxy:", err);
+      // Fallback to backend proxy (handles CORS bypass)
+      const proxyUrl = `${API_BASE}/proxy-download?url=${encodeURIComponent(url)}`;
+      const resProxy = await fetch(proxyUrl);
+      if (!resProxy.ok) throw new Error("Failed to fetch via proxy");
+      const blob = await resProxy.blob();
       return new File([blob], filename, { type: blob.type || "image/png" });
     }
   }
@@ -891,26 +895,51 @@ export default function Home() {
     }
   }
 
-  function onDownload(url: string) {
+  async function onDownload(url: string) {
     if (!url) return;
 
-    let downloadUrl = url;
     let ext = "png";
     if (url.startsWith("data:video")) ext = "mp4";
     else if (url.startsWith("data:image/jpeg")) ext = "jpg";
     else if (url.endsWith(".mp4")) ext = "mp4";
     else if (url.endsWith(".jpg") || url.endsWith(".jpeg")) ext = "jpg";
 
-    if (!url.startsWith("data:")) {
-      downloadUrl = `/api/proxy-download?url=${encodeURIComponent(url)}`;
+    const filename = `studio_creation.${ext}`;
+
+    if (url.startsWith("data:")) {
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      return;
     }
 
-    const a = document.createElement("a");
-    a.href = downloadUrl;
-    a.download = `studio_creation.${ext}`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    try {
+      // Try direct fetch to blob to ensure it forces a download prompt
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Direct fetch failed");
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch (err) {
+      console.warn("Direct download fetch failed, trying proxy:", err);
+      // Fallback to backend proxy which forces attachment disposition
+      const proxyUrl = `${API_BASE}/proxy-download?url=${encodeURIComponent(url)}`;
+      const a = document.createElement("a");
+      a.href = proxyUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
   }
 
   function onClear() {

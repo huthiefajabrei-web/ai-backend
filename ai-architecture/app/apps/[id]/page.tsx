@@ -537,13 +537,40 @@ export default function AppFeaturePage() {
         <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-md flex flex-col items-center justify-center transition-all animate-in fade-in duration-300">
           <div className="absolute top-6 right-6 flex items-center gap-4">
             <button
-              onClick={() => {
-                const a = document.createElement("a");
-                a.href = resultImage;
-                a.download = `harch-app-${Date.now()}.jpg`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+              onClick={async () => {
+                if (!resultImage) return;
+                const filename = `harch-app-${Date.now()}.jpg`;
+                if (resultImage.startsWith("data:")) {
+                  const a = document.createElement("a");
+                  a.href = resultImage;
+                  a.download = filename;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  return;
+                }
+                try {
+                  const res = await fetch(resultImage);
+                  if (!res.ok) throw new Error("Direct fetch failed");
+                  const blob = await res.blob();
+                  const blobUrl = URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = blobUrl;
+                  a.download = filename;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                } catch (e) {
+                  console.warn("Direct download fetch failed, trying proxy:", e);
+                  const proxyUrl = `${API_BASE}/proxy-download?url=${encodeURIComponent(resultImage)}`;
+                  const a = document.createElement("a");
+                  a.href = proxyUrl;
+                  a.download = filename;
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                }
               }}
               className="bg-white/10 hover:bg-white/20 text-white rounded-full p-3 backdrop-blur-md transition-all border border-white/10 flex items-center gap-2 group shadow-lg"
             >
