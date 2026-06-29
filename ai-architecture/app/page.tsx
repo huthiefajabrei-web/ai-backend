@@ -1038,6 +1038,7 @@ export default function Home() {
               <button onClick={() => setActiveApp(null)} className={`p-2 rounded-xl transition-all ${!activeApp ? 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-[0_0_15px_rgba(139,92,246,0.4)]' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}><HomeIcon size={18} strokeWidth={2.5} /></button>
               <button onClick={() => setActiveApp("generation")} className={`p-2 rounded-xl transition-all ${activeApp === "generation" ? 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-[0_0_15px_rgba(139,92,246,0.4)]' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}><Wand2 size={18} strokeWidth={2} /></button>
               <button onClick={() => router.push("/video")} className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"><Video size={18} strokeWidth={2} /></button>
+              <button onClick={() => router.push("/workspace")} className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"><Layers size={18} strokeWidth={2} /></button>
               <button className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"><Search size={18} strokeWidth={2} /></button>
               <button className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"><LayoutGrid size={18} strokeWidth={2} /></button>
               <button className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"><Brush size={18} strokeWidth={2} /></button>
@@ -1085,6 +1086,9 @@ export default function Home() {
             </button>
             <button onClick={() => { setActiveApp("generation"); setMobileMenuOpen(false); }} className={`p-4 rounded-xl flex items-center gap-3 font-semibold ${activeApp === "generation" ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
               <Wand2 size={20} /> AI Workspace
+            </button>
+            <button onClick={() => { router.push("/workspace"); setMobileMenuOpen(false); }} className="p-4 rounded-xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5">
+              <Layers size={20} /> Advanced Workspace
             </button>
             <button onClick={() => { router.push("/video"); setMobileMenuOpen(false); }} className="p-4 rounded-xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5">
               <Video size={20} /> Video Generation
