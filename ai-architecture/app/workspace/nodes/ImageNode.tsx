@@ -87,9 +87,9 @@ export default function ImageNode({ data }: any) {
 
     // 2. Get prompt and image data
     const sourceNode = getNode(incomingEdge.source);
-    const promptText = sourceNode?.data?.prompt || sourceNode?.data?.label || "";
-    const imageB64 = sourceNode?.data?.imageB64;
-    const perspectiveStyle = sourceNode?.data?.perspective || 'Custom Scene';
+    const promptText = String(sourceNode?.data?.prompt || sourceNode?.data?.label || "");
+    const imageB64 = sourceNode?.data?.imageB64 ? String(sourceNode?.data?.imageB64) : undefined;
+    const perspectiveStyle = String(sourceNode?.data?.perspective || 'Custom Scene');
 
     if (!promptText && !imageB64) {
       setError("Prompt or Image is required!");
