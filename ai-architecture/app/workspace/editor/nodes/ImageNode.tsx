@@ -24,10 +24,10 @@ export default function ImageNode({ data }: any) {
   const nodeId = useNodeId();
   const [error, setError] = useState<string | null>(null);
 
-  // Local settings state
-  const [modelName, setModelName] = useState("nano-banana-pro-preview");
-  const [aspectRatio, setAspectRatio] = useState("9:16");
-  const [imageCount, setImageCount] = useState(1);
+  // Local settings state — initialized from persisted node data
+  const [modelName, setModelName] = useState(data.modelName || "nano-banana-pro-preview");
+  const [aspectRatio, setAspectRatio] = useState(data.aspectRatio || "9:16");
+  const [imageCount, setImageCount] = useState(data.imageCount || 1);
   const [showSettings, setShowSettings] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -181,7 +181,12 @@ export default function ImageNode({ data }: any) {
               throw new Error(statusData.error || `Job ${jobId} failed or timed out`);
             }
           }
-          updateNodeData(targetNodeId, { imageUrls: [finalUrl], isLoading: false });
+          updateNodeData(targetNodeId, {
+            // Filter out any null/undefined to prevent Firestore's
+            // "invalid nested entity" error on arrays
+            imageUrls: [finalUrl].filter((u): u is string => typeof u === 'string' && u.length > 0),
+            isLoading: false,
+          });
         } catch (e: any) {
           updateNodeData(targetNodeId, { isLoading: false });
           // If it's the main node, set error, otherwise we might not have a way to set local error for spawned nodes
@@ -241,7 +246,10 @@ export default function ImageNode({ data }: any) {
             <label className="text-gray-400 font-medium">Model</label>
             <select 
               value={modelName} 
-              onChange={(e) => setModelName(e.target.value)}
+              onChange={(e) => {
+                setModelName(e.target.value);
+                if (nodeId) updateNodeData(nodeId, { modelName: e.target.value });
+              }}
               className="bg-[#1c1c1f] border border-gray-700 rounded p-1.5 text-gray-200 focus:outline-none focus:border-purple-500"
             >
               <option value="nano-banana-pro-preview">Nano Banana Pro</option>
@@ -253,7 +261,10 @@ export default function ImageNode({ data }: any) {
               <label className="text-gray-400 font-medium">Size (Ratio)</label>
               <select 
                 value={aspectRatio} 
-                onChange={(e) => setAspectRatio(e.target.value)}
+                onChange={(e) => {
+                  setAspectRatio(e.target.value);
+                  if (nodeId) updateNodeData(nodeId, { aspectRatio: e.target.value });
+                }}
                 className="bg-[#1c1c1f] border border-gray-700 rounded p-1.5 text-gray-200 focus:outline-none focus:border-purple-500"
               >
                 <option value="1:1">1:1 Square</option>
@@ -269,7 +280,11 @@ export default function ImageNode({ data }: any) {
                 min="1" 
                 max="4" 
                 value={imageCount} 
-                onChange={(e) => setImageCount(parseInt(e.target.value) || 1)}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value) || 1;
+                  setImageCount(val);
+                  if (nodeId) updateNodeData(nodeId, { imageCount: val });
+                }}
                 className="bg-[#1c1c1f] border border-gray-700 rounded p-1.5 text-gray-200 focus:outline-none focus:border-purple-500"
               />
             </div>
