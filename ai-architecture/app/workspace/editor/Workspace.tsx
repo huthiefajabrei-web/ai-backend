@@ -10,6 +10,7 @@ import {
   useEdgesState,
   Controls,
   Background,
+  BackgroundVariant,
   Connection,
   Edge,
   NodeTypes,
@@ -216,6 +217,29 @@ function Flow() {
     [reactFlowInstance, setNodes, triggerSave],
   );
 
+  const handleAddNode = useCallback(
+    (type: string) => {
+      if (!reactFlowInstance) return;
+
+      const position = reactFlowInstance.screenToFlowPosition({
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+      });
+
+      let initialData: Record<string, any> = {};
+      if (type === 'promptNode') {
+        initialData = { prompt: '', perspective: 'Custom Scene' };
+      } else if (type === 'imageNode') {
+        initialData = { imageUrls: [], isLoading: false };
+      }
+
+      const newNode = { id: uuidv4(), type, position, data: initialData };
+      setNodes((nds) => nds.concat(newNode));
+      triggerSave();
+    },
+    [reactFlowInstance, setNodes, triggerSave],
+  );
+
   if (!spaceId) return null;
 
   return (
@@ -270,7 +294,7 @@ function Flow() {
       </div>
 
       {/* Floating Left Toolbar */}
-      <FloatingToolbar />
+      <FloatingToolbar onAddNode={handleAddNode} />
 
       {/* Bottom Left Chip */}
       <div className="absolute bottom-6 left-6 z-50 pointer-events-auto">
@@ -316,7 +340,7 @@ function Flow() {
           defaultEdgeOptions={{ style: { stroke: '#4b5563', strokeWidth: 2 } }}
         >
           {/* Using dotted background to match screenshot */}
-          <Background color="#2a2a2a" gap={20} size={1.5} variant="dots" />
+          <Background color="#2a2a2a" gap={20} size={1.5} variant={BackgroundVariant.Dots} />
           <Controls className="!hidden" /> {/* Hide default controls since we have custom zoom/pan */}
         </ReactFlow>
       </div>
