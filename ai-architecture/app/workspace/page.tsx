@@ -48,6 +48,57 @@ export default function WorkspaceDashboard() {
   const [newSpaceName, setNewSpaceName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
 
+  async function loadAndMigrateSpaces(uid: string) {
+    setLoading(true);
+    try {
+      const userDocRef = doc(db, 'app_user_workspaces', uid);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      let loadedSpaces: Space[] = [];
+      
+      if (userDocSnap.exists()) {
+        const data = userDocSnap.data();
+        let spacesObj = data.spaces || {};
+        
+        // Migration check: if spaces object doesn't exist but legacy nodes do
+        if (!data.spaces && data.nodes && data.nodes.length > 0) {
+          const legacyId = "legacy_" + Date.now();
+          spacesObj[legacyId] = {
+            id: legacyId,
+            name: "Legacy Space",
+            nodes: data.nodes,
+            edges: data.edges || [],
+            createdAt: data.updatedAt || new Date().toISOString(),
+            updatedAt: data.updatedAt || new Date().toISOString()
+          };
+          
+          // Save the migrated data
+          await setDoc(userDocRef, {
+            spaces: spacesObj,
+            nodes: deleteField(),
+            edges: deleteField()
+          }, { merge: true });
+        }
+        
+        // Convert spaces object to array
+        loadedSpaces = Object.keys(spacesObj).map(key => ({
+          id: key,
+          name: spacesObj[key].name || "Untitled space",
+          updatedAt: spacesObj[key].updatedAt ? new Date(spacesObj[key].updatedAt).toLocaleString() : "Just now",
+          rawUpdatedAt: spacesObj[key].updatedAt || new Date().toISOString()
+        }));
+      }
+
+      // Sort by updatedAt descending
+      loadedSpaces.sort((a: any, b: any) => new Date(b.rawUpdatedAt).getTime() - new Date(a.rawUpdatedAt).getTime());
+      
+      setSpaces(loadedSpaces);
+    } catch (err) {
+      console.error('Error fetching workspaces:', err);
+    }
+    setLoading(false);
+  }
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
@@ -60,81 +111,31 @@ export default function WorkspaceDashboard() {
 
     return () => unsubscribe();
   }, []);
-
-  async function loadAndMigrateSpaces(uid: string) {
-    setLoading(true);
-    try {
-      const spacesRef = collection(db, 'app_user_workspaces', uid, 'spaces');
-      const spacesSnap = await getDocs(spacesRef);
-      
-      const loadedSpaces: Space[] = [];
-      spacesSnap.forEach((docSnap) => {
-        const data = docSnap.data();
-        loadedSpaces.push({
-          id: docSnap.id,
-          name: data.name || "Untitled space",
-          updatedAt: data.updatedAt ? new Date(data.updatedAt).toLocaleString() : "Just now"
-        });
-      });
-
-      // Migration check: if no spaces, check if legacy workspace exists
-      if (loadedSpaces.length === 0) {
-        const legacyDocRef = doc(db, 'app_user_workspaces', uid);
-        const legacySnap = await getDoc(legacyDocRef);
-        
-        if (legacySnap.exists()) {
-          const legacyData = legacySnap.data();
-          if (legacyData.nodes && legacyData.nodes.length > 0) {
-            // Migrate
-            const newSpaceDoc = await addDoc(spacesRef, {
-              name: "Legacy Space",
-              nodes: legacyData.nodes,
-              edges: legacyData.edges || [],
-              createdAt: legacyData.updatedAt || new Date().toISOString(),
-              updatedAt: legacyData.updatedAt || new Date().toISOString()
-            });
-            
-            // Clear legacy data
-            await setDoc(legacyDocRef, {
-              nodes: deleteField(),
-              edges: deleteField()
-            }, { merge: true });
-
-            loadedSpaces.push({
-              id: newSpaceDoc.id,
-              name: "Legacy Space",
-              updatedAt: legacyData.updatedAt ? new Date(legacyData.updatedAt).toLocaleString() : "Just now"
-            });
-          }
-        }
-      }
-
-      // Sort by updatedAt descending
-      loadedSpaces.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-      
-      setSpaces(loadedSpaces);
-    } catch (err) {
-      console.error('Error fetching workspaces:', err);
-    }
-    setLoading(false);
-  };
-
   const handleCreateSpace = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !newSpaceName.trim()) return;
     
     setIsCreating(true);
     try {
-      const spacesRef = collection(db, 'app_user_workspaces', user.uid, 'spaces');
-      const newSpaceDoc = await addDoc(spacesRef, {
+      const userDocRef = doc(db, 'app_user_workspaces', user.uid);
+      const newSpaceId = "space_" + Date.now();
+      
+      const newSpaceData = {
         name: newSpaceName.trim(),
         nodes: [],
         edges: [],
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
-      });
+      };
       
-      router.push(`/workspace/editor?spaceId=${newSpaceDoc.id}`);
+      // Update the user's document with the new space
+      await setDoc(userDocRef, {
+        spaces: {
+          [newSpaceId]: newSpaceData
+        }
+      }, { merge: true });
+      
+      router.push(`/workspace/editor?spaceId=${newSpaceId}`);
     } catch (error) {
       console.error("Error creating space", error);
       setIsCreating(false);

@@ -113,10 +113,18 @@ function Flow() {
       try {
         const cleanNodes = sanitizeNodes(nodesRef.current);
         const cleanEdges = sanitizeForFirestore(edgesRef.current);
-        const docRef = doc(db, 'app_user_workspaces', userRef.current!.uid, 'spaces', spaceIdRef.current!);
+        const userDocRef = doc(db, 'app_user_workspaces', userRef.current!.uid);
         await setDoc(
-          docRef,
-          { nodes: cleanNodes, edges: cleanEdges, updatedAt: new Date().toISOString() },
+          userDocRef,
+          { 
+            spaces: {
+              [spaceIdRef.current!]: {
+                nodes: cleanNodes, 
+                edges: cleanEdges, 
+                updatedAt: new Date().toISOString() 
+              }
+            }
+          },
           { merge: true },
         );
       } catch (err) {
@@ -130,13 +138,16 @@ function Flow() {
       setUser(currentUser);
       if (currentUser && spaceId) {
         try {
-          const docRef = doc(db, 'app_user_workspaces', currentUser.uid, 'spaces', spaceId);
-          const docSnap = await getDoc(docRef);
-          if (docSnap.exists()) {
-            const saved = docSnap.data();
-            if (saved.name) setSpaceName(saved.name);
-            if (saved.nodes?.length > 0) setNodes(sanitizeNodes(saved.nodes));
-            if (saved.edges?.length > 0) setEdges(saved.edges);
+          const userDocRef = doc(db, 'app_user_workspaces', currentUser.uid);
+          const userDocSnap = await getDoc(userDocRef);
+          if (userDocSnap.exists()) {
+            const data = userDocSnap.data();
+            if (data.spaces && data.spaces[spaceId]) {
+              const saved = data.spaces[spaceId];
+              if (saved.name) setSpaceName(saved.name);
+              if (saved.nodes?.length > 0) setNodes(sanitizeNodes(saved.nodes));
+              if (saved.edges?.length > 0) setEdges(saved.edges);
+            }
           }
         } catch (err) {
           console.error('Error loading workspace:', err);
