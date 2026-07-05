@@ -187,8 +187,10 @@ export default function ImageNode({ data }: any) {
             imageUrls: [finalUrl].filter((u): u is string => typeof u === 'string' && u.length > 0),
             isLoading: false,
           });
+          window.dispatchEvent(new Event('trigger-workspace-save'));
         } catch (e: any) {
           updateNodeData(targetNodeId, { isLoading: false });
+          window.dispatchEvent(new Event('trigger-workspace-save'));
           // If it's the main node, set error, otherwise we might not have a way to set local error for spawned nodes
           if (targetNodeId === nodeId) setError(e.message || "Failed");
         }
@@ -204,6 +206,7 @@ export default function ImageNode({ data }: any) {
     } catch (err: any) {
       setError(err.message || "Failed to generate image.");
       updateNodeData(nodeId, { isLoading: false });
+      window.dispatchEvent(new Event('trigger-workspace-save'));
     }
   };
 
@@ -248,7 +251,10 @@ export default function ImageNode({ data }: any) {
               value={modelName} 
               onChange={(e) => {
                 setModelName(e.target.value);
-                if (nodeId) updateNodeData(nodeId, { modelName: e.target.value });
+                if (nodeId) {
+                  updateNodeData(nodeId, { modelName: e.target.value });
+                  window.dispatchEvent(new Event('trigger-workspace-save'));
+                }
               }}
               className="bg-[#1c1c1f] border border-gray-700 rounded p-1.5 text-gray-200 focus:outline-none focus:border-purple-500"
             >
@@ -263,7 +269,10 @@ export default function ImageNode({ data }: any) {
                 value={aspectRatio} 
                 onChange={(e) => {
                   setAspectRatio(e.target.value);
-                  if (nodeId) updateNodeData(nodeId, { aspectRatio: e.target.value });
+                  if (nodeId) {
+                    updateNodeData(nodeId, { aspectRatio: e.target.value });
+                    window.dispatchEvent(new Event('trigger-workspace-save'));
+                  }
                 }}
                 className="bg-[#1c1c1f] border border-gray-700 rounded p-1.5 text-gray-200 focus:outline-none focus:border-purple-500"
               >
@@ -283,7 +292,10 @@ export default function ImageNode({ data }: any) {
                 onChange={(e) => {
                   const val = parseInt(e.target.value) || 1;
                   setImageCount(val);
-                  if (nodeId) updateNodeData(nodeId, { imageCount: val });
+                  if (nodeId) {
+                    updateNodeData(nodeId, { imageCount: val });
+                    window.dispatchEvent(new Event('trigger-workspace-save'));
+                  }
                 }}
                 className="bg-[#1c1c1f] border border-gray-700 rounded p-1.5 text-gray-200 focus:outline-none focus:border-purple-500"
               />

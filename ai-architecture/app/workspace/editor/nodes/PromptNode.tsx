@@ -128,7 +128,10 @@ export default function PromptNode({ data }: any) {
           className="w-full bg-[#141417] border border-gray-700 rounded-lg p-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500"
           value={data.perspective || 'Custom Scene'}
           onChange={(e) => {
-            if (nodeId) updateNodeData(nodeId, { perspective: e.target.value });
+            if (nodeId) {
+              updateNodeData(nodeId, { perspective: e.target.value });
+              window.dispatchEvent(new Event('trigger-workspace-save'));
+            }
           }}
         >
           <option value="Custom Scene">Custom Scene (Prompt Only)</option>
@@ -164,7 +167,10 @@ export default function PromptNode({ data }: any) {
         value={localPrompt}
         onChange={(e) => {
           setLocalPrompt(e.target.value);
-          if (nodeId) updateNodeData(nodeId, { prompt: e.target.value });
+          if (nodeId) {
+            updateNodeData(nodeId, { prompt: e.target.value });
+            window.dispatchEvent(new Event('trigger-workspace-save'));
+          }
         }}
       />
 

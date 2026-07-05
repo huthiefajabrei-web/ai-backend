@@ -81,6 +81,7 @@ function Flow() {
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
+  const reactFlowInstanceRef = useRef<any>(null);
   const [user, setUser] = useState<User | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [spaceName, setSpaceName] = useState("Untitled space");
@@ -111,8 +112,10 @@ function Flow() {
 
     saveTimerRef.current = setTimeout(async () => {
       try {
-        const cleanNodes = sanitizeNodes(nodesRef.current);
-        const cleanEdges = sanitizeForFirestore(edgesRef.current);
+        const currentNodes = reactFlowInstanceRef.current ? reactFlowInstanceRef.current.getNodes() : nodesRef.current;
+        const currentEdges = reactFlowInstanceRef.current ? reactFlowInstanceRef.current.getEdges() : edgesRef.current;
+        const cleanNodes = sanitizeNodes(currentNodes);
+        const cleanEdges = sanitizeForFirestore(currentEdges);
         const userDocRef = doc(db, 'app_user_workspaces', userRef.current!.uid);
         await setDoc(
           userDocRef,
@@ -157,6 +160,12 @@ function Flow() {
     });
     return () => unsubscribe();
   }, [setNodes, setEdges, spaceId]);
+
+  useEffect(() => {
+    const handleForceSave = () => triggerSave();
+    window.addEventListener('trigger-workspace-save', handleForceSave);
+    return () => window.removeEventListener('trigger-workspace-save', handleForceSave);
+  }, [triggerSave]);
 
   const handleNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -342,7 +351,10 @@ function Flow() {
           onConnect={onConnect}
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
-          onInit={setReactFlowInstance}
+          onInit={(instance) => {
+            setReactFlowInstance(instance);
+            reactFlowInstanceRef.current = instance;
+          }}
           onDrop={onDrop}
           onDragOver={onDragOver}
           nodeTypes={nodeTypes}
