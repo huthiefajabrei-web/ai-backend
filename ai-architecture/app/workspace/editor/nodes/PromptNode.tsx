@@ -25,15 +25,17 @@ export default function PromptNode({ data }: any) {
 
   // On mount: restore imageB64 from localStorage (survives page refresh)
   useEffect(() => {
-    if (!nodeId) return;
-    const stored = localStorage.getItem(LS_KEY(nodeId));
-    if (stored) {
-      setLocalImageB64(stored);
-      // Sync into React-Flow node data so ImageNode can read it for generation
-      updateNodeData(nodeId, { imageB64: stored });
+    if (data.compressedImageB64) {
+      setLocalImageB64(data.compressedImageB64);
+    } else if (nodeId) {
+      const stored = localStorage.getItem(LS_KEY(nodeId));
+      if (stored) {
+        setLocalImageB64(stored);
+        updateNodeData(nodeId, { compressedImageB64: stored });
+      }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodeId]);
+  }, [nodeId, data.compressedImageB64]);
 
   // Load perspective presets from backend
   useEffect(() => {
@@ -72,7 +74,7 @@ export default function PromptNode({ data }: any) {
     return acc;
   }, {});
 
-  // ── Upload handler — saves to localStorage instead of Firestore ──────────
+  // ── Upload handler — compresses image to fit in Firestore ──────────
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !nodeId) return;
@@ -80,11 +82,37 @@ export default function PromptNode({ data }: any) {
     const reader = new FileReader();
     reader.onloadend = () => {
       const b64 = reader.result as string;
-      // Save in localStorage (survives refresh, not limited by Firestore)
-      localStorage.setItem(LS_KEY(nodeId), b64);
-      setLocalImageB64(b64);
-      // Sync into React-Flow data for ImageNode to read during generation
-      updateNodeData(nodeId, { imageB64: b64 });
+      const img = new window.Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let { width, height } = img;
+        const MAX_SIZE = 800;
+        
+        if (width > height) {
+          if (width > MAX_SIZE) {
+            height = Math.round(height * (MAX_SIZE / width));
+            width = MAX_SIZE;
+          }
+        } else {
+          if (height > MAX_SIZE) {
+            width = Math.round(width * (MAX_SIZE / height));
+            height = MAX_SIZE;
+          }
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          const compressedB64 = canvas.toDataURL('image/jpeg', 0.8);
+          setLocalImageB64(compressedB64);
+          localStorage.setItem(LS_KEY(nodeId), compressedB64);
+          updateNodeData(nodeId, { compressedImageB64: compressedB64 });
+          window.dispatchEvent(new Event('trigger-workspace-save'));
+        }
+      };
+      img.src = b64;
     };
     reader.readAsDataURL(file);
   };
@@ -94,7 +122,8 @@ export default function PromptNode({ data }: any) {
     if (!nodeId) return;
     localStorage.removeItem(LS_KEY(nodeId));
     setLocalImageB64(null);
-    updateNodeData(nodeId, { imageB64: null });
+    updateNodeData(nodeId, { imageB64: null, compressedImageB64: null });
+    window.dispatchEvent(new Event('trigger-workspace-save'));
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 

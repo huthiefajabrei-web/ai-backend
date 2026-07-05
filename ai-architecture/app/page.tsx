@@ -950,6 +950,62 @@ export default function Home() {
     setLoading(false);
   }
 
+  async function onCancel() {
+    const sid = currentSessionIdRef.current;
+    if (!sid) return;
+
+    const pendingJobs = pendingJobIdsRef.current[sid] || [];
+    if (pendingJobs.length === 0) {
+      setLoading(false);
+      return;
+    }
+
+    setLoading(false);
+
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      await fetch(`${API_BASE}/cancel-jobs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ job_ids: pendingJobs })
+      });
+    } catch (e) {
+      console.error("Failed to cancel jobs", e);
+    }
+
+    if (eventSourcesRef.current[sid]) {
+      eventSourcesRef.current[sid].close();
+      delete eventSourcesRef.current[sid];
+    }
+    delete pendingJobIdsRef.current[sid];
+
+    setResps((prev) => {
+      const next = { ...prev };
+      pendingJobs.forEach(jid => {
+        if (next[jid]) {
+          next[jid] = { ...next[jid], status: 'CANCELLED' } as any;
+        }
+      });
+      return next;
+    });
+
+    setSessions((prev) => prev.map(s => {
+      if (s.id === sid) {
+        const nextResps = { ...s.resps };
+        pendingJobs.forEach(jid => {
+          if (nextResps[jid]) {
+            nextResps[jid] = { ...nextResps[jid], status: 'CANCELLED' } as any;
+          }
+        });
+        return { ...s, resps: nextResps };
+      }
+      return s;
+    }));
+  }
+
   async function onDeleteItem(url: string) {
     const sessionId = currentSessionIdRef.current;
     if (!sessionId) return;
@@ -1508,6 +1564,7 @@ export default function Home() {
                     void onSend(true, videoGenerationMode);
                   }}
                   onClear={onClear}
+                  onCancel={onCancel}
                   userCredits={user?.credits ?? 0}
                   creditCosts={creditCosts}
                 />

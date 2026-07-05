@@ -2,7 +2,7 @@
 
 import { Handle, Position, useReactFlow, useNodeId } from '@xyflow/react';
 import { Image as ImageIcon, Sparkles, Loader2, Settings2, LayoutTemplate, Download, X } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 // Helper to convert base64 to Blob
@@ -28,6 +28,8 @@ export default function ImageNode({ data }: any) {
   const [modelName, setModelName] = useState(data.modelName || "nano-banana-pro-preview");
   const [aspectRatio, setAspectRatio] = useState(data.aspectRatio || "9:16");
   const [imageCount, setImageCount] = useState(data.imageCount || 1);
+  const activeJobIdsRef = useRef<string[]>([]);
+  const isCancellingRef = useRef(false);
   const [showSettings, setShowSettings] = useState(false);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -88,7 +90,11 @@ export default function ImageNode({ data }: any) {
     // 2. Get prompt and image data
     const sourceNode = getNode(incomingEdge.source);
     const promptText = String(sourceNode?.data?.prompt || sourceNode?.data?.label || "");
-    const imageB64 = sourceNode?.data?.imageB64 ? String(sourceNode?.data?.imageB64) : undefined;
+    const imageB64 = sourceNode?.data?.compressedImageB64 
+      ? String(sourceNode?.data?.compressedImageB64) 
+      : sourceNode?.data?.imageB64 
+        ? String(sourceNode?.data?.imageB64) 
+        : undefined;
     const perspectiveStyle = String(sourceNode?.data?.perspective || 'Custom Scene');
 
     if (!promptText && !imageB64) {
@@ -99,6 +105,8 @@ export default function ImageNode({ data }: any) {
     // 3. Set loading state
     updateNodeData(nodeId, { isLoading: true, imageUrls: [] });
     setShowSettings(false);
+    isCancellingRef.current = false;
+    activeJobIdsRef.current = [];
 
     try {
       // Create form data for the backend API
@@ -128,6 +136,7 @@ export default function ImageNode({ data }: any) {
       }
 
       const jobIds = responseData.job_ids;
+      activeJobIdsRef.current = jobIds;
       
       // Spawn new nodes if we have more than 1 job
       const currentNode = getNode(nodeId);
@@ -170,7 +179,13 @@ export default function ImageNode({ data }: any) {
 
           const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
           while (!isCompleted) {
+            if (isCancellingRef.current) {
+              throw new Error("Cancelled by user");
+            }
             await new Promise(resolve => setTimeout(resolve, 2000));
+            if (isCancellingRef.current) {
+              throw new Error("Cancelled by user");
+            }
             const statusRes = await fetch(`${apiUrl}/status/${jobId}`);
             const statusData = await statusRes.json();
 
@@ -204,9 +219,38 @@ export default function ImageNode({ data }: any) {
       }
 
     } catch (err: any) {
-      setError(err.message || "Failed to generate image.");
+      if (err.message !== "Cancelled by user") {
+        setError(err.message || "Failed to generate image.");
+      } else {
+        setError("Generation Cancelled");
+      }
       updateNodeData(nodeId, { isLoading: false });
       window.dispatchEvent(new Event('trigger-workspace-save'));
+    } finally {
+      activeJobIdsRef.current = [];
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!data.isLoading) return;
+    isCancellingRef.current = true;
+    updateNodeData(nodeId, { isLoading: false });
+    setError("Generation Cancelled");
+    window.dispatchEvent(new Event('trigger-workspace-save'));
+
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      await fetch(`${apiUrl}/cancel-jobs`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({ job_ids: activeJobIdsRef.current })
+      });
+    } catch (e) {
+      console.error("Failed to cancel jobs on backend", e);
     }
   };
 
@@ -232,6 +276,14 @@ export default function ImageNode({ data }: any) {
           >
             <Settings2 size={14} />
           </button>
+          {data.isLoading && (
+            <button 
+              onClick={handleCancel}
+              className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-colors text-xs font-semibold"
+            >
+              Cancel
+            </button>
+          )}
           <button 
             onClick={handleGenerate}
             disabled={data.isLoading}

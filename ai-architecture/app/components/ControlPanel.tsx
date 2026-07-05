@@ -73,6 +73,7 @@ interface ControlPanelProps {
   onSend: () => void;
   onGenerateVideo: () => void;
   onClear: () => void;
+  onCancel?: () => void;
   userCredits?: number;
   creditCosts?: {
     image_generation: number;
@@ -113,6 +114,7 @@ export default function ControlPanel({
     video_image_to_video: 5,
     video_frame_to_frame: 7
   },
+  onCancel,
 }: ControlPanelProps) {
   const [isDropdownOpen, setIsDropdownOpen] = React.useState(false);
   const dropdownRef = React.useRef<HTMLDivElement>(null);
@@ -849,6 +851,14 @@ export default function ControlPanel({
               )}
             </div>
           </button>
+          {loading && onCancel && (
+            <button
+              className="px-4 py-3 bg-red-600 hover:bg-red-500 rounded-xl text-white font-semibold text-sm flex items-center gap-2 transition-colors shadow-[0_0_15px_rgba(220,38,38,0.4)]"
+              onClick={onCancel}
+            >
+              Cancel
+            </button>
+          )}
           <button
             className="px-4 py-3 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-slate-400 hover:text-white transition-colors text-sm font-semibold disabled:opacity-50"
             onClick={onClear}

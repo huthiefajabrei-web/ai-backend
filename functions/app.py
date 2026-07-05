@@ -357,6 +357,28 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 import asyncio
 
+class CancelJobsRequest(BaseModel):
+    job_ids: List[str]
+
+@app.post("/cancel-jobs")
+async def cancel_jobs(req: CancelJobsRequest, authorization: Optional[str] = Header(None)):
+    token = (authorization or "").replace("Bearer ", "").strip()
+    user = get_user_from_token(token)
+    if not user:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    
+    db_client = get_db()
+    cancelled_count = 0
+    for job_id in req.job_ids:
+        job_ref = db_client.collection('app_jobs').document(job_id)
+        job_doc = job_ref.get()
+        if job_doc.exists:
+            data = job_doc.to_dict()
+            if data.get('user_id') == user['id'] and data.get('status') in ['IN_QUEUE', 'PROCESSING']:
+                job_ref.update({"status": "CANCELLED"})
+                cancelled_count += 1
+                
+    return {"ok": True, "cancelled": cancelled_count}
 
 @app.get("/")
 def root():
@@ -1097,6 +1119,14 @@ def process_gemini_job(
     model_name: str = "nano-banana-pro-preview",
 ):
     try:
+        # Check if cancelled before starting
+        db_client = get_db()
+        job_ref = db_client.collection('app_jobs').document(job_id)
+        job_doc = job_ref.get()
+        if job_doc.exists and job_doc.to_dict().get("status") == "CANCELLED":
+            print(f" Job {job_id} was cancelled before starting.")
+            return
+
         update_job(job_id, {"status": "PROCESSING"})
         time.sleep(1)
 
@@ -1264,6 +1294,14 @@ def process_gemini_job(
                     print(f" Gemini image saved locally: {static_path}")
                 except Exception as save_error:
                     print(f" Failed to save image locally: {save_error}")
+            # Check if cancelled mid-flight before saving and deducting credits
+            job_doc = job_ref.get()
+            # Check if cancelled mid-flight before saving and deducting credits
+            job_doc = job_ref.get()
+            if job_doc.exists and job_doc.to_dict().get("status") == "CANCELLED":
+                print(f" Job {job_id} was cancelled mid-flight. Discarding result.")
+                return
+
             update_payload = {
                 "status": "COMPLETED",
                 "prompt_used": final_prompt,
@@ -1405,6 +1443,14 @@ def process_video_journey(
     import os
 
     try:
+        # Check if cancelled before starting
+        db_client = get_db()
+        job_ref = db_client.collection('app_jobs').document(job_id)
+        job_doc = job_ref.get()
+        if job_doc.exists and job_doc.to_dict().get("status") == "CANCELLED":
+            print(f" Video Job {job_id} was cancelled before starting.")
+            return
+
         update_job(job_id, {"status": "PROCESSING"})
         update_job(job_id, {"message": "Initializing Kling AI video generation..."})
 
@@ -1513,6 +1559,12 @@ def process_video_journey(
         video_url = None
         
         while attempts < max_attempts:
+            # Check if cancelled mid-flight
+            job_doc = job_ref.get()
+            if job_doc.exists and job_doc.to_dict().get("status") == "CANCELLED":
+                print(f" Video Job {job_id} was cancelled mid-flight. Discarding result.")
+                return
+
             time.sleep(5)
             attempts += 1
             # Refresh token to avoid expiration
