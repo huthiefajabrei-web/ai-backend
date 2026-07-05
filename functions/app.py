@@ -1630,17 +1630,13 @@ async def generate(
                 total_images += c
 
         # Get credit costs from DB
-        conn_c = get_db()
+        db_client = get_db()
         try:
-            cur_c = conn_c.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-            cur_c.execute("SELECT operation, cost FROM app_credit_costs")
-            costs_rows = cur_c.fetchall()
-            cur_c.close()
-            costs = {r["operation"]: r["cost"] for r in costs_rows}
-        except Exception:
+            costs_docs = db_client.collection('app_credit_costs').stream()
+            costs = {doc.to_dict().get("operation"): doc.to_dict().get("cost") for doc in costs_docs}
+        except Exception as e:
+            print(f"Error fetching costs: {e}")
             costs = {"image_generation": 1, "video_generation": 5}
-        finally:
-            conn_c.close()
 
         cost_per_image = costs.get("image_generation", 1)
         
@@ -1786,14 +1782,12 @@ def estimate_cost(
     perspective_count: int = 1,
 ):
     """Get estimated credit cost before generation."""
-    conn = get_db()
+    db_client = get_db()
     try:
-        cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
-        cur.execute("SELECT operation, cost, label FROM app_credit_costs")
-        rows = cur.fetchall()
-        cur.close()
-        costs = {r["operation"]: {"cost": r["cost"], "label": r["label"]} for r in rows}
-    except Exception:
+        costs_docs = db_client.collection('app_credit_costs').stream()
+        costs = {doc.to_dict().get("operation"): {"cost": doc.to_dict().get("cost"), "label": doc.to_dict().get("label")} for doc in costs_docs}
+    except Exception as e:
+        print(f"Error fetching costs: {e}")
         costs = {
             "image_generation": {"cost": 1, "label": "Image Generation (per image)"},
             "video_generation": {"cost": 5, "label": "Video Generation"}
