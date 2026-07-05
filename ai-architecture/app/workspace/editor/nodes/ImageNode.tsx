@@ -224,7 +224,7 @@ export default function ImageNode({ data }: any) {
       } else {
         setError("Generation Cancelled");
       }
-      updateNodeData(nodeId, { isLoading: false });
+      if (nodeId) updateNodeData(nodeId, { isLoading: false });
       window.dispatchEvent(new Event('trigger-workspace-save'));
     } finally {
       activeJobIdsRef.current = [];
@@ -232,7 +232,7 @@ export default function ImageNode({ data }: any) {
   };
 
   const handleCancel = async () => {
-    if (!data.isLoading) return;
+    if (!nodeId || !data.isLoading) return;
     isCancellingRef.current = true;
     updateNodeData(nodeId, { isLoading: false });
     setError("Generation Cancelled");
