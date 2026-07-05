@@ -37,6 +37,7 @@ interface Space {
   id: string;
   name: string;
   updatedAt: string;
+  rawUpdatedAt?: string;
 }
 
 export default function WorkspaceDashboard() {
@@ -58,7 +59,7 @@ export default function WorkspaceDashboard() {
       
       if (userDocSnap.exists()) {
         const data = userDocSnap.data();
-        let spacesObj = data.spaces || {};
+        const spacesObj = data.spaces || {};
         
         // Migration check: if spaces object doesn't exist but legacy nodes do
         if (!data.spaces && data.nodes && data.nodes.length > 0) {
@@ -90,11 +91,16 @@ export default function WorkspaceDashboard() {
       }
 
       // Sort by updatedAt descending
-      loadedSpaces.sort((a: any, b: any) => new Date(b.rawUpdatedAt).getTime() - new Date(a.rawUpdatedAt).getTime());
+      loadedSpaces.sort((a, b) => {
+        const timeA = a.rawUpdatedAt ? new Date(a.rawUpdatedAt).getTime() : 0;
+        const timeB = b.rawUpdatedAt ? new Date(b.rawUpdatedAt).getTime() : 0;
+        return timeB - timeA;
+      });
       
       setSpaces(loadedSpaces);
     } catch (err) {
       console.error('Error fetching workspaces:', err);
+      alert('Error loading workspaces: ' + (err instanceof Error ? err.message : String(err)));
     }
     setLoading(false);
   }
@@ -111,6 +117,7 @@ export default function WorkspaceDashboard() {
 
     return () => unsubscribe();
   }, []);
+
   const handleCreateSpace = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !newSpaceName.trim()) return;
@@ -136,8 +143,9 @@ export default function WorkspaceDashboard() {
       }, { merge: true });
       
       router.push(`/workspace/editor?spaceId=${newSpaceId}`);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating space", error);
+      alert("Failed to create space: " + (error?.message || String(error)));
       setIsCreating(false);
     }
   };
