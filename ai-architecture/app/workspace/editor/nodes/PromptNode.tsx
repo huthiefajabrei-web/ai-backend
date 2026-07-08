@@ -1,7 +1,7 @@
 "use client";
 
 import { Handle, Position, useReactFlow, useNodeId } from '@xyflow/react';
-import { Type, Image as ImageIcon, X } from 'lucide-react';
+import { Type, Image as ImageIcon, Video, X } from 'lucide-react';
 import { useRef, useState, useEffect } from 'react';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -11,7 +11,7 @@ import { useRef, useState, useEffect } from 'react';
 // ─────────────────────────────────────────────────────────────────────────────
 const LS_KEY = (id: string) => `ws_img_${id}`;
 
-export default function PromptNode({ data }: any) {
+export default function PromptNode({ data, selected }: any) {
   const { updateNodeData } = useReactFlow();
   const nodeId = useNodeId();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -128,86 +128,119 @@ export default function PromptNode({ data }: any) {
   };
 
   return (
-    <div className="bg-[#1c1c1f] border border-gray-800 rounded-xl p-4 w-[320px] shadow-2xl backdrop-blur-md">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3 text-gray-300">
-        <div className="flex items-center gap-2">
-          <Type size={16} className="text-blue-400" />
-          <span className="font-medium text-sm">Prompt & Image</span>
+    <div className={`relative bg-[#1c1c1f] rounded-2xl w-[380px] shadow-2xl transition-all border-2 ${selected ? 'border-blue-500' : 'border-transparent'}`}>
+      
+      {/* Node Header */}
+      <div className="absolute -top-7 left-2 flex items-center gap-2 text-gray-300">
+        <div className="bg-[#1c1c1f] p-1 rounded-md border border-gray-800">
+          <Type size={12} className="text-gray-300" />
         </div>
-        <button
-          onClick={() => fileInputRef.current?.click()}
-          className="text-xs flex items-center gap-1 bg-[#2a2a2e] hover:bg-[#35353a] px-2 py-1 rounded transition-colors text-gray-300"
-        >
-          <ImageIcon size={12} />
-          Add Image
-        </button>
-        <input
-          type="file"
-          ref={fileInputRef}
-          className="hidden"
-          accept="image/*"
-          onChange={handleImageUpload}
-        />
+        <span className="font-bold text-xs">Text</span>
       </div>
 
-      {/* Perspective selector */}
-      <div className="mb-3 nodrag nopan">
-        <select
-          className="w-full bg-[#141417] border border-gray-700 rounded-lg p-2 text-xs text-gray-200 focus:outline-none focus:border-blue-500"
-          value={data.perspective || 'Custom Scene'}
-          onChange={(e) => {
-            if (nodeId) {
-              updateNodeData(nodeId, { perspective: e.target.value });
-              window.dispatchEvent(new Event('trigger-workspace-save'));
-            }
-          }}
-        >
-          <option value="Custom Scene">Custom Scene (Prompt Only)</option>
-          {Object.entries(groupedPrompts).map(([type, items]: any) => (
-            <optgroup key={type} label={`Perspective Styles (${type})`}>
-              {items.map((p: any) => (
-                <option key={p.title} value={p.title}>{p.title}</option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+      {/* Floating Target Handles (Left) */}
+      <div className="absolute -left-12 top-1/2 -translate-y-1/2 flex flex-col gap-3">
+        <div className="relative group">
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="text-in"
+            className="!w-8 !h-8 !bg-[#2a2a2e] !border-none !rounded-full flex items-center justify-center hover:!bg-[#35353a] transition-colors cursor-crosshair !static !transform-none"
+          >
+            <Type size={14} className="text-gray-400 group-hover:text-white pointer-events-none" />
+          </Handle>
+        </div>
+        <div className="relative group">
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="video-in"
+            className="!w-8 !h-8 !bg-[#2a2a2e] !border-none !rounded-full flex items-center justify-center hover:!bg-[#35353a] transition-colors cursor-crosshair !static !transform-none"
+          >
+            <Video size={14} className="text-gray-400 group-hover:text-white pointer-events-none" />
+          </Handle>
+        </div>
+        <div className="relative group" onClick={() => fileInputRef.current?.click()}>
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="image-in"
+            className="!w-8 !h-8 !bg-[#2a2a2e] !border-none !rounded-full flex items-center justify-center hover:!bg-[#35353a] transition-colors cursor-crosshair !static !transform-none"
+          >
+            <ImageIcon size={14} className="text-gray-400 group-hover:text-white pointer-events-none" />
+          </Handle>
+        </div>
       </div>
 
-      {/* Uploaded reference image (from localStorage) */}
+      {/* Floating Source Handle (Right) */}
+      <div className="absolute -right-12 top-6 flex flex-col gap-3">
+        <div className="relative group">
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="text-out"
+            className="!w-8 !h-8 !bg-[#2a2a2e] !border-none !rounded-full flex items-center justify-center hover:!bg-[#35353a] transition-colors cursor-crosshair !static !transform-none"
+          >
+            <Type size={14} className="text-gray-400 group-hover:text-white pointer-events-none" />
+          </Handle>
+        </div>
+      </div>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept="image/*"
+        onChange={handleImageUpload}
+      />
+
+      {/* Uploaded reference image preview (if any) */}
       {localImageB64 && (
-        <div className="relative mb-3 group w-full h-24 rounded-lg overflow-hidden border border-gray-700">
+        <div className="relative group w-full h-32 border-b border-gray-800">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={localImageB64} alt="Uploaded" className="w-full h-full object-cover" />
+          <img src={localImageB64} alt="Uploaded" className="w-full h-full object-cover rounded-t-2xl" />
           <button
             onClick={removeImage}
-            className="absolute top-1 right-1 bg-black/60 p-1 rounded-full text-white hover:bg-red-500/80 transition-colors opacity-0 group-hover:opacity-100"
+            className="absolute top-2 right-2 bg-black/60 p-1.5 rounded-full text-white hover:bg-red-500/80 transition-colors opacity-0 group-hover:opacity-100"
           >
             <X size={14} />
           </button>
         </div>
       )}
 
-      {/* Prompt textarea */}
-      <textarea
-        key={nodeId}
-        className="w-full bg-[#0f0f11] text-sm text-gray-200 p-3 rounded-lg border border-gray-800 focus:border-blue-500 focus:outline-none resize-none h-24"
-        placeholder="Enter your prompt here..."
-        value={localPrompt}
-        onChange={(e) => {
-          setLocalPrompt(e.target.value);
-          if (nodeId) {
-            updateNodeData(nodeId, { prompt: e.target.value });
-            window.dispatchEvent(new Event('trigger-workspace-save'));
-          }
-        }}
-      />
-
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="w-3 h-3 bg-blue-500 border-2 border-[#1c1c1f]"
-      />
+      {/* Prompt textarea body */}
+      <div className="p-1">
+        <textarea
+          key={nodeId}
+          className="w-full bg-transparent text-sm text-gray-300 p-4 focus:outline-none resize-none h-[180px] custom-scrollbar rounded-2xl"
+          placeholder="Try &quot;Happy dog with sunglasses and floating ring&quot;"
+          value={localPrompt}
+          onChange={(e) => {
+            setLocalPrompt(e.target.value);
+            if (nodeId) {
+              updateNodeData(nodeId, { prompt: e.target.value });
+              window.dispatchEvent(new Event('trigger-workspace-save'));
+            }
+          }}
+        />
+      </div>
+      
+      {/* Custom Scrollbar Styles for textarea */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #3f3f46;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #52525b;
+        }
+      `}} />
     </div>
   );
 }

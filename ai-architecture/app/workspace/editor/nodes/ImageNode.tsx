@@ -1,7 +1,7 @@
 "use client";
 
 import { Handle, Position, useReactFlow, useNodeId } from '@xyflow/react';
-import { Image as ImageIcon, Sparkles, Loader2, Settings2, LayoutTemplate, Download, X } from 'lucide-react';
+import { Sparkles, Image as ImageIcon, Download, X, Settings2, Loader2, LayoutTemplate, Type, Play } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -19,7 +19,7 @@ function dataURLtoBlob(dataurl: string) {
   return new Blob([u8arr], { type: mime });
 }
 
-export default function ImageNode({ data }: any) {
+export default function ImageNode({ data, selected }: any) {
   const { getEdges, getNode, updateNodeData, setNodes, setEdges } = useReactFlow();
   const nodeId = useNodeId();
   const [error, setError] = useState<string | null>(null);
@@ -89,7 +89,11 @@ export default function ImageNode({ data }: any) {
 
     // 2. Get prompt and image data
     const sourceNode = getNode(incomingEdge.source);
-    const promptText = String(sourceNode?.data?.prompt || sourceNode?.data?.label || "");
+    // Combine node prompt and local override if provided
+    const basePrompt = String(sourceNode?.data?.prompt || sourceNode?.data?.label || "");
+    const override = data.promptOverride ? String(data.promptOverride).trim() : "";
+    const promptText = override ? `${basePrompt} ${override}`.trim() : basePrompt;
+    
     const imageB64 = sourceNode?.data?.compressedImageB64 
       ? String(sourceNode?.data?.compressedImageB64) 
       : sourceNode?.data?.imageB64 
@@ -257,48 +261,130 @@ export default function ImageNode({ data }: any) {
   const displayUrl = (data.imageUrls && data.imageUrls.length > 0) ? data.imageUrls[0] : data.imageUrl;
 
   return (
-    <div className="bg-[#1c1c1f] border border-gray-800 rounded-xl p-4 shadow-2xl backdrop-blur-md transition-all w-[320px]">
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="w-3 h-3 bg-purple-500 border-2 border-[#1c1c1f]"
-      />
+    <div className={`relative bg-[#1c1c1f] rounded-2xl w-[400px] shadow-2xl transition-all border-2 ${selected ? 'border-purple-500' : 'border-transparent'}`}>
       
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 text-gray-300">
-          <ImageIcon size={16} className="text-purple-400" />
-          <span className="font-medium text-sm">AI Generation</span>
+      {/* Node Header */}
+      <div className="absolute -top-7 left-2 flex items-center gap-2 text-gray-300">
+        <div className="bg-[#1c1c1f] p-1 rounded-md border border-gray-800">
+          <ImageIcon size={12} className="text-gray-300" />
         </div>
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setShowSettings(!showSettings)}
-            className="text-gray-400 hover:text-white p-1.5 rounded-lg hover:bg-[#2a2a2e] transition-colors"
+        <span className="font-bold text-xs">Image Generator</span>
+      </div>
+
+      {/* Floating Target Handles (Left) */}
+      <div className="absolute -left-12 top-1/2 -translate-y-1/2 flex flex-col gap-3">
+        <div className="relative group">
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="text-in"
+            className="!w-8 !h-8 !bg-[#2a2a2e] !border-none !rounded-full flex items-center justify-center hover:!bg-[#35353a] transition-colors cursor-crosshair !static !transform-none"
           >
-            <Settings2 size={14} />
-          </button>
-          {data.isLoading && (
-            <button 
-              onClick={handleCancel}
-              className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-colors text-xs font-semibold"
-            >
-              Cancel
-            </button>
-          )}
-          <button 
-            onClick={handleGenerate}
-            disabled={data.isLoading}
-            className="bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 disabled:cursor-not-allowed text-white px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-colors text-xs font-semibold"
+            <Type size={14} className="text-gray-400 group-hover:text-white pointer-events-none" />
+          </Handle>
+        </div>
+        <div className="relative group">
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="image-in"
+            className="!w-8 !h-8 !bg-[#2a2a2e] !border-none !rounded-full flex items-center justify-center hover:!bg-[#35353a] transition-colors cursor-crosshair !static !transform-none"
           >
-            {data.isLoading ? <Loader2 size={14} className="animate-spin" /> : <Sparkles size={14} />}
-            {data.isLoading ? "Generating..." : "Generate"}
-          </button>
+            <ImageIcon size={14} className="text-gray-400 group-hover:text-white pointer-events-none" />
+          </Handle>
         </div>
       </div>
 
-      {showSettings && (
-        <div className="mb-3 p-3 bg-[#141417] rounded-lg border border-gray-800 text-xs flex flex-col gap-3 nodrag nopan">
-          <div className="flex flex-col gap-1">
-            <label className="text-gray-400 font-medium">Model</label>
+      {/* Floating Source Handle (Right) */}
+      <div className="absolute -right-12 top-6 flex flex-col gap-3">
+        <div className="relative group">
+          <Handle
+            type="source"
+            position={Position.Right}
+            id="image-out"
+            className="!w-8 !h-8 !bg-[#2a2a2e] !border-none !rounded-full flex items-center justify-center hover:!bg-[#35353a] transition-colors cursor-crosshair !static !transform-none"
+          >
+            <ImageIcon size={14} className="text-gray-400 group-hover:text-white pointer-events-none" />
+          </Handle>
+        </div>
+      </div>
+
+      <div className="p-1">
+        {/* Image Preview Area */}
+        <div className={`w-full bg-[#141417] rounded-xl flex items-center justify-center relative overflow-hidden group ${displayUrl && !data.isLoading ? '' : 'h-[320px]'}`}>
+          {displayUrl && !data.isLoading ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img 
+              src={displayUrl} 
+              alt={`Generated`} 
+              onClick={() => setIsModalOpen(true)}
+              className={`w-full object-cover transition-transform duration-500 hover:scale-105 cursor-pointer ${aspectRatio === '16:9' ? 'aspect-video' : aspectRatio === '1:1' ? 'aspect-square' : 'aspect-[9/16]'}`} 
+            />
+          ) : (
+            <div className="text-gray-600 flex flex-col items-center gap-2 p-4 text-center absolute">
+              {data.isLoading ? (
+                <div className="flex flex-col items-center gap-3 text-purple-400">
+                  <Loader2 size={28} className="animate-spin" />
+                  <span className="text-sm font-medium">Creating magic...</span>
+                  <button 
+                    onClick={handleCancel}
+                    className="mt-2 bg-red-600/20 hover:bg-red-600 text-red-500 hover:text-white px-3 py-1.5 rounded-lg flex items-center justify-center gap-1.5 transition-colors text-xs font-semibold"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : error ? (
+                <span className="text-sm font-medium text-red-400">{error}</span>
+              ) : null}
+            </div>
+          )}
+        </div>
+
+        {/* Inline Prompt Input */}
+        <div className="px-3 pt-4 pb-2">
+          <input
+            type="text"
+            className="w-full bg-transparent text-sm text-gray-300 placeholder-gray-600 focus:outline-none"
+            placeholder="Describe the image you want to generate..."
+            value={data.promptOverride || ''}
+            onChange={(e) => {
+              if (nodeId) {
+                updateNodeData(nodeId, { promptOverride: e.target.value });
+                window.dispatchEvent(new Event('trigger-workspace-save'));
+              }
+            }}
+          />
+        </div>
+
+        {/* Bottom Toolbar */}
+        <div className="px-3 pb-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {/* Quantity Control */}
+            <div className="flex items-center bg-[#2a2a2e] rounded-lg text-xs font-medium text-gray-300 h-8">
+              <button 
+                className="px-2.5 h-full hover:bg-[#35353a] hover:text-white transition-colors rounded-l-lg border-r border-gray-700"
+                onClick={() => {
+                  const val = Math.max(1, imageCount - 1);
+                  setImageCount(val);
+                  if (nodeId) updateNodeData(nodeId, { imageCount: val });
+                }}
+              >
+                -
+              </button>
+              <span className="px-2">x{imageCount}</span>
+              <button 
+                className="px-2.5 h-full hover:bg-[#35353a] hover:text-white transition-colors rounded-r-lg border-l border-gray-700"
+                onClick={() => {
+                  const val = Math.min(4, imageCount + 1);
+                  setImageCount(val);
+                  if (nodeId) updateNodeData(nodeId, { imageCount: val });
+                }}
+              >
+                +
+              </button>
+            </div>
+
+            {/* Model/Style Dropdown */}
             <select 
               value={modelName} 
               onChange={(e) => {
@@ -308,87 +394,49 @@ export default function ImageNode({ data }: any) {
                   window.dispatchEvent(new Event('trigger-workspace-save'));
                 }
               }}
-              className="bg-[#1c1c1f] border border-gray-700 rounded p-1.5 text-gray-200 focus:outline-none focus:border-purple-500"
+              className="bg-[#2a2a2e] hover:bg-[#35353a] rounded-lg px-3 h-8 text-xs font-medium text-gray-300 focus:outline-none appearance-none cursor-pointer transition-colors"
             >
-              <option value="nano-banana-pro-preview">Nano Banana Pro</option>
+              <option value="nano-banana-pro-preview">Auto</option>
               <option value="imagen-3.0-generate-001">Imagen 3.0</option>
             </select>
-          </div>
-          <div className="flex gap-3">
-            <div className="flex flex-col gap-1 flex-1">
-              <label className="text-gray-400 font-medium">Size (Ratio)</label>
-              <select 
-                value={aspectRatio} 
-                onChange={(e) => {
-                  setAspectRatio(e.target.value);
-                  if (nodeId) {
-                    updateNodeData(nodeId, { aspectRatio: e.target.value });
-                    window.dispatchEvent(new Event('trigger-workspace-save'));
-                  }
-                }}
-                className="bg-[#1c1c1f] border border-gray-700 rounded p-1.5 text-gray-200 focus:outline-none focus:border-purple-500"
-              >
-                <option value="1:1">1:1 Square</option>
-                <option value="9:16">9:16 Vertical</option>
-                <option value="16:9">16:9 Landscape</option>
-                <option value="4:3">4:3 Standard</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1 w-20">
-              <label className="text-gray-400 font-medium">Count</label>
-              <input 
-                type="number" 
-                min="1" 
-                max="4" 
-                value={imageCount} 
-                onChange={(e) => {
-                  const val = parseInt(e.target.value) || 1;
-                  setImageCount(val);
-                  if (nodeId) {
-                    updateNodeData(nodeId, { imageCount: val });
-                    window.dispatchEvent(new Event('trigger-workspace-save'));
-                  }
-                }}
-                className="bg-[#1c1c1f] border border-gray-700 rounded p-1.5 text-gray-200 focus:outline-none focus:border-purple-500"
-              />
-            </div>
-          </div>
-        </div>
-      )}
-      
-      <div className={`w-full bg-[#0f0f11] rounded-lg border border-dashed border-gray-700 flex items-center justify-center mt-2 relative overflow-hidden group ${displayUrl && !data.isLoading ? '' : 'h-48'}`}>
-        {displayUrl && !data.isLoading ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img 
-            src={displayUrl} 
-            alt={`Generated`} 
-            onClick={() => setIsModalOpen(true)}
-            className={`w-full object-cover rounded-md transition-transform duration-500 hover:scale-105 cursor-pointer ${aspectRatio === '16:9' ? 'aspect-video' : aspectRatio === '1:1' ? 'aspect-square' : 'aspect-[9/16]'}`} 
-          />
-        ) : (
-          <div className="text-gray-500 flex flex-col items-center gap-2 p-4 text-center absolute">
-            {data.isLoading ? (
-              <div className="flex flex-col items-center gap-2 text-purple-400">
-                <Loader2 size={24} className="animate-spin" />
-                <span className="text-xs">Creating magic...</span>
-              </div>
-            ) : error ? (
-              <span className="text-xs text-red-400">{error}</span>
-            ) : (
-              <>
-                <LayoutTemplate size={24} className="opacity-50" />
-                <span className="text-xs">Connect a prompt and click generate</span>
-              </>
-            )}
-          </div>
-        )}
-      </div>
 
-      <Handle
-        type="source"
-        position={Position.Right}
-        className="w-3 h-3 bg-purple-500 border-2 border-[#1c1c1f]"
-      />
+            {/* Aspect Ratio Dropdown */}
+            <select 
+              value={aspectRatio} 
+              onChange={(e) => {
+                setAspectRatio(e.target.value);
+                if (nodeId) {
+                  updateNodeData(nodeId, { aspectRatio: e.target.value });
+                  window.dispatchEvent(new Event('trigger-workspace-save'));
+                }
+              }}
+              className="bg-[#2a2a2e] hover:bg-[#35353a] rounded-lg px-3 h-8 text-xs font-medium text-gray-300 focus:outline-none appearance-none cursor-pointer flex items-center gap-1 transition-colors"
+            >
+              <option value="1:1">⬜ 1:1</option>
+              <option value="9:16">▯ 9:16</option>
+              <option value="16:9">▭ 16:9</option>
+              <option value="4:3">▭ 4:3</option>
+            </select>
+
+            {/* Settings Button */}
+            <button 
+              onClick={() => setShowSettings(!showSettings)}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-white hover:bg-[#2a2a2e] transition-colors"
+            >
+              <Settings2 size={14} />
+            </button>
+          </div>
+
+          {/* Generate (Play) Button */}
+          <button 
+            onClick={handleGenerate}
+            disabled={data.isLoading}
+            className="w-10 h-10 rounded-full bg-[#3f3f46] hover:bg-[#52525b] disabled:bg-[#2a2a2e] disabled:cursor-not-allowed flex items-center justify-center text-gray-200 hover:text-white transition-colors"
+          >
+            {data.isLoading ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" className="ml-1" />}
+          </button>
+        </div>
+      </div>
       
       {mounted && isModalOpen && displayUrl && createPortal(
         <div className="fixed inset-0 z-[9999] bg-black/90 backdrop-blur-sm flex items-center justify-center p-8 nodrag nopan">
