@@ -85,6 +85,7 @@ function Flow() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
   const [spaceName, setSpaceName] = useState("Untitled space");
+  const [activeTool, setActiveTool] = useState('cursor');
 
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
@@ -237,6 +238,16 @@ function Flow() {
     [reactFlowInstance, setNodes, triggerSave],
   );
 
+  const onEdgeClick = useCallback(
+    (event: React.MouseEvent, edge: Edge) => {
+      if (activeTool === 'scissors') {
+        setEdges((eds) => eds.filter((e) => e.id !== edge.id));
+        triggerSave();
+      }
+    },
+    [activeTool, setEdges, triggerSave]
+  );
+
   const handleAddNode = useCallback(
     (type: string) => {
       if (!reactFlowInstance) return;
@@ -314,7 +325,11 @@ function Flow() {
       </div>
 
       {/* Floating Left Toolbar */}
-      <FloatingToolbar onAddNode={handleAddNode} />
+      <FloatingToolbar 
+        onAddNode={handleAddNode} 
+        activeTool={activeTool} 
+        onToolChange={setActiveTool} 
+      />
 
       {/* Bottom Left Chip */}
       <div className="absolute bottom-6 left-6 z-50 pointer-events-auto">
@@ -349,6 +364,7 @@ function Flow() {
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
           onConnect={onConnect}
+          onEdgeClick={onEdgeClick}
           onNodeDragStart={onNodeDragStart}
           onNodeDragStop={onNodeDragStop}
           onInit={(instance) => {
@@ -359,14 +375,26 @@ function Flow() {
           onDragOver={onDragOver}
           nodeTypes={nodeTypes}
           fitView
-          className="bg-[#111111]"
+          className={`bg-[#111111] ${activeTool === 'scissors' ? 'cutting-mode' : ''}`}
           defaultEdgeOptions={{ style: { stroke: '#4b5563', strokeWidth: 2 } }}
+          panOnDrag={activeTool === 'cursor' || activeTool === 'hand'}
+          selectionOnDrag={activeTool === 'cursor'}
         >
-          {/* Using dotted background to match screenshot */}
           <Background color="#2a2a2a" gap={20} size={1.5} variant={BackgroundVariant.Dots} />
           <Controls className="!hidden" /> {/* Hide default controls since we have custom zoom/pan */}
         </ReactFlow>
       </div>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        .cutting-mode .react-flow__edge-path {
+          cursor: crosshair !important;
+          transition: stroke 0.2s, stroke-width 0.2s;
+        }
+        .cutting-mode .react-flow__edge:hover .react-flow__edge-path {
+          stroke: #ef4444 !important;
+          stroke-width: 4px !important;
+        }
+      `}} />
     </div>
   );
 }

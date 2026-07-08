@@ -24,9 +24,11 @@ import {
 
 interface FloatingToolbarProps {
   onAddNode?: (type: string) => void;
+  activeTool?: string;
+  onToolChange?: (tool: string) => void;
 }
 
-export default function FloatingToolbar({ onAddNode }: FloatingToolbarProps) {
+export default function FloatingToolbar({ onAddNode, activeTool = 'cursor', onToolChange }: FloatingToolbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const onDragStart = (event: React.DragEvent, nodeType: string) => {
@@ -63,11 +65,19 @@ export default function FloatingToolbar({ onAddNode }: FloatingToolbarProps) {
             <Play size={18} fill="currentColor" className="ml-1" />
           </div>
 
-          <button className="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-[#27272a] transition-colors">
+          <button 
+            onClick={() => onToolChange?.('cursor')}
+            className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors ${activeTool === 'cursor' ? 'bg-white text-black' : 'text-gray-400 hover:text-white hover:bg-[#27272a]'}`}
+            title="Pan & Select Tool"
+          >
             <Hand size={20} />
           </button>
           
-          <button className="w-10 h-10 flex items-center justify-center rounded-full text-gray-400 hover:text-white hover:bg-[#27272a] transition-colors">
+          <button 
+            onClick={() => onToolChange?.('scissors')}
+            className={`w-10 h-10 flex items-center justify-center rounded-full transition-colors ${activeTool === 'scissors' ? 'bg-red-500 text-white' : 'text-gray-400 hover:text-white hover:bg-[#27272a]'}`}
+            title="Cut Connections Tool"
+          >
             <Scissors size={20} />
           </button>
           
