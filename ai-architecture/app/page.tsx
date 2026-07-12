@@ -1,14 +1,29 @@
 "use client";
 
 import React, { useMemo, useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 
 // Server URL
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
-import ControlPanel, { SelectedPerspective } from "@/app/components/ControlPanel";
-import ResultDisplay from "@/app/components/ResultDisplay";
+import type { SelectedPerspective } from "@/app/components/ControlPanel";
+import OptimizedImage from "@/app/components/OptimizedImage";
 import { ApiResponse, ApiOk, UserSession } from "@/app/types";
+
+const ControlPanel = dynamic(() => import("@/app/components/ControlPanel"), {
+  loading: () => (
+    <div className="w-full h-64 rounded-3xl bg-[#121214] border border-white/5 animate-pulse" />
+  ),
+  ssr: false,
+});
+
+const ResultDisplay = dynamic(() => import("@/app/components/ResultDisplay"), {
+  loading: () => (
+    <div className="w-full min-h-[320px] rounded-3xl bg-[#121214] border border-white/5 animate-pulse" />
+  ),
+  ssr: false,
+});
 
 // ── Backend Auth/API client ───────────────────────────────────────────────────
 import {
@@ -1184,16 +1199,31 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Hero Images Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto px-4">
-                {dbHero.slice(0, 3).map((hero, index) => (
-                  <div key={hero.id} onClick={() => router.push(`/apps/${hero.id}`)} className={`cursor-pointer aspect-[3/4] rounded-3xl overflow-hidden relative group ${index === 1 ? 'md:-translate-y-6' : ''}`}>
-                    <img src={hero.image_url} alt={hero.title} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent flex items-end">
-                      <div className="p-6 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0 w-full">
-                        <span className="text-white font-bold text-lg drop-shadow-xl font-display">{hero.title}</span>
-                      </div>
-                    </div>
+              {/* Hero Images Grid — reserved aspect ratio prevents CLS while content loads */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto px-4 min-h-[280px] md:min-h-[420px]">
+                {(dbHero.length > 0 ? dbHero : Array.from({ length: 3 })).slice(0, 3).map((hero, index) => (
+                  <div
+                    key={hero?.id ?? `hero-skeleton-${index}`}
+                    onClick={hero ? () => router.push(`/apps/${hero.id}`) : undefined}
+                    className={`aspect-[3/4] rounded-3xl overflow-hidden relative group ${index === 1 ? "md:-translate-y-6" : ""} ${hero ? "cursor-pointer" : "bg-[#121214] animate-pulse"}`}
+                  >
+                    {hero?.image_url ? (
+                      <>
+                        <OptimizedImage
+                          src={hero.image_url}
+                          alt={hero.title || "Hero"}
+                          priority={index === 0}
+                          sizes="(max-width: 768px) 100vw, 33vw"
+                          width={900}
+                          className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent flex items-end">
+                          <div className="p-6 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0 w-full">
+                            <span className="text-white font-bold text-lg drop-shadow-xl font-display">{hero.title}</span>
+                          </div>
+                        </div>
+                      </>
+                    ) : null}
                   </div>
                 ))}
               </div>
@@ -1245,7 +1275,13 @@ export default function Home() {
                           <span>{a.credit_cost}</span>
                         </div>
                       )}
-                      <img src={a.image_url} alt={a.title} className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" />
+                      <OptimizedImage
+                        src={a.image_url}
+                        alt={a.title || "App"}
+                        sizes="(max-width: 768px) 100vw, 25vw"
+                        width={600}
+                        className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500"
+                      />
                       <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors"></div>
                     </div>
                     <div className="px-1">
