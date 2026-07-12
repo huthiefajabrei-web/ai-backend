@@ -4,6 +4,7 @@ import { Handle, Position, useReactFlow, useNodeId } from '@xyflow/react';
 import { Sparkles, Image as ImageIcon, Download, X, Settings2, Loader2, LayoutTemplate, Type, Play } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { fetchJobStatus, authFormPost, cancelJobs } from '@/lib/mysql/client';
 
 // Helper to convert base64 to Blob
 function dataURLtoBlob(dataurl: string) {
@@ -127,11 +128,7 @@ export default function ImageNode({ data, selected }: any) {
       }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
-      // Call the API
-      const response = await fetch(`${apiUrl}/generate`, {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await authFormPost(`${apiUrl}/generate`, formData);
 
       const responseData = await response.json();
       
@@ -190,7 +187,7 @@ export default function ImageNode({ data, selected }: any) {
             if (isCancellingRef.current) {
               throw new Error("Cancelled by user");
             }
-            const statusRes = await fetch(`${apiUrl}/status/${jobId}`);
+            const statusRes = await fetchJobStatus(jobId);
             const statusData = await statusRes.json();
 
             if (statusData.status === 'COMPLETED') {
@@ -242,17 +239,8 @@ export default function ImageNode({ data, selected }: any) {
     setError("Generation Cancelled");
     window.dispatchEvent(new Event('trigger-workspace-save'));
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      await fetch(`${apiUrl}/cancel-jobs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ job_ids: activeJobIdsRef.current })
-      });
+      await cancelJobs(activeJobIdsRef.current);
     } catch (e) {
       console.error("Failed to cancel jobs on backend", e);
     }

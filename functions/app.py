@@ -2,19 +2,21 @@ import os
 import time
 import base64
 import uuid
-import hashlib
-import secrets
+import ipaddress
+from collections import defaultdict
 from typing import Optional, Dict, Any, List
 from datetime import datetime, timedelta
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 load_dotenv()
 
 import requests
-from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, Header, Depends
+from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # =========================
 # Firebase Setup
@@ -55,6 +57,150 @@ ADMIN_EMAILS = {
     for email in os.getenv("ADMIN_EMAILS", "").split(",")
     if email.strip()
 }
+
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").lower()
+SUBSCRIBE_TEST_MODE = os.getenv("SUBSCRIBE_TEST_MODE", "false").lower() in ("1", "true", "yes")
+MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(10 * 1024 * 1024)))
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+RATE_LIMIT_WINDOW = 60
+RATE_LIMIT_MAX = int(os.getenv("RATE_LIMIT_PER_MINUTE", "120"))
+
+ALLOWED_PROXY_HOST_SUFFIXES = (
+    "firebasestorage.googleapis.com",
+    "storage.googleapis.com",
+    "googleusercontent.com",
+)
+ALLOWED_PROXY_HOSTS = {
+    h.strip().lower()
+    for h in os.getenv("ALLOWED_PROXY_HOSTS", "").split(",")
+    if h.strip()
+}
+
+_costs_cache: Dict[str, Any] = {"data": None, "expires": 0.0}
+_rate_limit_store: Dict[str, List[float]] = defaultdict(list)
+
+
+def get_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
+        if ENVIRONMENT == "production":
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+        return response
+
+
+class RateLimitMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path in ("/health", "/"):
+            return await call_next(request)
+        ip = get_client_ip(request)
+        now = time.time()
+        window_start = now - RATE_LIMIT_WINDOW
+        hits = [t for t in _rate_limit_store[ip] if t > window_start]
+        if len(hits) >= RATE_LIMIT_MAX:
+            return JSONResponse(
+                status_code=429,
+                content={"ok": False, "error": "Too many requests. Please try again later."},
+            )
+        hits.append(now)
+        _rate_limit_store[ip] = hits
+        return await call_next(request)
+
+
+def is_url_safe_for_proxy(url: str) -> bool:
+    try:
+        parsed = urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+        hostname = (parsed.hostname or "").lower()
+        if not hostname:
+            return False
+        if hostname in ("localhost", "127.0.0.1", "0.0.0.0", "::1", "[::1]"):
+            return False
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+                return False
+        except ValueError:
+            pass
+        if hostname in ALLOWED_PROXY_HOSTS:
+            return True
+        if any(hostname == suffix or hostname.endswith(f".{suffix}") for suffix in ALLOWED_PROXY_HOST_SUFFIXES):
+            return True
+        api_base = os.getenv("API_BASE_URL", "")
+        if api_base:
+            api_host = (urlparse(api_base).hostname or "").lower()
+            if api_host and hostname == api_host:
+                return True
+        return False
+    except Exception:
+        return False
+
+
+def validate_image_upload(content: bytes, content_type: Optional[str]) -> Optional[str]:
+    if not content:
+        return "Empty file"
+    if len(content) > MAX_UPLOAD_BYTES:
+        return f"File too large (max {MAX_UPLOAD_BYTES // (1024 * 1024)}MB)"
+    mime = (content_type or "").split(";")[0].strip().lower()
+    if mime and mime not in ALLOWED_IMAGE_TYPES:
+        return f"Invalid file type: {mime}"
+    return None
+
+
+def get_credit_costs_map(force_refresh: bool = False) -> Dict[str, int]:
+    now = time.time()
+    if not force_refresh and _costs_cache["data"] is not None and now < _costs_cache["expires"]:
+        return _costs_cache["data"]
+    db_client = get_db()
+    try:
+        costs_docs = db_client.collection("app_credit_costs").stream()
+        costs = {
+            doc.to_dict().get("operation"): doc.to_dict().get("cost")
+            for doc in costs_docs
+            if doc.to_dict().get("operation")
+        }
+    except Exception as e:
+        print(f"Error fetching costs: {e}")
+        costs = {"image_generation": 1, "video_generation": 5, "video_image_to_video": 5, "video_frame_to_frame": 7}
+    _costs_cache["data"] = costs
+    _costs_cache["expires"] = now + 300
+    return costs
+
+
+def sanitize_job_response(job: dict, user: Optional[dict] = None) -> dict:
+    result = {k: v for k, v in job.items() if not k.startswith("_")}
+    if result.get("file_url") and result.get("image_base64"):
+        result.pop("image_base64", None)
+    is_admin = user and is_admin_email(user.get("email"))
+    if not is_admin:
+        result.pop("details", None)
+        if result.get("error") and len(str(result["error"])) > 200:
+            result["error"] = str(result["error"])[:200]
+    return result
+
+
+def user_can_access_job(user: dict, job: dict) -> bool:
+    job_user_id = job.get("_user_id")
+    if not job_user_id:
+        return is_admin_email(user.get("email"))
+    if job_user_id == user.get("id"):
+        return True
+    return is_admin_email(user.get("email"))
+
+
+def extract_bearer_token(authorization: Optional[str]) -> str:
+    return (authorization or "").replace("Bearer ", "").strip()
 
 def get_db():
     if not db:
@@ -187,23 +333,59 @@ def serialize_dates(obj):
 os.makedirs("static", exist_ok=True)
 
 def deduct_credits_on_success(job_id: str):
-    """Deduct credits from user after successful generation."""
+    """Deduct credits from user after successful generation (transactional)."""
     job = get_job(job_id) or {}
     user_id = job.get("_user_id")
     credit_cost = job.get("_credit_cost", 0)
     if not user_id or not credit_cost:
         return
     db_client = get_db()
+    user_ref = db_client.collection("users").document(user_id)
     try:
-        user_ref = db_client.collection('users').document(user_id)
-        user_doc = user_ref.get()
-        if user_doc.exists:
-            current_credits = user_doc.to_dict().get('credits', 0)
-            new_credits = max(0, current_credits - credit_cost)
-            user_ref.update({'credits': new_credits})
+        from google.cloud.firestore_v1 import transactional
+
+        @transactional
+        def _deduct(transaction, ref, cost):
+            snapshot = ref.get(transaction=transaction)
+            if not snapshot.exists:
+                return False
+            current = snapshot.to_dict().get("credits", 0) or 0
+            if current < cost:
+                print(f" Insufficient credits for deduction: user {user_id}, need {cost}, have {current}")
+                return False
+            transaction.update(ref, {"credits": current - cost})
+            return True
+
+        transaction = db_client.transaction()
+        if _deduct(transaction, user_ref, credit_cost):
             print(f" Deducted {credit_cost} credits from user {user_id} for job {job_id}")
     except Exception as e:
         print(f" Failed to deduct credits for job {job_id}: {e}")
+
+
+def resolve_generation_cost(
+    is_video: bool,
+    total_images: int,
+    has_refs: bool,
+    app_card_id: Optional[str],
+    costs: Dict[str, int],
+) -> int:
+    """Server-side credit cost — never trust client-supplied amounts."""
+    if app_card_id:
+        try:
+            card_doc = get_db().collection("app_cards").document(app_card_id).get()
+            if card_doc.exists:
+                card_cost = card_doc.to_dict().get("credit_cost")
+                if isinstance(card_cost, (int, float)) and card_cost >= 0:
+                    return int(card_cost)
+        except Exception as e:
+            print(f" resolve_generation_cost card lookup failed: {e}")
+    cost_per_image = costs.get("image_generation", 1)
+    if is_video:
+        if has_refs:
+            return costs.get("video_frame_to_frame", costs.get("video_generation", 7))
+        return costs.get("video_image_to_video", costs.get("video_generation", 5))
+    return cost_per_image * total_images
 
 
 def compress_image_b64(b64_data: str, max_size: int = 1024, quality: int = 80) -> str:
@@ -330,7 +512,11 @@ STATUS_URL = f"https://api.runpod.ai/v2/{RUNPOD_ENDPOINT_ID}/status"  # + /{job_
 # =========================
 # 2)  FastAPI + CORS
 # =========================
-app = FastAPI()
+app = FastAPI(
+    docs_url=None if ENVIRONMENT == "production" else "/docs",
+    redoc_url=None if ENVIRONMENT == "production" else "/redoc",
+    openapi_url=None if ENVIRONMENT == "production" else "/openapi.json",
+)
 
 @app.on_event("startup")
 def startup_event():
@@ -340,18 +526,26 @@ def startup_event():
     except Exception as e:
         print(f"Failed to initialize database tables: {e}")
 
+_cors_origins = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ALLOWED_ORIGINS",
+        "http://localhost:3000,http://127.0.0.1:3000,"
+        "https://gen-lang-client-0550261552.web.app,"
+        "https://gen-lang-client-0550261552.firebaseapp.com",
+    ).split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "https://gen-lang-client-0550261552.web.app",
-        "https://gen-lang-client-0550261552.firebaseapp.com"
-    ],
+    allow_origins=_cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "Accept"],
 )
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware)
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -362,7 +556,7 @@ class CancelJobsRequest(BaseModel):
 
 @app.post("/cancel-jobs")
 async def cancel_jobs(req: CancelJobsRequest, authorization: Optional[str] = Header(None)):
-    token = (authorization or "").replace("Bearer ", "").strip()
+    token = extract_bearer_token(authorization)
     user = get_user_from_token(token)
     if not user:
         raise HTTPException(status_code=401, detail="Unauthorized")
@@ -389,12 +583,20 @@ def health():
     return {"ok": True}
 
 @app.get("/proxy-download")
-def proxy_download(url: str):
+def proxy_download(url: str, authorization: Optional[str] = Header(None)):
+    token = extract_bearer_token(authorization)
+    if not get_user_from_token(token):
+        return JSONResponse(status_code=401, content={"error": "Unauthorized"})
     if not url:
         return JSONResponse(status_code=400, content={"error": "No URL provided"})
+    if not is_url_safe_for_proxy(url):
+        return JSONResponse(status_code=403, content={"error": "URL not allowed"})
     try:
-        response = requests.get(url, stream=True, timeout=15)
+        response = requests.get(url, stream=True, timeout=15, allow_redirects=True)
         response.raise_for_status()
+        final_url = response.url or url
+        if not is_url_safe_for_proxy(final_url):
+            return JSONResponse(status_code=403, content={"error": "Redirect target not allowed"})
         
         content_type = response.headers.get("Content-Type", "application/octet-stream")
         ext = "mp4" if "video" in content_type else "png"
@@ -407,12 +609,13 @@ def proxy_download(url: str):
 
         headers = {
             "Content-Disposition": f'attachment; filename="{filename}"',
-            "Access-Control-Allow-Origin": "*"
         }
         
         return StreamingResponse(iterfile(), media_type=content_type, headers=headers)
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+    except requests.RequestException:
+        return JSONResponse(status_code=502, content={"error": "Failed to fetch remote file"})
+    except Exception:
+        return JSONResponse(status_code=500, content={"error": "Download failed"})
 
 # =========================
 # Auth Endpoints
@@ -471,8 +674,13 @@ class AdminAdjustCreditsBody(BaseModel):
 
 @app.post("/subscribe")
 def subscribe(body: SubscribeBody, authorization: Optional[str] = Header(None)):
-    """Subscribe to a plan - adds credits to user account (test mode, no payment)."""
-    token = (authorization or "").replace("Bearer ", "").strip()
+    """Subscribe to a plan - test mode only when SUBSCRIBE_TEST_MODE=true."""
+    if not SUBSCRIBE_TEST_MODE:
+        return JSONResponse(
+            status_code=403,
+            content={"ok": False, "error": "Subscription requires payment integration. Disabled in production."},
+        )
+    token = extract_bearer_token(authorization)
     user = get_user_from_token(token)
     if not user:
         return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
@@ -592,6 +800,7 @@ def update_credit_cost(body: CreditCostUpdateBody, authorization: Optional[str] 
                 "cost": body.cost,
                 "updated_at": datetime.utcnow().isoformat()
             })
+        get_credit_costs_map(force_refresh=True)
         return {"ok": True, "operation": body.operation, "cost": body.cost}
     except Exception as e:
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
@@ -608,7 +817,12 @@ def get_sessions(authorization: Optional[str] = Header(None)):
         return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
     db_client = get_db()
     try:
-        sessions = db_client.collection('app_user_sessions').where(filter=FieldFilter("user_id", "==", user["id"])).stream()
+        sessions = (
+            db_client.collection("app_user_sessions")
+            .where(filter=FieldFilter("user_id", "==", user["id"]))
+            .limit(200)
+            .stream()
+        )
         result = []
         for s in sessions:
             d = s.to_dict()
@@ -711,8 +925,10 @@ def get_admin_stats(authorization: Optional[str] = Header(None)):
         return JSONResponse(status_code=403, content={"ok": False, "error": "Admin access required"})
     db_client = get_db()
     try:
-        users_count = len(list(db_client.collection('users').stream()))
-        sessions_count = len(list(db_client.collection('app_user_sessions').stream()))
+        users_agg = db_client.collection("users").count().get()
+        sessions_agg = db_client.collection("app_user_sessions").count().get()
+        users_count = users_agg[0][0].value
+        sessions_count = sessions_agg[0][0].value
         return {"ok": True, "stats": {"users": users_count, "sessions": sessions_count}}
     except Exception as e:
         return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
@@ -829,7 +1045,12 @@ async def admin_upload_image(
     
     try:
         content = await file.read()
-        ext = file.filename.split('.')[-1] if file.filename and '.' in file.filename else 'jpg'
+        upload_error = validate_image_upload(content, file.content_type)
+        if upload_error:
+            return JSONResponse(status_code=400, content={"ok": False, "error": upload_error})
+        ext = file.filename.split('.')[-1].lower() if file.filename and '.' in file.filename else 'jpg'
+        if ext not in ("jpg", "jpeg", "png", "webp", "gif"):
+            return JSONResponse(status_code=400, content={"ok": False, "error": "Invalid file extension"})
         filename = f"uploaded_{int(time.time())}_{uuid.uuid4().hex[:6]}.{ext}"
         
         print(f" Upload request: {filename}")
@@ -858,7 +1079,7 @@ async def admin_upload_image(
             
     except Exception as e:
         print(f" Upload error: {e}")
-        return JSONResponse(status_code=500, content={"ok": False, "error": str(e)})
+        return JSONResponse(status_code=500, content={"ok": False, "error": "Upload failed"})
 
 # =========================
 # 3) Prompt Templates
@@ -1663,12 +1884,17 @@ async def generate(
     file: Optional[UploadFile] = File(None),
     refs: List[UploadFile] = File(None),
     authorization: Optional[str] = Header(None),
-    app_credit_cost: Optional[int] = Form(None),
+    app_card_id: Optional[str] = Form(None),
 ):
     try:
         # --- Credit check & deduction ---
-        token = (authorization or "").replace("Bearer ", "").strip()
+        token = extract_bearer_token(authorization)
         user = get_user_from_token(token) if token else None
+        if not user:
+            return JSONResponse(
+                status_code=401,
+                content={"ok": False, "error": "Authentication required"},
+            )
 
         # Calculate total images to generate
         total_images = 0
@@ -1681,35 +1907,18 @@ async def generate(
                     c = 1
                 total_images += c
 
-        # Get credit costs from DB
-        db_client = get_db()
-        try:
-            costs_docs = db_client.collection('app_credit_costs').stream()
-            costs = {doc.to_dict().get("operation"): doc.to_dict().get("cost") for doc in costs_docs}
-        except Exception as e:
-            print(f"Error fetching costs: {e}")
-            costs = {"image_generation": 1, "video_generation": 5}
+        # Get credit costs from DB (cached)
+        costs = get_credit_costs_map()
 
         cost_per_image = costs.get("image_generation", 1)
-        
-        # Determine video type and cost
-        if is_video:
-            # Check if it's frame-to-frame (has reference images) or image-to-video
-            has_refs = refs and any(r.filename for r in refs)
-            if has_refs:
-                # Frame to Frame mode
-                cost_per_video = costs.get("video_frame_to_frame", costs.get("video_generation", 7))
-            else:
-                # Image to Video mode
-                cost_per_video = costs.get("video_image_to_video", costs.get("video_generation", 5))
-        else:
-            cost_per_video = costs.get("video_generation", 5)
-        
-        # If app_credit_cost is provided (from app card), use it directly
-        if app_credit_cost is not None and app_credit_cost >= 0:
-            total_cost = app_credit_cost
-        else:
-            total_cost = cost_per_video if is_video else (cost_per_image * total_images)
+        has_refs = refs and any(r.filename for r in refs)
+        total_cost = resolve_generation_cost(
+            is_video=is_video,
+            total_images=total_images,
+            has_refs=has_refs,
+            app_card_id=app_card_id,
+            costs=costs,
+        )
 
         # Validate credits but DO NOT deduct yet - deduction happens on success
         if user:
@@ -1730,17 +1939,21 @@ async def generate(
         if file is not None:
             content = await file.read()
             if content:
-                import base64
+                upload_error = validate_image_upload(content, file.content_type)
+                if upload_error:
+                    return JSONResponse(status_code=400, content={"ok": False, "error": upload_error})
                 input_image_b64 = base64.b64encode(content).decode("utf-8")
                 mime_type = file.content_type or "image/png"
                 
         reference_images = []
         if refs:
-            import base64
             for r in refs:
                 if r.filename:
                     r_content = await r.read()
                     if r_content:
+                        upload_error = validate_image_upload(r_content, r.content_type)
+                        if upload_error:
+                            return JSONResponse(status_code=400, content={"ok": False, "error": upload_error})
                         r_b64 = base64.b64encode(r_content).decode("utf-8")
                         r_mime = r.content_type or "image/png"
                         reference_images.append({"b64": r_b64, "mime_type": r_mime})
@@ -1822,9 +2035,10 @@ async def generate(
         }
 
     except Exception as e:
+        print(f"Generate error: {e}")
         return JSONResponse(
             status_code=500,
-            content={"error": "Failed to create jobs", "details": str(e)}
+            content={"error": "Failed to create jobs"},
         )
 
 @app.get("/estimate-cost")
@@ -1834,54 +2048,66 @@ def estimate_cost(
     perspective_count: int = 1,
 ):
     """Get estimated credit cost before generation."""
-    db_client = get_db()
-    try:
-        costs_docs = db_client.collection('app_credit_costs').stream()
-        costs = {doc.to_dict().get("operation"): {"cost": doc.to_dict().get("cost"), "label": doc.to_dict().get("label")} for doc in costs_docs}
-    except Exception as e:
-        print(f"Error fetching costs: {e}")
-        costs = {
-            "image_generation": {"cost": 1, "label": "Image Generation (per image)"},
-            "video_generation": {"cost": 5, "label": "Video Generation"}
-        }
-    finally:
-        conn.close()
+    image_count = max(1, min(image_count, 100))
+    perspective_count = max(1, min(perspective_count, 20))
+    costs_raw = get_credit_costs_map()
+    costs = {
+        op: {"cost": cost, "label": op.replace("_", " ").title()}
+        for op, cost in costs_raw.items()
+    }
 
     if is_video:
-        total = costs.get("video_generation", {}).get("cost", 5)
+        total = costs_raw.get("video_generation", 5)
         return {"ok": True, "total_cost": total, "breakdown": {"video": total}, "costs": costs}
-    else:
-        cost_per_image = costs.get("image_generation", {}).get("cost", 1)
-        total = cost_per_image * image_count * perspective_count
-        return {
-            "ok": True,
-            "total_cost": total,
-            "breakdown": {
-                "per_image": cost_per_image,
-                "images": image_count,
-                "perspectives": perspective_count
-            },
-            "costs": costs
-        }
+    cost_per_image = costs_raw.get("image_generation", 1)
+    total = cost_per_image * image_count * perspective_count
+    return {
+        "ok": True,
+        "total_cost": total,
+        "breakdown": {
+            "per_image": cost_per_image,
+            "images": image_count,
+            "perspectives": perspective_count,
+        },
+        "costs": costs,
+    }
 
 
 @app.get("/status/{job_id}")
-def check_status(job_id: str):
+def check_status(job_id: str, authorization: Optional[str] = Header(None)):
+    token = extract_bearer_token(authorization)
+    user = get_user_from_token(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
     job = get_job(job_id)
     if not job:
         return JSONResponse(
             status_code=404,
-            content={"error": "Job not found", "status": "FAILED"}
+            content={"error": "Job not found", "status": "FAILED"},
         )
-    return job
+    if not user_can_access_job(user, job):
+        return JSONResponse(status_code=403, content={"ok": False, "error": "Access denied"})
+    return sanitize_job_response(job, user)
 
 @app.get("/status-stream")
-async def check_status_stream(job_ids: str):
+async def check_status_stream(job_ids: str, authorization: Optional[str] = Header(None)):
     """
     SSE endpoint to monitor multiple jobs.
     `job_ids` should be comma-separated.
     """
-    jids = [jid.strip() for jid in job_ids.split(",") if jid.strip()]
+    token = extract_bearer_token(authorization)
+    user = get_user_from_token(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"ok": False, "error": "Unauthorized"})
+
+    jids = [jid.strip() for jid in job_ids.split(",") if jid.strip()][:20]
+    if not jids:
+        return JSONResponse(status_code=400, content={"ok": False, "error": "No job IDs provided"})
+
+    for jid in jids:
+        job = get_job(jid)
+        if job and not user_can_access_job(user, job):
+            return JSONResponse(status_code=403, content={"ok": False, "error": "Access denied"})
     
     async def event_stream():
         import json
@@ -1892,14 +2118,16 @@ async def check_status_stream(job_ids: str):
             for jid in jids:
                 if jid in completed:
                     continue
-                # Use asyncio.to_thread to avoid blocking event loop with sync DB call
                 job = await asyncio.to_thread(get_job, jid)
                 if job:
-                    updates.append(job)
-                    if job["status"] in ["COMPLETED", "FAILED", "TIMEOUT"]:
+                    if not user_can_access_job(user, job):
+                        updates.append({"job_id": jid, "status": "FAILED", "error": "Access denied"})
+                        completed.add(jid)
+                        continue
+                    updates.append(sanitize_job_response(job, user))
+                    if job["status"] in ["COMPLETED", "FAILED", "TIMEOUT", "CANCELLED"]:
                         completed.add(jid)
                 else:
-                    # If job not found, treat as failed
                     updates.append({"job_id": jid, "status": "FAILED", "error": "Job not found"})
                     completed.add(jid)
             
@@ -1911,4 +2139,8 @@ async def check_status_stream(job_ids: str):
                 
             await asyncio.sleep(2)
             
-    return StreamingResponse(event_stream(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )

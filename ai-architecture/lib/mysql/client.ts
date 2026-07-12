@@ -153,18 +153,51 @@ export async function getValidToken() {
   return token;
 }
 
-async function authHeaders() {
+export async function authFetch(url: string, init?: RequestInit): Promise<Response> {
+  const headers = new Headers(init?.headers);
   const token = await getValidToken();
-  return {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-  };
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+  if (!headers.has("Content-Type") && init?.body && typeof init.body === "string") {
+    headers.set("Content-Type", "application/json");
+  }
+  return fetch(url, { ...init, headers });
+}
+
+export async function authFormPost(url: string, formData: FormData): Promise<Response> {
+  const token = await getValidToken();
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return fetch(url, { method: "POST", headers, body: formData });
+}
+
+export async function fetchJobStatus(jobId: string): Promise<Response> {
+  return authFetch(`${API_BASE}/status/${jobId}`);
+}
+
+export async function fetchProxyBlob(remoteUrl: string): Promise<Blob> {
+  const res = await authFetch(
+    `${API_BASE}/proxy-download?url=${encodeURIComponent(remoteUrl)}`
+  );
+  if (!res.ok) throw new Error("Proxy download failed");
+  return res.blob();
+}
+
+export async function cancelJobs(jobIds: string[]): Promise<boolean> {
+  try {
+    const res = await authFetch(`${API_BASE}/cancel-jobs`, {
+      method: "POST",
+      body: JSON.stringify({ job_ids: jobIds }),
+    });
+    const data = await res.json();
+    return !!data.ok;
+  } catch {
+    return false;
+  }
 }
 
 export async function apiGetSessions(): Promise<AppSession[]> {
   try {
-    const headers = await authHeaders();
-    const res = await fetch(`${API_BASE}/sessions`, { headers });
+    const res = await authFetch(`${API_BASE}/sessions`);
     const data = await res.json();
     return data.ok ? data.data : [];
   } catch {
@@ -174,10 +207,8 @@ export async function apiGetSessions(): Promise<AppSession[]> {
 
 export async function apiCreateSession(title: string, resps = {}): Promise<AppSession | null> {
   try {
-    const headers = await authHeaders();
-    const res = await fetch(`${API_BASE}/sessions`, {
+    const res = await authFetch(`${API_BASE}/sessions`, {
       method: "POST",
-      headers,
       body: JSON.stringify({ title, resps }),
     });
     const data = await res.json();
@@ -192,10 +223,8 @@ export async function apiUpdateSession(
   updates: { title?: string; resps?: Record<string, unknown> }
 ): Promise<boolean> {
   try {
-    const headers = await authHeaders();
-    const res = await fetch(`${API_BASE}/sessions/${id}`, {
+    const res = await authFetch(`${API_BASE}/sessions/${id}`, {
       method: "PATCH",
-      headers,
       body: JSON.stringify(updates),
     });
     const data = await res.json();
@@ -207,11 +236,7 @@ export async function apiUpdateSession(
 
 export async function apiDeleteSession(id: string): Promise<boolean> {
   try {
-    const headers = await authHeaders();
-    const res = await fetch(`${API_BASE}/sessions/${id}`, {
-      method: "DELETE",
-      headers,
-    });
+    const res = await authFetch(`${API_BASE}/sessions/${id}`, { method: "DELETE" });
     const data = await res.json();
     return !!data.ok;
   } catch {
@@ -226,10 +251,8 @@ export type MySQLSession = AppSession;
 // ─── Subscription / Credits ───────────────────────────────────────────────────
 export async function apiSubscribe(plan_id: string): Promise<{ ok: boolean; user?: AppUser; credits_added?: number; plan?: string; error?: string }> {
   try {
-    const headers = await authHeaders();
-    const res = await fetch(`${API_BASE}/subscribe`, {
+    const res = await authFetch(`${API_BASE}/subscribe`, {
       method: "POST",
-      headers,
       body: JSON.stringify({ plan_id }),
     });
     if (!res.ok) {
@@ -249,8 +272,7 @@ export async function apiSubscribe(plan_id: string): Promise<{ ok: boolean; user
 
 export async function apiGetCredits(): Promise<{ ok: boolean; credits?: number; plan_name?: string; error?: string }> {
   try {
-    const headers = await authHeaders();
-    const res = await fetch(`${API_BASE}/credits`, { headers });
+    const res = await authFetch(`${API_BASE}/credits`);
     return res.json();
   } catch {
     return { ok: false, error: "Network error" };

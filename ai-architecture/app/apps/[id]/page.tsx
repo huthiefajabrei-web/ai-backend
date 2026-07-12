@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Upload, ChevronDown, Sparkles, Home, Wand2, Video, Search, LayoutGrid, Brush, Folder, Coins, ArrowRight, Loader2, X, Download, Menu } from "lucide-react";
 import Link from "next/link";
-import { apiGetMe, MySQLUser, AUTH_NETWORK_ERROR } from "@/lib/mysql/client";
+import { apiGetMe, MySQLUser, AUTH_NETWORK_ERROR, fetchJobStatus, authFormPost, fetchProxyBlob } from "@/lib/mysql/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -147,19 +147,13 @@ export default function AppFeaturePage() {
       formData.append("is_video", "false");
       formData.append("model_name", model);
       formData.append("file", file);
-      // Pass app credit cost so backend deducts the correct amount
-      formData.append("app_credit_cost", String(appCreditCost));
+      formData.append("app_card_id", id);
 
       referenceImages.forEach(ref => {
         formData.append("refs", ref.file);
       });
 
-      const token = localStorage.getItem("harch_token");
-      const res = await fetch(`${API_BASE}/generate`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
+      const res = await authFormPost(`${API_BASE}/generate`, formData);
       const data = await res.json();
 
       if (!data.ok || !data.job_ids) {
@@ -175,7 +169,7 @@ export default function AppFeaturePage() {
       if (data.job_ids && data.job_ids.length > 0) {
         const jobId = data.job_ids[0];
         const poll = setInterval(async () => {
-          const sRes = await fetch(`${API_BASE}/status/${jobId}`);
+          const sRes = await fetchJobStatus(jobId);
           const sData = await sRes.json();
           if (sData.status === "COMPLETED") {
             const output_val = sData.file_url || sData.output_url || sData.result_url || sData.image_url || sData.image_data_url;
@@ -565,13 +559,19 @@ export default function AppFeaturePage() {
                   setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
                 } catch (e) {
                   console.warn("Direct download fetch failed, trying proxy:", e);
-                  const proxyUrl = `${API_BASE}/proxy-download?url=${encodeURIComponent(resultImage)}`;
-                  const a = document.createElement("a");
-                  a.href = proxyUrl;
-                  a.download = filename;
-                  document.body.appendChild(a);
-                  a.click();
-                  document.body.removeChild(a);
+                  try {
+                    const blob = await fetchProxyBlob(resultImage);
+                    const blobUrl = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = blobUrl;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                  } catch (proxyErr) {
+                    console.error("Proxy download failed:", proxyErr);
+                  }
                 }
               }}
               className="bg-white/10 hover:bg-white/20 text-white rounded-full p-3 backdrop-blur-md transition-all border border-white/10 flex items-center gap-2 group shadow-lg"

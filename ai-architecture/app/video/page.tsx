@@ -7,7 +7,7 @@ import {
   Search, LayoutGrid, Brush, Folder, Coins, Loader2, ImageIcon, ClapperboardIcon, ChevronDown
 } from "lucide-react";
 import Link from "next/link";
-import { apiGetMe, MySQLUser, AUTH_NETWORK_ERROR } from "@/lib/mysql/client";
+import { apiGetMe, MySQLUser, AUTH_NETWORK_ERROR, fetchJobStatus, authFormPost } from "@/lib/mysql/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -115,21 +115,13 @@ export default function VideoGenerationPage() {
         if (endFile) formData.append("refs", endFile);
       }
 
-      const token = localStorage.getItem("harch_token");
-      const headers: Record<string, string> = {};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-
-      const res = await fetch(`${API_BASE}/generate`, {
-        method: "POST",
-        headers,
-        body: formData,
-      });
+      const res = await authFormPost(`${API_BASE}/generate`, formData);
       const data = await res.json();
 
       if (data.job_ids && data.job_ids.length > 0) {
         const jobId = data.job_ids[0];
         const poll = setInterval(async () => {
-          const sRes = await fetch(`${API_BASE}/status/${jobId}`);
+          const sRes = await fetchJobStatus(jobId);
           const sData = await sRes.json();
           if (sData.status === "COMPLETED") {
             const output_val = sData.output_url || sData.result_url || sData.file_url || sData.video_url;

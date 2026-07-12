@@ -1,0 +1,66 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // User profile — read own doc only; writes via Admin SDK (backend)
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      allow write: if false;
+    }
+
+    // AI jobs — backend only
+    match /app_jobs/{jobId} {
+      allow read, write: if false;
+    }
+
+    // User sessions — backend only
+    match /app_user_sessions/{sessionId} {
+      allow read, write: if false;
+    }
+
+    // Workspace editor data — owner read/write only
+    match /app_user_workspaces/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Public CMS content — read only for clients
+    match /app_tools/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /app_cards/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /app_plans/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /app_hero/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /app_prompts/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /app_credit_costs/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Deny everything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

@@ -26,6 +26,11 @@ import {
   getStoredUser,
   setStoredUser,
   removeToken,
+  authFetch,
+  fetchJobStatus,
+  authFormPost,
+  cancelJobs,
+  fetchProxyBlob,
 } from "@/lib/mysql/client";
 
 // ── SUPABASE IMPORTS - معلّقة مؤقتاً (لم تُحذف) ────────────────────────────
@@ -158,7 +163,7 @@ export default function Home() {
   // Per-session loading indicators (fetch in progress)
   const [sessionLoadingIds, setSessionLoadingIds] = useState<Set<string>>(new Set());
 
-  const eventSourcesRef = React.useRef<Record<string, EventSource>>({});
+  const sseAbortRef = React.useRef<Record<string, AbortController>>({});
   const currentSessionIdRef = React.useRef(currentSessionId);
   const respsSessionIdRef = React.useRef<string | null>(null);
   // Tracks sessions whose resps have been successfully loaded from DB (no re-fetch needed)
@@ -180,10 +185,9 @@ export default function Home() {
   const pendingJobIdsRef = React.useRef<Record<string, string[]>>({});
 
   const startPolling = (sid: string, pendingJobIds: string[]) => {
-    // Close existing SSE for this session if any
-    if (eventSourcesRef.current[sid]) {
-      eventSourcesRef.current[sid].close();
-      delete eventSourcesRef.current[sid];
+    if (sseAbortRef.current[sid]) {
+      sseAbortRef.current[sid].abort();
+      delete sseAbortRef.current[sid];
     }
 
     const existingPendingIds = pendingJobIdsRef.current[sid] || [];
@@ -194,72 +198,88 @@ export default function Home() {
 
     const jidsParam = mergedJobIds.join(",");
     const sseUrl = `${API_BASE}/status-stream?job_ids=${encodeURIComponent(jidsParam)}`;
-    const eventSource = new EventSource(sseUrl);
+    const controller = new AbortController();
+    sseAbortRef.current[sid] = controller;
 
-    eventSource.onmessage = (event) => {
-      try {
-        const updates = JSON.parse(event.data); // array of job objects
-        let latestSessionResps: Record<string, ApiResponse> | null = null;
-        let allDone = true;
+    const handleUpdates = (updates: any[]) => {
+      let latestSessionResps: Record<string, ApiResponse> | null = null;
+      const currentPending = new Set(pendingJobIdsRef.current[sid] || []);
 
-        const currentPending = new Set(pendingJobIdsRef.current[sid] || []);
-
-        setSessions((prev) => prev.map(s => {
-          if (s.id === sid) {
-            const nextResps = { ...s.resps };
-            updates.forEach((data: any) => {
-              const jid = data.job_id;
-              if (jid && data !== null) {
-                nextResps[jid] = { ...nextResps[jid], ...data };
-                if (['COMPLETED', 'FAILED', 'TIMEOUT'].includes(data.status || '')) {
-                  currentPending.delete(jid);
-                }
+      setSessions((prev) => prev.map(s => {
+        if (s.id === sid) {
+          const nextResps = { ...s.resps };
+          updates.forEach((data: any) => {
+            const jid = data.job_id;
+            if (jid && data !== null) {
+              nextResps[jid] = { ...nextResps[jid], ...data };
+              if (['COMPLETED', 'FAILED', 'TIMEOUT', 'CANCELLED'].includes(data.status || '')) {
+                currentPending.delete(jid);
               }
-            });
-            latestSessionResps = nextResps;
-            return { ...s, resps: nextResps };
-          }
-          return s;
-        }));
-
-        if (currentSessionIdRef.current === sid) {
-          setResps((prev) => {
-            const next = { ...prev };
-            updates.forEach((data: any) => {
-              const jid = data.job_id;
-              if (jid && data !== null) {
-                next[jid] = { ...next[jid], ...data };
-              }
-            });
-            return next;
+            }
           });
+          latestSessionResps = nextResps;
+          return { ...s, resps: nextResps };
         }
+        return s;
+      }));
 
-        pendingJobIdsRef.current[sid] = Array.from(currentPending);
+      if (currentSessionIdRef.current === sid) {
+        setResps((prev) => {
+          const next = { ...prev };
+          updates.forEach((data: any) => {
+            const jid = data.job_id;
+            if (jid && data !== null) {
+              next[jid] = { ...next[jid], ...data };
+            }
+          });
+          return next;
+        });
+      }
 
-        if (currentPending.size === 0) {
-          eventSource.close();
-          delete eventSourcesRef.current[sid];
-          delete pendingJobIdsRef.current[sid];
-          if (currentSessionIdRef.current === sid) setLoading(false);
+      pendingJobIdsRef.current[sid] = Array.from(currentPending);
 
-          if (latestSessionResps) {
-            apiUpdateSession(sid, { resps: stripBase64ForSave(latestSessionResps) as Record<string, unknown> }).catch(() => { });
-          }
+      if (currentPending.size === 0) {
+        controller.abort();
+        delete sseAbortRef.current[sid];
+        delete pendingJobIdsRef.current[sid];
+        if (currentSessionIdRef.current === sid) setLoading(false);
+
+        if (latestSessionResps) {
+          apiUpdateSession(sid, { resps: stripBase64ForSave(latestSessionResps) as Record<string, unknown> }).catch(() => { });
         }
-      } catch (err) {
-        console.error("Error parsing SSE data", err);
       }
     };
 
-    eventSource.onerror = () => {
-      console.warn("SSE error, closing connection");
-      eventSource.close();
-      delete eventSourcesRef.current[sid];
-      if (currentSessionIdRef.current === sid) setLoading(false);
-    };
-
-    eventSourcesRef.current[sid] = eventSource;
+    (async () => {
+      try {
+        const res = await authFetch(sseUrl, { signal: controller.signal });
+        if (!res.ok || !res.body) throw new Error("SSE connection failed");
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const blocks = buffer.split("\n\n");
+          buffer = blocks.pop() || "";
+          for (const block of blocks) {
+            const line = block.split("\n").find((l) => l.startsWith("data: "));
+            if (!line) continue;
+            try {
+              handleUpdates(JSON.parse(line.slice(6)));
+            } catch (err) {
+              console.error("Error parsing SSE data", err);
+            }
+          }
+        }
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        console.warn("SSE error, closing connection", err);
+        delete sseAbortRef.current[sid];
+        if (currentSessionIdRef.current === sid) setLoading(false);
+      }
+    })();
   };
 
   // ── Auth initialization (MySQL replaces Supabase) ─────────────────────────
@@ -500,7 +520,7 @@ export default function Home() {
     if (hasCachedResps) {
       respsSessionIdRef.current = id;
       setResps(effectiveResps as Record<string, ApiResponse>);
-      if (!eventSourcesRef.current[id]) setLoading(false);
+      if (!sseAbortRef.current[id]) setLoading(false);
       setSessionLoadingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
     } else {
       respsSessionIdRef.current = null;
@@ -537,9 +557,9 @@ export default function Home() {
         });
         if (pendingJobIds.length > 0) {
           setLoading(true);
-          if (!eventSourcesRef.current[id]) startPolling(id, pendingJobIds);
+          if (!sseAbortRef.current[id]) startPolling(id, pendingJobIds);
         } else {
-          if (!eventSourcesRef.current[id]) setLoading(false);
+          if (!sseAbortRef.current[id]) setLoading(false);
         }
       } finally {
         setSessionLoadingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
@@ -552,9 +572,9 @@ export default function Home() {
       });
       if (pendingJobIds.length > 0) {
         setLoading(true);
-        if (!eventSourcesRef.current[id]) startPolling(id, pendingJobIds);
+        if (!sseAbortRef.current[id]) startPolling(id, pendingJobIds);
       } else {
-        if (!eventSourcesRef.current[id]) setLoading(false);
+        if (!sseAbortRef.current[id]) setLoading(false);
       }
       setSessionLoadingIds((prev) => { const n = new Set(prev); n.delete(id); return n; });
     }
@@ -734,10 +754,7 @@ export default function Home() {
     } catch (err) {
       console.warn("Direct fetch failed, falling back to proxy:", err);
       // Fallback to backend proxy (handles CORS bypass)
-      const proxyUrl = `${API_BASE}/proxy-download?url=${encodeURIComponent(url)}`;
-      const resProxy = await fetch(proxyUrl);
-      if (!resProxy.ok) throw new Error("Failed to fetch via proxy");
-      const blob = await resProxy.blob();
+      const blob = await fetchProxyBlob(url);
       return new File([blob], filename, { type: blob.type || "image/png" });
     }
   }
@@ -773,10 +790,7 @@ export default function Home() {
         fd.append("refs", endFile);
       }
 
-      const res = await fetch(`${API_BASE}/generate`, {
-        method: "POST",
-        body: fd,
-      });
+      const res = await authFormPost(`${API_BASE}/generate`, fd);
 
       const initialData = await res.json();
 
@@ -846,10 +860,7 @@ export default function Home() {
         }
       }
 
-      const res = await fetch(`${API_BASE}/generate`, {
-        method: "POST",
-        body: fd,
-      });
+      const res = await authFormPost(`${API_BASE}/generate`, fd);
 
       const initialData = await res.json();
 
@@ -931,14 +942,19 @@ export default function Home() {
       setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     } catch (err) {
       console.warn("Direct download fetch failed, trying proxy:", err);
-      // Fallback to backend proxy which forces attachment disposition
-      const proxyUrl = `${API_BASE}/proxy-download?url=${encodeURIComponent(url)}`;
-      const a = document.createElement("a");
-      a.href = proxyUrl;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      try {
+        const blob = await fetchProxyBlob(url);
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      } catch (proxyErr) {
+        console.error("Proxy download failed:", proxyErr);
+      }
     }
   }
 
@@ -963,22 +979,14 @@ export default function Home() {
     setLoading(false);
 
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      await fetch(`${API_BASE}/cancel-jobs`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: JSON.stringify({ job_ids: pendingJobs })
-      });
+      await cancelJobs(pendingJobs);
     } catch (e) {
       console.error("Failed to cancel jobs", e);
     }
 
-    if (eventSourcesRef.current[sid]) {
-      eventSourcesRef.current[sid].close();
-      delete eventSourcesRef.current[sid];
+    if (sseAbortRef.current[sid]) {
+      sseAbortRef.current[sid].abort();
+      delete sseAbortRef.current[sid];
     }
     delete pendingJobIdsRef.current[sid];
 
