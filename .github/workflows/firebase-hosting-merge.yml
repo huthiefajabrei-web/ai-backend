@@ -50,10 +50,8 @@ jobs:
         env:
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa-key.json
 
-      - name: Deploy Cloud Functions (API backend)
-        run: firebase deploy --only functions --project gen-lang-client-0550261552
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: /tmp/sa-key.json
+      # Backend API runs on Cloud Run (not Firebase Functions).
+      # Deploy with: gcloud run deploy api --source ./functions --region us-central1
 
       - name: Deploy to Firebase Hosting
         run: firebase deploy --only hosting --project gen-lang-client-0550261552
