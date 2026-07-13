@@ -51,7 +51,7 @@ export default function OptimizedImage({
       sizes={sizes}
       quality={quality}
       className={className}
-      placeholder="empty"
+      unoptimized
     />
   );
 }

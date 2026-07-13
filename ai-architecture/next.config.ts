@@ -40,6 +40,9 @@ const nextConfig: NextConfig = {
     "harch-studio.local",
   ],
   images: {
+    // Firebase Hosting does not support the Next.js Image Optimization API (/_next/image returns 400).
+    // Load images directly from Firebase Storage / API / Unsplash instead.
+    unoptimized: true,
     formats: ["image/avif", "image/webp"],
     deviceSizes: [640, 750, 828, 1080, 1200],
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
