@@ -7,6 +7,7 @@ import {
   Search, LayoutGrid, Brush, Folder, Coins, Loader2, ImageIcon, ClapperboardIcon, ChevronDown
 } from "lucide-react";
 import Link from "next/link";
+import MobileBottomNav from "@/app/components/MobileBottomNav";
 import { apiGetMe, MySQLUser, AUTH_NETWORK_ERROR, fetchJobStatus, authFormPost } from "@/lib/mysql/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -147,9 +148,8 @@ export default function VideoGenerationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-slate-50 font-sans selection:bg-teal-500/30 flex flex-col">
-      {/* HEADER BAR */}
-      <header className="h-20 border-b border-white/5 bg-[#09090b]/80 backdrop-blur-xl flex items-center justify-between px-6 shrink-0 z-50 sticky top-0">
+    <div className="min-h-[100dvh] bg-[#09090b] text-slate-50 font-sans selection:bg-teal-500/30 flex flex-col pb-mobile-nav">
+      <header className="sticky top-0 z-50 h-14 md:h-20 border-b border-white/5 bg-[#09090b]/95 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 shrink-0">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-3 shrink-0 group">
             <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-[#14b8a6] to-teal-700 p-[1px] shadow-[0_0_20px_rgba(20,184,166,0.3)] transition-transform duration-300 group-hover:scale-105">
@@ -179,40 +179,40 @@ export default function VideoGenerationPage() {
           <button className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><Folder size={20} /></button>
         </div>
 
-        <div className="flex items-center justify-end gap-4">
-          <div className="flex items-center gap-2 bg-[#18181b] border border-white/5 px-4 py-2 rounded-2xl hidden sm:flex">
-            <Coins size={16} className="text-yellow-500" />
-            <span className="text-sm font-bold text-white">{user ? (user.credits || 0) : 0}</span>
-            <span className="text-zinc-500 cursor-pointer hover:text-white ml-1 font-bold">+</span>
+        <div className="flex items-center justify-end gap-2 sm:gap-4">
+          <div className="flex items-center gap-1.5 bg-[#18181b] border border-white/5 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl">
+            <Coins size={14} className="text-yellow-500" />
+            <span className="text-xs sm:text-sm font-bold text-white">{user ? (user.credits || 0) : 0}</span>
           </div>
           {user ? (
-            <div className="px-4 py-2 rounded-2xl bg-[#18181b] border border-white/5 flex items-center gap-3 cursor-pointer hover:bg-white/5 transition-all">
-              <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center text-xs font-bold text-white uppercase">
+            <div className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-[#18181b] border border-white/5 flex items-center gap-2 cursor-pointer hover:bg-white/5 transition-all">
+              <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center text-xs font-bold text-white uppercase shrink-0">
                 {user.email ? user.email.charAt(0) : "H"}
               </div>
               <span className="text-xs font-semibold text-zinc-300 hidden sm:block">{user.email.split('@')[0]}</span>
             </div>
           ) : (
-            <a href="/login" className="px-5 py-2 rounded-full bg-gradient-to-r from-teal-500 to-[#14b8a6] text-white text-sm font-bold shadow-lg shadow-teal-500/20">Login</a>
+            <a href="/login" className="px-4 py-2 rounded-full bg-gradient-to-r from-teal-500 to-[#14b8a6] text-white text-xs sm:text-sm font-bold shadow-lg shadow-teal-500/20 tap-target">Login</a>
           )}
         </div>
       </header>
 
-      {/* MAIN CONTENT */}
-      <main className="flex-1 w-full flex flex-col items-center py-10 px-4">
+      <main className="flex-1 w-full flex flex-col items-center py-6 sm:py-10 px-4">
         <div className="w-full max-w-4xl animate-[fadeInUp_0.4s_ease-out]">
 
-          {/* Page Title */}
-          <div className="flex items-center justify-center gap-3 mb-8 w-full text-center">
-            <Video className="text-[#2dd4bf]" size={42} strokeWidth={2.5} />
-            <h1 className="text-[3.5rem] font-bold text-[#2dd4bf] tracking-wider font-display drop-shadow-[0_0_15px_rgba(45,212,191,0.3)]">Video</h1>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 mb-6 sm:mb-8 w-full text-center">
+            <Video className="text-[#2dd4bf] shrink-0" size={32} strokeWidth={2.5} />
+            <h1 className="text-3xl sm:text-5xl md:text-[3.5rem] font-bold text-[#2dd4bf] tracking-wide font-display drop-shadow-[0_0_15px_rgba(45,212,191,0.3)]">Video</h1>
           </div>
+          <p className="text-center text-sm text-zinc-400 mb-6 max-w-md mx-auto leading-relaxed">
+            Transform still renders into cinematic architectural walkthroughs.
+          </p>
 
-          {/* ── MODE SELECTOR ── */}
-          <div className="flex items-center justify-center gap-3 mb-8">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 mb-6 sm:mb-8">
             <button
+              type="button"
               onClick={() => { setVideoMode("image_to_video"); setResultVideo(null); }}
-              className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl border font-semibold text-sm transition-all duration-300 ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-5 py-3.5 min-h-[48px] rounded-2xl border font-semibold text-sm transition-all duration-300 tap-target ${
                 videoMode === "image_to_video"
                   ? "bg-[#14b8a6] border-[#14b8a6] text-[#09090b] shadow-[0_0_20px_rgba(20,184,166,0.4)]"
                   : "bg-[#18181b] border-white/10 text-zinc-400 hover:text-white hover:border-white/20"
@@ -222,8 +222,9 @@ export default function VideoGenerationPage() {
               Image to Video
             </button>
             <button
+              type="button"
               onClick={() => { setVideoMode("frame_to_frame"); setResultVideo(null); }}
-              className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl border font-semibold text-sm transition-all duration-300 ${
+              className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-5 py-3.5 min-h-[48px] rounded-2xl border font-semibold text-sm transition-all duration-300 tap-target ${
                 videoMode === "frame_to_frame"
                   ? "bg-[#14b8a6] border-[#14b8a6] text-[#09090b] shadow-[0_0_20px_rgba(20,184,166,0.4)]"
                   : "bg-[#18181b] border-white/10 text-zinc-400 hover:text-white hover:border-white/20"
@@ -235,7 +236,7 @@ export default function VideoGenerationPage() {
           </div>
 
           {/* Video Generator Card */}
-          <div className="bg-[#121214] border border-[#27272a] rounded-[1.5rem] p-6 shadow-2xl w-full flex flex-col">
+          <div className="bg-[#121214] border border-[#27272a] rounded-2xl sm:rounded-[1.5rem] p-4 sm:p-6 shadow-2xl w-full flex flex-col">
 
             {/* ── IMAGE TO VIDEO MODE ── */}
             {videoMode === "image_to_video" && (
@@ -316,8 +317,8 @@ export default function VideoGenerationPage() {
             <div className="h-px bg-white/10 w-full mb-4"></div>
 
             {/* Bottom Controls Row */}
-            <div className="flex flex-wrap items-center justify-between gap-y-4">
-              <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3">
 
                 {/* Model Selector */}
                 <div className="bg-[#18181b] hover:bg-white/5 border border-white/5 rounded-full px-4 py-2 flex items-center gap-2 cursor-pointer transition-colors relative">
@@ -382,9 +383,10 @@ export default function VideoGenerationPage() {
 
               {/* Generate Button */}
               <button
+                type="button"
                 onClick={handleGenerate}
                 disabled={isGenerating}
-                className={`h-11 rounded-full px-5 flex items-center justify-center gap-2 transition-all ${isGenerating ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-[#2dd4bf] text-[#09090b] hover:bg-teal-300 hover:scale-105 shadow-[0_0_15px_rgba(45,212,191,0.5)]'}`}
+                className={`w-full sm:w-auto min-h-[48px] h-12 rounded-full px-6 flex items-center justify-center gap-2 transition-all tap-target ${isGenerating ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-[#2dd4bf] text-[#09090b] hover:bg-teal-300 active:scale-[0.98] shadow-[0_0_15px_rgba(45,212,191,0.5)]'}`}
               >
                 {isGenerating ? (
                   <Loader2 size={18} className="animate-spin" />
@@ -403,7 +405,7 @@ export default function VideoGenerationPage() {
 
           {/* Results Area */}
           {(isGenerating || resultVideo) && (
-            <div className="mt-12 bg-[#121214] border border-[#27272a] rounded-[1.5rem] p-6 shadow-2xl w-full flex flex-col items-center justify-center min-h-[400px]">
+            <div className="mt-8 sm:mt-12 bg-[#121214] border border-[#27272a] rounded-2xl sm:rounded-[1.5rem] p-4 sm:p-6 shadow-2xl w-full flex flex-col items-center justify-center min-h-[280px] sm:min-h-[400px]">
               {isGenerating ? (
                 <div className="flex flex-col items-center justify-center text-center">
                   <div className="relative mb-6">
@@ -427,6 +429,17 @@ export default function VideoGenerationPage() {
 
         </div>
       </main>
+
+      <MobileBottomNav
+        highlight="video"
+        userCredits={user?.credits ?? 0}
+        isLoggedIn={!!user}
+        onHome={() => router.push("/")}
+        onStudio={() => router.push("/?studio=1")}
+        onApps={() => router.push("/#apps")}
+        onVideo={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+        onAccount={() => (user ? router.push("/#pricing") : router.push("/login"))}
+      />
 
       <style jsx global>{`
         @keyframes fadeInUp {

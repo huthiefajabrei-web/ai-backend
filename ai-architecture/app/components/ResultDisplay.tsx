@@ -578,7 +578,7 @@ export default function ResultDisplay({
 
       <div className="flex-1 min-h-0 overflow-y-auto p-5 xl:p-6 z-10 relative custom-scrollbar">
         {showSessionDataLoading ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-8 min-h-[400px]">
+          <div className="h-full flex flex-col items-center justify-center text-center p-6 sm:p-8 min-h-[280px] sm:min-h-[400px]">
             <div className="flex flex-col items-center max-w-md w-full gap-6">
               <div className="w-16 h-16 rounded-full border-2 border-indigo-500/50 border-t-indigo-400 flex items-center justify-center animate-spin">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-indigo-400">
@@ -607,7 +607,7 @@ export default function ResultDisplay({
                     {perspective}
                   </h3>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
                   {imgs.map((family, idx) => {
                     const rootUrl = family[0].url;
                     const rawIdx = familyIndices[rootUrl] !== undefined ? familyIndices[rootUrl] : family.length - 1;

@@ -19,6 +19,8 @@ export default function PromptNode({ data, selected }: any) {
 
   // Controlled prompt text — keeps each node fully independent
   const [localPrompt, setLocalPrompt] = useState<string>(data.prompt || data.label || '');
+  const [perspective, setPerspective] = useState<string>(data.perspective || 'Custom Scene');
+  const [showStyles, setShowStyles] = useState(false);
 
   // imageB64 lives in localStorage, keyed by nodeId
   const [localImageB64, setLocalImageB64] = useState<string | null>(null);
@@ -39,7 +41,8 @@ export default function PromptNode({ data, selected }: any) {
 
   // Load perspective presets from backend
   useEffect(() => {
-    fetch('http://127.0.0.1:8000/content/prompts')
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+    fetch(`${apiUrl}/content/prompts`)
       .then(res => res.json())
       .then(resData => {
         if (resData.ok && resData.data) setDbPrompts(resData.data);
@@ -128,12 +131,12 @@ export default function PromptNode({ data, selected }: any) {
   };
 
   return (
-    <div className={`relative bg-[#1c1c1f] rounded-2xl w-[380px] shadow-2xl transition-all border-2 ${selected ? 'border-blue-500' : 'border-transparent'}`}>
+    <div className={`relative bg-[#121214] rounded-2xl w-[340px] shadow-2xl transition-all border-2 ${selected ? 'border-indigo-500 shadow-indigo-500/20' : 'border-white/10'}`}>
       
       {/* Node Header */}
       <div className="absolute -top-7 left-2 flex items-center gap-2 text-gray-300">
-        <div className="bg-[#1c1c1f] p-1 rounded-md border border-gray-800">
-          <Type size={12} className="text-gray-300" />
+        <div className="bg-[#121214] p-1 rounded-md border border-white/10">
+          <Type size={12} className="text-indigo-400" />
         </div>
         <span className="font-bold text-xs">Text</span>
       </div>
@@ -179,9 +182,9 @@ export default function PromptNode({ data, selected }: any) {
             type="source"
             position={Position.Right}
             id="text-out"
-            className="!w-8 !h-8 !bg-[#2a2a2e] !border-none !rounded-full flex items-center justify-center hover:!bg-[#35353a] transition-colors cursor-crosshair !static !transform-none"
+            className="!w-8 !h-8 !bg-[#1c1c1f] !border-2 !border-purple-500/40 !rounded-full flex items-center justify-center hover:!bg-purple-500/20 transition-colors cursor-crosshair !static !transform-none"
           >
-            <Type size={14} className="text-gray-400 group-hover:text-white pointer-events-none" />
+            <Type size={14} className="text-purple-400 group-hover:text-white pointer-events-none" />
           </Handle>
         </div>
       </div>
@@ -212,8 +215,8 @@ export default function PromptNode({ data, selected }: any) {
       <div className="p-1">
         <textarea
           key={nodeId}
-          className="w-full bg-transparent text-sm text-gray-300 p-4 focus:outline-none resize-none h-[180px] custom-scrollbar rounded-2xl"
-          placeholder="Try &quot;Happy dog with sunglasses and floating ring&quot;"
+          className="w-full bg-transparent text-sm text-gray-300 p-4 focus:outline-none resize-none h-[140px] custom-scrollbar rounded-2xl"
+          placeholder='Describe your scene — e.g. "Modern villa at golden hour, photorealistic"'
           value={localPrompt}
           onChange={(e) => {
             setLocalPrompt(e.target.value);
@@ -223,6 +226,40 @@ export default function PromptNode({ data, selected }: any) {
             }
           }}
         />
+
+        <div className="px-3 pb-3 border-t border-white/5 mx-2 pt-2">
+          <button
+            type="button"
+            onClick={() => setShowStyles(!showStyles)}
+            className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 hover:text-purple-400 mb-2"
+          >
+            Style / Perspective {showStyles ? "▲" : "▼"}
+          </button>
+          {showStyles && (
+            <select
+              value={perspective}
+              onChange={(e) => {
+                setPerspective(e.target.value);
+                if (nodeId) {
+                  updateNodeData(nodeId, { perspective: e.target.value });
+                  window.dispatchEvent(new Event('trigger-workspace-save'));
+                }
+              }}
+              className="w-full bg-[#1c1c1f] border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-purple-500/50"
+            >
+              {Object.entries(groupedPrompts).map(([type, items]: [string, any]) => (
+                <optgroup key={type} label={type}>
+                  {(items as { title: string }[]).map((p) => (
+                    <option key={p.title} value={p.title}>{p.title}</option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          )}
+          {!showStyles && (
+            <p className="text-[10px] text-zinc-600 truncate">{perspective}</p>
+          )}
+        </div>
       </div>
       
       {/* Custom Scrollbar Styles for textarea */}

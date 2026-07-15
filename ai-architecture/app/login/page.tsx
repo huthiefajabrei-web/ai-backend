@@ -84,7 +84,7 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative p-8 overflow-hidden bg-[#040508] font-sans text-slate-50 selection:bg-purple-500/30">
+    <div className="min-h-[100dvh] flex items-center justify-center relative p-4 sm:p-8 overflow-hidden bg-[#040508] font-sans text-slate-50 selection:bg-purple-500/30">
       {/* Animated Ambient Background */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute -top-[20%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-radial from-purple-600/20 to-transparent blur-[120px] mix-blend-screen animate-[float_20s_infinite_ease-in-out_alternate]"></div>
@@ -103,7 +103,7 @@ export default function AuthPage() {
         </Link>
 
         {/* Main Card */}
-        <div className="flex w-full min-h-[600px] bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-3xl overflow-hidden shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.05)] animate-[cardEntrance_0.8s_cubic-bezier(0.16,1,0.3,1)]">
+        <div className="flex w-full min-h-0 sm:min-h-[600px] bg-slate-900/40 backdrop-blur-xl border border-white/10 rounded-2xl sm:rounded-3xl overflow-hidden shadow-[0_25px_50px_-12px_rgba(0,0,0,0.7),inset_0_1px_0_rgba(255,255,255,0.05)] animate-[cardEntrance_0.8s_cubic-bezier(0.16,1,0.3,1)]">
 
           {/* Left Side - Visual */}
           <div className="hidden lg:block flex-[1.2] relative bg-[url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1500&auto=format&fit=crop')] bg-cover bg-center">
@@ -140,9 +140,9 @@ export default function AuthPage() {
           </div>
 
           {/* Right Side - Form */}
-          <div className="flex-1 p-10 sm:p-14 flex flex-col justify-center bg-[#0a0c13] relative">
-            <div className="mb-10">
-              <h2 className="font-display text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-white to-purple-300">
+          <div className="flex-1 p-6 sm:p-10 md:p-14 flex flex-col justify-center bg-[#0a0c13] relative">
+            <div className="mb-8 sm:mb-10">
+              <h2 className="font-display text-2xl sm:text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-white to-purple-300">
                 {isLogin ? "Welcome Back" : "Create Account"}
               </h2>
               <p className="text-slate-400 text-sm">

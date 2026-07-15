@@ -789,7 +789,7 @@ export default function ControlPanel({
           >
             <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite]"></div>
 
-            <div className="relative z-10 flex items-center justify-center gap-2 py-3 px-4">
+            <div className="relative z-10 flex items-center justify-center gap-2 py-3.5 sm:py-3 px-4 min-h-[48px]">
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
               ) : mode === "image" ? (
@@ -853,10 +853,11 @@ export default function ControlPanel({
           </button>
           {loading && onCancel && (
             <button
+              type="button"
               className="px-4 py-3 bg-red-600 hover:bg-red-500 rounded-xl text-white font-semibold text-sm flex items-center gap-2 transition-colors shadow-[0_0_15px_rgba(220,38,38,0.4)]"
               onClick={onCancel}
             >
-              Cancel
+              Stop / Cancel
             </button>
           )}
           <button

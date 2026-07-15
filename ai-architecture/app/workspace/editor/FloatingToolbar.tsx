@@ -148,13 +148,13 @@ export default function FloatingToolbar({ onAddNode, activeTool = 'cursor', onTo
               </button>
 
               <button onClick={() => handleAddNode('imageNode')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#27272a] transition-colors group mb-1 text-left">
-                <div className="w-8 h-8 rounded-md bg-[#1a2c42] flex items-center justify-center text-blue-400 group-hover:bg-[#233a57] transition-colors">
+                <div className="w-8 h-8 rounded-md bg-purple-500/15 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/25 transition-colors">
                   <ImageIcon size={16} />
                 </div>
                 <span className="text-sm font-medium text-gray-200">Image Generator</span>
               </button>
 
-              <button onClick={() => alert('Video Generator coming soon!')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#27272a] transition-colors group mb-1 text-left">
+              <button onClick={() => { window.location.href = '/video'; }} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#27272a] transition-colors group mb-1 text-left">
                 <div className="w-8 h-8 rounded-md bg-[#183a30] flex items-center justify-center text-emerald-400 group-hover:bg-[#1f4c3f] transition-colors">
                   <Video size={16} />
                 </div>

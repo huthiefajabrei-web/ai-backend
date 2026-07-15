@@ -26,8 +26,10 @@ import {
   LogOut,
   Bell,
   Moon,
-  X
+  X,
+  Menu
 } from 'lucide-react';
+import MobileBottomNav from '@/app/components/MobileBottomNav';
 import { auth, db } from '../../lib/firebase';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc, collection, getDocs, addDoc, setDoc, deleteField } from 'firebase/firestore';
@@ -48,6 +50,7 @@ export default function WorkspaceDashboard() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newSpaceName, setNewSpaceName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   async function loadAndMigrateSpaces(uid: string) {
     setLoading(true);
@@ -161,22 +164,36 @@ export default function WorkspaceDashboard() {
 
   const toolItems = [
     { name: 'Spaces', icon: LayoutGrid, route: '/workspace', active: true },
-    { name: 'Image Generator', icon: ImageIcon, route: '#' },
-    { name: 'Video Generator', icon: Video, route: '#' },
+    { name: 'Image Generator', icon: ImageIcon, route: '/?studio=1' },
+    { name: 'Video Generator', icon: Video, route: '/video' },
     { name: 'Voice Generator', icon: Mic, route: '#' },
     { name: 'Assistant', icon: MessageSquare, route: '#' },
   ];
 
   return (
-    <div className="flex h-screen bg-[#111111] text-gray-200 font-sans">
+    <div className="flex min-h-[100dvh] bg-[#111111] text-gray-200 font-sans pb-mobile-nav">
+      {sidebarOpen && (
+        <button
+          type="button"
+          className="md:hidden fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+          aria-label="Close sidebar"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="w-64 bg-[#141417] border-r border-gray-800 flex flex-col justify-between overflow-y-auto">
+      <div className={`fixed md:static inset-y-0 left-0 z-50 w-[min(280px,85vw)] md:w-64 bg-[#141417] border-r border-gray-800 flex flex-col justify-between overflow-y-auto transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
         <div>
           {/* Logo */}
-          <div className="px-6 py-6 flex items-center gap-2 cursor-pointer" onClick={() => router.push('/')}>
-            <span className="font-display font-black text-2xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-white/80">
-              H_ARCH
-            </span>
+          <div className="px-4 sm:px-6 py-5 sm:py-6 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 cursor-pointer" onClick={() => router.push('/')}>
+              <span className="font-display font-black text-xl sm:text-2xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-white/80">
+                H_ARCH
+              </span>
+            </div>
+            <button type="button" className="md:hidden p-2 text-gray-400 hover:text-white tap-target" onClick={() => setSidebarOpen(false)} aria-label="Close menu">
+              <X size={20} />
+            </button>
           </div>
 
           <div className="px-4 mb-6">
@@ -193,7 +210,7 @@ export default function WorkspaceDashboard() {
             {menuItems.map((item) => {
               const Icon = item.icon;
               return (
-                <Link key={item.name} href={item.route} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:text-gray-100 hover:bg-[#252529] transition-colors mb-1">
+                <Link key={item.name} href={item.route} onClick={() => setSidebarOpen(false)} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-400 hover:text-gray-100 hover:bg-[#252529] transition-colors mb-1 tap-target">
                   <Icon size={20} strokeWidth={2} />
                   <span className="font-medium text-sm">{item.name}</span>
                 </Link>
@@ -214,7 +231,8 @@ export default function WorkspaceDashboard() {
                 <Link
                   key={item.name}
                   href={item.route}
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors mb-1 ${
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors mb-1 tap-target ${
                     item.active
                       ? 'bg-[#252529] text-gray-100'
                       : 'text-gray-400 hover:text-gray-100 hover:bg-[#252529]'
@@ -241,42 +259,45 @@ export default function WorkspaceDashboard() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col bg-[#111111] overflow-y-auto">
-        {/* Top Header */}
-        <header className="px-8 py-5 flex items-center justify-between">
-          <div className="flex items-center gap-2 bg-[#1c1c1f] border border-gray-800 px-4 py-2 rounded-lg cursor-pointer hover:bg-[#252529] transition-colors">
-            <div className="w-3 h-3 rounded-sm bg-orange-400"></div>
-            <span className="text-sm font-medium">Personal project</span>
-            <ChevronDown size={16} className="text-gray-400 ml-2" />
+      <div className="flex-1 flex flex-col bg-[#111111] overflow-y-auto min-w-0">
+        <header className="px-4 sm:px-8 py-4 sm:py-5 flex items-center justify-between gap-3 sticky top-0 z-30 bg-[#111111]/95 backdrop-blur-md border-b border-gray-800/50 md:border-none">
+          <div className="flex items-center gap-3 min-w-0">
+            <button type="button" className="md:hidden p-2 -ml-1 text-gray-400 hover:text-white tap-target" onClick={() => setSidebarOpen(true)} aria-label="Open menu">
+              <Menu size={22} />
+            </button>
+            <div className="flex items-center gap-2 bg-[#1c1c1f] border border-gray-800 px-3 py-2 rounded-lg cursor-pointer hover:bg-[#252529] transition-colors min-w-0">
+              <div className="w-3 h-3 rounded-sm bg-orange-400 shrink-0"></div>
+              <span className="text-sm font-medium truncate">Personal project</span>
+              <ChevronDown size={16} className="text-gray-400 ml-1 shrink-0" />
+            </div>
           </div>
 
-          <div className="flex items-center gap-5">
-            <Link href="/pricing" className="text-sm font-medium text-[#ff2e93] hover:text-[#ff56a5] transition-colors">
+          <div className="flex items-center gap-2 sm:gap-5 shrink-0">
+            <Link href="/#pricing" className="hidden sm:inline text-sm font-medium text-[#ff2e93] hover:text-[#ff56a5] transition-colors">
               Pricing
             </Link>
-            <button className="flex items-center gap-2 bg-[#1c1c1f] border border-gray-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#252529] transition-colors">
+            <button type="button" className="hidden sm:flex items-center gap-2 bg-[#1c1c1f] border border-gray-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#252529] transition-colors">
               <Share2 size={16} />
               Share
             </button>
-            <button className="bg-[#1c1c1f] border border-gray-800 p-2.5 rounded-lg hover:bg-[#252529] transition-colors text-gray-400" onClick={() => user && loadAndMigrateSpaces(user.uid)}>
+            <button type="button" className="bg-[#1c1c1f] border border-gray-800 p-2.5 rounded-lg hover:bg-[#252529] transition-colors text-gray-400 tap-target" onClick={() => user && loadAndMigrateSpaces(user.uid)}>
               <RefreshCw size={18} />
             </button>
-            <div className="w-9 h-9 rounded-full bg-gray-700 border-2 border-gray-600 flex items-center justify-center overflow-hidden">
+            <div className="w-9 h-9 rounded-full bg-gray-700 border-2 border-gray-600 flex items-center justify-center overflow-hidden shrink-0">
               <User size={20} className="text-gray-300" />
             </div>
           </div>
         </header>
 
-        {/* Dashboard Content */}
-        <main className="px-8 pt-6 pb-12 max-w-7xl">
-          <h1 className="text-5xl font-bold text-white mb-4">Spaces</h1>
-          <p className="text-gray-400 text-lg mb-10">
+        <main className="px-4 sm:px-8 pt-4 sm:pt-6 pb-12 max-w-7xl">
+          <h1 className="text-3xl sm:text-5xl font-bold text-white mb-3 sm:mb-4">Spaces</h1>
+          <p className="text-gray-400 text-sm sm:text-lg mb-8 sm:mb-10 leading-relaxed max-w-2xl">
             Build node-based generative workflows and bring your ideas to life.
           </p>
 
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-8 border-b border-gray-800 w-full pb-4">
-              <button className="flex items-center gap-2 text-white font-medium relative px-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 sm:mb-8">
+            <div className="flex items-center gap-4 sm:gap-8 border-b border-gray-800 w-full pb-4 overflow-x-auto scrollbar-hide">
+              <button type="button" className="flex items-center gap-2 text-white font-medium relative px-2 shrink-0 whitespace-nowrap">
                 <User size={18} className="text-gray-300" />
                 My spaces
                 <span className="absolute -bottom-[17px] left-0 w-full h-0.5 bg-white rounded-t-full"></span>
@@ -290,10 +311,11 @@ export default function WorkspaceDashboard() {
                 Templates
               </button>
               
-              <div className="ml-auto flex items-center gap-3">
+              <div className="ml-auto flex items-center gap-2 sm:gap-3 shrink-0">
                 <button
+                  type="button"
                   onClick={() => setIsModalOpen(true)}
-                  className="bg-white text-black hover:bg-gray-200 flex items-center gap-2 py-2 px-4 rounded-lg font-medium transition-colors text-sm"
+                  className="bg-white text-black hover:bg-gray-200 flex items-center gap-2 py-2.5 px-4 rounded-lg font-medium transition-colors text-sm tap-target whitespace-nowrap"
                 >
                   <Plus size={16} />
                   New space
@@ -311,7 +333,7 @@ export default function WorkspaceDashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             {!loading && spaces.map(space => (
               <div
                 key={space.id}
@@ -411,6 +433,16 @@ export default function WorkspaceDashboard() {
         </div>,
         document.body
       )}
+
+      <MobileBottomNav
+        highlight="studio"
+        isLoggedIn={!!user}
+        onHome={() => router.push("/")}
+        onStudio={() => router.push("/?studio=1")}
+        onApps={() => router.push("/#apps")}
+        onVideo={() => router.push("/video")}
+        onAccount={() => router.push(user ? "/#pricing" : "/login")}
+      />
     </div>
   );
 }

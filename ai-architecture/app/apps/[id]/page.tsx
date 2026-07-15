@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Upload, ChevronDown, Sparkles, Home, Wand2, Video, Search, LayoutGrid, Brush, Folder, Coins, ArrowRight, Loader2, X, Download, Menu } from "lucide-react";
 import Link from "next/link";
+import MobileBottomNav from "@/app/components/MobileBottomNav";
 import { apiGetMe, MySQLUser, AUTH_NETWORK_ERROR, fetchJobStatus, authFormPost, fetchProxyBlob } from "@/lib/mysql/client";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -217,9 +218,9 @@ export default function AppFeaturePage() {
   if (!appData) return null;
 
   return (
-    <div className="min-h-screen bg-[#0e0e11] text-slate-50 font-sans selection:bg-teal-500/30 flex flex-col">
+    <div className="min-h-[100dvh] bg-[#0e0e11] text-slate-50 font-sans selection:bg-teal-500/30 flex flex-col pb-mobile-nav">
       {/* HEADER BAR */}
-      <header className="h-20 border-b border-white/5 bg-[#09090b] flex items-center justify-between px-6 shrink-0 z-50">
+      <header className="sticky top-0 z-50 h-14 md:h-20 border-b border-white/5 bg-[#09090b]/95 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 shrink-0">
         <div className="flex items-center gap-6">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 shrink-0 group">
@@ -257,66 +258,67 @@ export default function AppFeaturePage() {
           <button className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><Folder size={20} /></button>
         </div>
 
-        <div className="flex items-center justify-end gap-3 sm:gap-4">
-          <div className="flex items-center gap-2 bg-[#18181b] border border-white/5 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl hidden sm:flex">
-            <Coins size={16} className="text-yellow-500" />
-            <span className="text-sm font-bold text-white">{user ? (user.credits || 0) : 0}</span>
-            <span className="text-zinc-500 cursor-pointer hover:text-white ml-1 font-bold">+</span>
+        <div className="flex items-center justify-end gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 bg-[#18181b] border border-white/5 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl">
+            <Coins size={14} className="text-yellow-500 shrink-0" />
+            <span className="text-xs sm:text-sm font-bold text-white">{user ? (user.credits || 0) : 0}</span>
           </div>
-          <div className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-[#18181b] border border-white/5 flex items-center gap-3 cursor-pointer hover:bg-white/5 transition-all">
-            <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold text-white uppercase">
+          <div className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-[#18181b] border border-white/5 flex items-center gap-2 cursor-pointer hover:bg-white/5 transition-all tap-target">
+            <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold text-white uppercase shrink-0">
               {user && user.email ? user.email.charAt(0) : "H"}
             </div>
-            <span className="text-xs font-semibold text-zinc-300 hidden sm:block">{user ? user.email.split('@')[0] : 'User'}</span>
+            <span className="text-xs font-semibold text-zinc-300 hidden sm:block max-w-[80px] truncate">{user ? user.email.split('@')[0] : 'User'}</span>
           </div>
-          {/* Mobile Menu Toggle */}
           <button
+            type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 -mr-2 text-zinc-400 hover:text-white transition-colors"
+            className="md:hidden p-2 text-zinc-400 hover:text-white transition-colors tap-target"
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
           >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
       </header>
 
-      {/* Mobile Nav Dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden sticky top-[80px] left-0 w-full bg-[#09090b]/95 backdrop-blur-xl border-b border-white/5 flex flex-col p-4 gap-2 shadow-2xl animate-in slide-in-from-top-2 z-40">
-          <button onClick={() => { router.push("/"); setMobileMenuOpen(false); }} className={`p-4 rounded-xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5`}>
+        <>
+          <button type="button" className="md:hidden fixed inset-0 top-14 z-40 bg-black/60 backdrop-blur-sm" aria-label="Close menu" onClick={() => setMobileMenuOpen(false)} />
+          <div className="md:hidden absolute top-14 left-0 right-0 z-50 bg-[#09090b]/98 backdrop-blur-xl border-b border-white/5 flex flex-col p-3 gap-1.5 shadow-2xl">
+          <button type="button" onClick={() => { router.push("/"); setMobileMenuOpen(false); }} className="p-4 rounded-2xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5 tap-target">
             <Home size={20} /> Home
           </button>
-          <button onClick={() => { setMobileMenuOpen(false); }} className={`p-4 rounded-xl flex items-center gap-3 font-semibold bg-gradient-to-r from-teal-500/20 to-emerald-500/20 text-white`}>
+          <button type="button" onClick={() => setMobileMenuOpen(false)} className="p-4 rounded-2xl flex items-center gap-3 font-semibold bg-gradient-to-r from-teal-500/20 to-emerald-500/20 text-white tap-target">
             <Wand2 size={20} /> Current App
           </button>
-          <button onClick={() => { router.push("/video"); setMobileMenuOpen(false); }} className="p-4 rounded-xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5">
+          <button type="button" onClick={() => { router.push("/video"); setMobileMenuOpen(false); }} className="p-4 rounded-2xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5 tap-target">
             <Video size={20} /> Video Generation
           </button>
-          <button onClick={() => { router.push("/#apps"); setMobileMenuOpen(false); }} className="p-4 rounded-xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5">
+          <button type="button" onClick={() => { router.push("/#apps"); setMobileMenuOpen(false); }} className="p-4 rounded-2xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5 tap-target">
             <LayoutGrid size={20} /> Explore Apps
           </button>
         </div>
+        </>
       )}
 
       {/* MAIN CONTENT */}
-      <main className="flex-1 overflow-y-auto px-6 py-10 custom-scrollbar">
+      <main className="flex-1 overflow-y-auto px-4 md:px-6 py-6 md:py-10 custom-scrollbar">
         <div className="max-w-[1600px] mx-auto w-full animate-[fadeInUp_0.4s_ease-out]">
 
-          {/* Page Headers */}
-          <div className="mb-10 pl-2">
-            <h1 className="text-[2.5rem] font-bold uppercase tracking-wide mb-2 font-display leading-tight">{appData.title.toUpperCase()}</h1>
-            <p className="text-sm max-w-2xl text-[#a1a1aa] font-medium tracking-wide">
+          <div className="mb-6 md:mb-10 pl-0 md:pl-2">
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-teal-400/80 mb-2">{appData.category}</p>
+            <h1 className="text-2xl sm:text-3xl md:text-[2.5rem] font-bold uppercase tracking-wide mb-2 font-display leading-tight">{appData.title}</h1>
+            <p className="text-sm max-w-2xl text-[#a1a1aa] font-medium leading-relaxed">
               {(appData.description || "").length > 30 ? appData.description : "Convert architectural 3D models into stunning photorealistic renderings with AI-powered materials, lighting, and environmental context."}
             </p>
           </div>
 
           {/* Editor Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-10 items-start">
 
-            {/* Left Column (Inputs) */}
-            <div className="flex flex-col gap-8 lg:col-span-5 xl:col-span-4">
+            {/* Left Column (Inputs) — result preview first on mobile for better flow */}
+            <div className="flex flex-col gap-6 md:gap-8 lg:col-span-5 xl:col-span-4">
 
-              {/* Upload Box */}
-              <div className="w-full aspect-[4/3] rounded-[2rem] border-[1.5px] border-dashed border-[#14b8a6]/20 bg-[#121214]/50 hover:bg-[#121214] transition-colors flex flex-col items-center justify-center gap-4 cursor-pointer group px-6 text-center relative overflow-hidden">
+              <div className="w-full aspect-[4/3] max-h-[280px] sm:max-h-none rounded-2xl md:rounded-[2rem] border-[1.5px] border-dashed border-[#14b8a6]/20 bg-[#121214]/50 hover:bg-[#121214] transition-colors flex flex-col items-center justify-center gap-4 cursor-pointer group px-4 sm:px-6 text-center relative overflow-hidden">
                 <input type="file" onChange={handleFileChange} accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                 {filePreview ? (
                   <img src={filePreview} alt="Upload Preview" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" />
@@ -349,7 +351,7 @@ export default function AppFeaturePage() {
                         <button
                           type="button"
                           onClick={(e) => { e.preventDefault(); handleRemoveRef(idx); }}
-                          className="absolute top-1 right-1 p-1 bg-black/60 hover:bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-all scale-75 hover:scale-100"
+                          className="absolute top-1 right-1 p-1.5 bg-black/70 hover:bg-red-500 text-white rounded-full sm:opacity-0 sm:group-hover:opacity-100 transition-all tap-target"
                         >
                           <X size={12} strokeWidth={3} />
                         </button>
@@ -452,9 +454,9 @@ export default function AppFeaturePage() {
                 </div>
               </div>
 
-              {/* Generate Button */}
-              <div className="mt-2">
-                <button disabled={isGenerating} onClick={handleGenerate} className={`w-full py-3.5 rounded-xl font-bold text-[15px] tracking-wide transition-all flex items-center justify-center gap-2 shadow-lg ${isGenerating ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-[#14b8a6] text-white hover:bg-teal-400 hover:shadow-[0_0_25px_rgba(20,184,166,0.3)] hover:-translate-y-0.5'}`}>
+              {/* Generate Button — sticky on mobile above bottom nav */}
+              <div className="mt-2 lg:static sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-30 bg-[#0e0e11]/95 backdrop-blur-md py-2 -mx-1 px-1 lg:mx-0 lg:px-0 lg:py-0 lg:bg-transparent lg:backdrop-blur-none">
+                <button type="button" disabled={isGenerating} onClick={handleGenerate} className={`w-full py-3.5 min-h-[48px] rounded-xl font-bold text-[15px] tracking-wide transition-all flex items-center justify-center gap-2 shadow-lg tap-target ${isGenerating ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-[#14b8a6] text-white hover:bg-teal-400 hover:shadow-[0_0_25px_rgba(20,184,166,0.3)] active:scale-[0.98]'}`}>
                   {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
                   {isGenerating ? "GENERATING..." : (
                     <>
@@ -474,16 +476,16 @@ export default function AppFeaturePage() {
               </div>
             </div>
 
-            {/* Right Column (Preview/Demo) */}
-            <div className={`lg:col-span-7 xl:col-span-8 bg-[#111111] border ${resultImage ? 'border-[#14b8a6]/50 shadow-[0_0_40px_rgba(20,184,166,0.1)]' : 'border-transparent'} rounded-[2rem] p-6 lg:p-12 flex flex-col items-center justify-center text-center w-full min-h-[600px] xl:min-h-[750px] relative transition-all duration-500`}>
+            {/* Right Column (Preview/Demo) — shown first on mobile */}
+            <div className={`lg:col-span-7 xl:col-span-8 bg-[#111111] border ${resultImage ? 'border-[#14b8a6]/50 shadow-[0_0_40px_rgba(20,184,166,0.1)]' : 'border-transparent'} rounded-2xl md:rounded-[2rem] p-4 md:p-6 lg:p-12 flex flex-col items-center justify-center text-center w-full min-h-[320px] sm:min-h-[420px] lg:min-h-[600px] xl:min-h-[750px] relative transition-all duration-500`}>
 
               {resultImage ? (
                 // Full Result Wrapper
                 <div className="absolute inset-0 w-full h-full p-4 lg:p-6">
                   <div className="w-full h-full relative rounded-3xl overflow-hidden group border border-[#27272a] bg-[#09090b]">
                     <img src={resultImage} alt="Generated Result" className="w-full h-full object-contain" />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center backdrop-blur-sm">
-                      <button onClick={() => setIsFullscreen(true)} className="px-8 py-3 bg-[#14b8a6] hover:bg-teal-400 text-[#09090b] rounded-full font-bold transition-transform hover:-translate-y-1 shadow-[0_0_20px_rgba(20,184,166,0.5)]">
+                    <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-end sm:items-center justify-center backdrop-blur-0 sm:backdrop-blur-sm p-4 sm:p-0">
+                      <button type="button" onClick={() => setIsFullscreen(true)} className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-[#14b8a6] hover:bg-teal-400 text-[#09090b] rounded-xl sm:rounded-full font-bold transition-transform active:scale-[0.98] shadow-[0_0_20px_rgba(20,184,166,0.5)] tap-target">
                         View Full Size
                       </button>
                     </div>
@@ -595,6 +597,17 @@ export default function AppFeaturePage() {
           </div>
         </div>
       )}
+
+      <MobileBottomNav
+        highlight="apps"
+        userCredits={user?.credits ?? 0}
+        isLoggedIn={!!user}
+        onHome={() => router.push("/")}
+        onStudio={() => router.push("/?studio=1")}
+        onApps={() => router.push("/#apps")}
+        onVideo={() => router.push("/video")}
+        onAccount={() => (user ? router.push("/#pricing") : router.push("/login"))}
+      />
     </div>
   );
 }

@@ -9,6 +9,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
 import type { SelectedPerspective } from "@/app/components/ControlPanel";
 import OptimizedImage from "@/app/components/OptimizedImage";
+import MobileBottomNav from "@/app/components/MobileBottomNav";
 import { ApiResponse, ApiOk, UserSession } from "@/app/types";
 
 const ControlPanel = dynamic(() => import("@/app/components/ControlPanel"), {
@@ -164,6 +165,14 @@ export default function Home() {
         });
       }
     });
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("studio") === "1") {
+      setActiveApp("generation");
+      window.history.replaceState({}, "", "/");
+    }
   }, []);
 
   const [loading, setLoading] = useState(false);
@@ -1068,6 +1077,13 @@ export default function Home() {
   }
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    document.body.style.overflow = mobileMenuOpen ? "hidden" : "";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenuOpen]);
   const navLinks = [
     { label: "Features", href: "#features" },
     { label: "Create", href: "#create" },
@@ -1077,7 +1093,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col font-sans overflow-x-hidden bg-[#09090b] text-slate-50 relative selection:bg-cyan-500/30">
+    <div className="min-h-screen flex flex-col font-sans overflow-x-hidden bg-[#09090b] text-slate-50 relative selection:bg-cyan-500/30 pb-mobile-nav">
       {/* Ambient Background Elements */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
         <div className="absolute -top-[20%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-radial from-purple-600/20 to-transparent blur-[120px] mix-blend-screen animate-[float_20s_infinite_ease-in-out_alternate]"></div>
@@ -1085,9 +1101,9 @@ export default function Home() {
       </div>
 
       {/* Top Header - Floating Style */}
-      <header className="sticky top-0 z-50 w-full bg-[#09090b]/80 backdrop-blur-xl border-b border-white/5">
+      <header className="sticky top-0 z-50 w-full bg-[#09090b]/90 backdrop-blur-xl border-b border-white/5 supports-[backdrop-filter]:bg-[#09090b]/80">
         <div className="mx-auto w-full max-w-[1920px] px-4 sm:px-6 lg:px-10 xl:px-16">
-          <nav className="flex h-[72px] items-center justify-between">
+          <nav className="flex h-14 md:h-[72px] items-center justify-between gap-2">
             {/* Logo */}
             <a href="#" className="flex items-center gap-3 shrink-0 group" onClick={(e) => { e.preventDefault(); setActiveApp(null); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
               <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-[1px] shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-transform duration-300 group-hover:scale-105">
@@ -1124,118 +1140,138 @@ export default function Home() {
               <button className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"><Folder size={18} strokeWidth={2} /></button>
             </div>
 
-            {/* User / Auth & Mobile Toggle */}
-            <div className="flex items-center gap-3 shrink-0">
-              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full border border-yellow-500/20 bg-yellow-500/10 text-yellow-500 font-medium text-sm">
-                <Coins size={14} />
+            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-yellow-500/20 bg-yellow-500/10 text-yellow-500 font-medium text-xs sm:text-sm">
+                <Coins size={13} />
                 <span>{user?.credits ?? 0}</span>
-                <Plus size={14} className="opacity-50" />
               </div>
               {user ? (
-                <div className="flex items-center gap-2 pl-2 pr-4 py-1.5 rounded-full bg-[#18181b] border border-white/10 cursor-pointer hover:bg-white/5 transition-colors"
+                <div className="flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full bg-[#18181b] border border-white/10 cursor-pointer hover:bg-white/5 transition-colors tap-target"
                   onClick={async () => { await apiLogout(); setUser(null); }}>
-                  <div className="w-7 h-7 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold uppercase">
+                  <div className="w-7 h-7 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold uppercase shrink-0">
                     {user.full_name?.charAt(0) || user.email?.charAt(0) || 'U'}
                   </div>
-                  <span className="hidden sm:block text-xs font-medium text-zinc-300">
+                  <span className="hidden sm:block text-xs font-medium text-zinc-300 max-w-[100px] truncate">
                     {user.full_name || user.email?.split('@')[0]}
                   </span>
                 </div>
               ) : (
-                <a href="/login" className="inline-flex h-9 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 px-5 text-sm font-semibold text-white hover:opacity-90 transition-opacity shadow-[0_0_15px_rgba(139,92,246,0.3)]">
+                <a href="/login" className="inline-flex h-9 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 px-4 sm:px-5 text-xs sm:text-sm font-semibold text-white hover:opacity-90 transition-opacity shadow-[0_0_15px_rgba(139,92,246,0.3)] tap-target">
                   Sign In
                 </a>
               )}
-              {/* Mobile Menu Toggle */}
               <button
+                type="button"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 -mr-2 text-zinc-400 hover:text-white transition-colors"
+                className="md:hidden p-2 -mr-1 text-zinc-400 hover:text-white transition-colors tap-target"
+                aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+                aria-expanded={mobileMenuOpen}
               >
-                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+                {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
               </button>
             </div>
           </nav>
         </div>
 
-        {/* Mobile Nav Dropdown */}
+        {/* Mobile full-screen menu overlay */}
         {mobileMenuOpen && (
-          <div className="md:hidden absolute top-full left-0 w-full bg-[#09090b]/95 backdrop-blur-xl border-b border-white/5 flex flex-col p-4 gap-2 shadow-2xl animate-in slide-in-from-top-2">
-            <button onClick={() => { setActiveApp(null); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={`p-4 rounded-xl flex items-center gap-3 font-semibold ${!activeApp ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
-              <HomeIcon size={20} /> Home
-            </button>
-            <button onClick={() => { setActiveApp("generation"); setMobileMenuOpen(false); }} className={`p-4 rounded-xl flex items-center gap-3 font-semibold ${activeApp === "generation" ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
-              <Wand2 size={20} /> AI Workspace
-            </button>
-            <button onClick={() => { router.push("/workspace"); setMobileMenuOpen(false); }} className="p-4 rounded-xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5">
-              <Layers size={20} /> Advanced Workspace
-            </button>
-            <button onClick={() => { router.push("/video"); setMobileMenuOpen(false); }} className="p-4 rounded-xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5">
-              <Video size={20} /> Video Generation
-            </button>
-            <button onClick={() => { document.getElementById("apps")?.scrollIntoView({ behavior: "smooth" }); setMobileMenuOpen(false); }} className="p-4 rounded-xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5">
-              <LayoutGrid size={20} /> Explore Apps
-            </button>
-          </div>
+          <>
+            <button
+              type="button"
+              className="md:hidden fixed inset-0 top-14 z-40 bg-black/60 backdrop-blur-sm"
+              aria-label="Close menu"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <div className="md:hidden absolute top-full left-0 right-0 z-50 bg-[#09090b]/98 backdrop-blur-xl border-b border-white/10 flex flex-col p-3 gap-1.5 shadow-2xl max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
+              <button type="button" onClick={() => { setActiveApp(null); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={`p-4 rounded-2xl flex items-center gap-3 font-semibold tap-target ${!activeApp ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
+                <HomeIcon size={20} /> Home
+              </button>
+              <button type="button" onClick={() => { setActiveApp("generation"); setMobileMenuOpen(false); }} className={`p-4 rounded-2xl flex items-center gap-3 font-semibold tap-target ${activeApp === "generation" ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
+                <Wand2 size={20} /> AI Workspace
+              </button>
+              <button type="button" onClick={() => { router.push("/workspace"); setMobileMenuOpen(false); }} className="p-4 rounded-2xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5 tap-target">
+                <Layers size={20} /> Advanced Workspace
+              </button>
+              <button type="button" onClick={() => { router.push("/video"); setMobileMenuOpen(false); }} className="p-4 rounded-2xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5 tap-target">
+                <Video size={20} /> Video Generation
+              </button>
+              <button type="button" onClick={() => { document.getElementById("apps")?.scrollIntoView({ behavior: "smooth" }); setMobileMenuOpen(false); }} className="p-4 rounded-2xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5 tap-target">
+                <LayoutGrid size={20} /> Explore Apps
+              </button>
+              <button type="button" onClick={() => { document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" }); setMobileMenuOpen(false); }} className="p-4 rounded-2xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5 tap-target">
+                <Coins size={20} /> Pricing
+              </button>
+            </div>
+          </>
         )}
       </header>
 
       {/* Main Content Area - Spacious */}
-      <main className="flex-grow w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-16 py-8 lg:py-12 relative z-10">
+      <main className="flex-grow w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-16 py-5 sm:py-8 lg:py-12 relative z-10">
 
-        {/* Welcome / Hero Section - يظهر فقط لغير المسجلين */}
         {!activeApp ? (
-          <div className="flex flex-col gap-24 animate-[fadeInUp_0.8s_ease-out] w-full mt-4">
+          <div className="flex flex-col gap-12 sm:gap-16 md:gap-24 animate-[fadeInUp_0.8s_ease-out] w-full mt-2 sm:mt-4">
             {/* Hero Section */}
-            <section className="flex flex-col items-center text-center mt-10">
-              <h1 className="font-display text-5xl sm:text-7xl font-bold tracking-tighter mb-8 leading-[1.1] max-w-4xl">
-                Design, from Concept to <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400">Reality</span>
+            <section className="flex flex-col items-center text-center mt-4 sm:mt-10">
+              <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.25em] text-purple-400/90 mb-4">
+                AI Architectural Studio
+              </p>
+              <h1 className="font-display text-[2rem] leading-[1.08] sm:text-5xl md:text-7xl font-bold tracking-tighter mb-5 sm:mb-8 max-w-4xl px-1">
+                Design, from Concept to{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400">Reality</span>
               </h1>
-              <div className="flex flex-wrap items-center justify-center gap-4 mb-16 w-full px-2">
-                <button onClick={() => setActiveApp("generation")} className="px-5 sm:px-6 py-3 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-[0_0_20px_rgba(139,92,246,0.4)] whitespace-nowrap text-sm sm:text-base">
+              <p className="text-sm sm:text-base text-zinc-400 max-w-md sm:max-w-xl mx-auto mb-6 sm:mb-8 leading-relaxed px-2">
+                Transform sketches and photos into photorealistic architectural renders with professional AI tools.
+              </p>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-16 w-full max-w-sm sm:max-w-none px-2">
+                <button type="button" onClick={() => setActiveApp("generation")} className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-[0_0_20px_rgba(139,92,246,0.4)] text-sm sm:text-base tap-target">
                   Get Started <ArrowRight size={18} className="shrink-0" />
                 </button>
-                <button onClick={() => document.getElementById("apps")?.scrollIntoView({ behavior: "smooth" })} className="px-5 sm:px-6 py-3 rounded-full bg-[#18181b] border border-white/10 text-white font-semibold flex justify-center hover:bg-white/5 transition-all whitespace-nowrap text-sm sm:text-base">
+                <button type="button" onClick={() => document.getElementById("apps")?.scrollIntoView({ behavior: "smooth" })} className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-[#18181b] border border-white/10 text-white font-semibold flex justify-center hover:bg-white/5 transition-all text-sm sm:text-base tap-target">
                   Explore Apps
                 </button>
               </div>
 
-              {/* Hero Images Grid — reserved aspect ratio prevents CLS while content loads */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-6xl mx-auto px-4 min-h-[280px] md:min-h-[420px]">
-                {(dbHero.length > 0 ? dbHero : Array.from({ length: 3 })).slice(0, 3).map((hero, index) => (
-                  <div
-                    key={hero?.id ?? `hero-skeleton-${index}`}
-                    onClick={hero ? () => router.push(`/apps/${hero.id}`) : undefined}
-                    className={`aspect-[3/4] rounded-3xl overflow-hidden relative group ${index === 1 ? "md:-translate-y-6" : ""} ${hero ? "cursor-pointer" : "bg-[#121214] animate-pulse"}`}
-                  >
-                    {hero?.image_url ? (
-                      <>
-                        <OptimizedImage
-                          src={hero.image_url}
-                          alt={hero.title || "Hero"}
-                          priority={index === 0}
-                          sizes="(max-width: 768px) 100vw, 33vw"
-                          width={900}
-                          className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/0 to-transparent flex items-end">
-                          <div className="p-6 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-4 group-hover:translate-y-0 w-full">
-                            <span className="text-white font-bold text-lg drop-shadow-xl font-display">{hero.title}</span>
+              {/* Hero — horizontal carousel on mobile, grid on desktop */}
+              <div className="w-full max-w-6xl mx-auto">
+                <div className="flex md:grid md:grid-cols-3 gap-4 md:gap-6 overflow-x-auto snap-x-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-4 pb-2 md:pb-0 min-h-[320px] sm:min-h-[380px] md:min-h-[420px]">
+                  {(dbHero.length > 0 ? dbHero : Array.from({ length: 3 })).slice(0, 3).map((hero, index) => (
+                    <div
+                      key={hero?.id ?? `hero-skeleton-${index}`}
+                      onClick={hero ? () => router.push(`/apps/${hero.id}`) : undefined}
+                      className={`snap-center shrink-0 w-[82vw] max-w-[340px] sm:w-[72vw] md:w-auto md:max-w-none aspect-[3/4] rounded-2xl sm:rounded-3xl overflow-hidden relative group ${index === 1 ? "md:-translate-y-6" : ""} ${hero ? "cursor-pointer active:scale-[0.98] transition-transform" : "bg-[#121214] animate-pulse"}`}
+                    >
+                      {hero?.image_url ? (
+                        <>
+                          <OptimizedImage
+                            src={hero.image_url}
+                            alt={hero.title || "Hero"}
+                            priority={index === 0}
+                            sizes="(max-width: 768px) 85vw, 33vw"
+                            width={900}
+                            className="object-cover w-full h-full md:group-hover:scale-105 transition-transform duration-700"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent flex items-end opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-300">
+                            <div className="p-4 sm:p-6 w-full translate-y-0 md:translate-y-4 md:group-hover:translate-y-0 transition-transform duration-500">
+                              <span className="text-white font-bold text-base sm:text-lg drop-shadow-xl font-display">{hero.title}</span>
+                            </div>
                           </div>
-                        </div>
-                      </>
-                    ) : null}
-                  </div>
-                ))}
+                        </>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+                <p className="md:hidden text-center text-[11px] text-zinc-500 mt-3 tracking-wide">Swipe to explore featured work →</p>
               </div>
             </section>
 
             {/* Explore Tools Section */}
-            <section className="max-w-6xl mx-auto w-full px-4">
-              <div className="text-center mb-12">
-                <h2 className="text-4xl font-bold mb-4 font-display">Explore <span className="text-purple-400">Our Tools</span></h2>
-                <p className="text-zinc-400 max-w-2xl mx-auto">Powerful AI tools designed to transform your architectural and interior design workflow.</p>
+            <section id="features" className="max-w-6xl mx-auto w-full">
+              <div className="text-center mb-8 sm:mb-12 px-2">
+                <h2 className="text-2xl sm:text-4xl font-bold mb-3 sm:mb-4 font-display">Explore <span className="text-purple-400">Our Tools</span></h2>
+                <p className="text-zinc-400 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">Powerful AI tools designed to transform your architectural and interior design workflow.</p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="flex md:grid md:grid-cols-3 gap-4 overflow-x-auto snap-x-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 pb-2 md:pb-0">
                 {dbTools.map((t) => {
                   const Icon = IconMap[t.icon] || Sparkles;
                   return (
@@ -1245,12 +1281,12 @@ export default function Home() {
                       } else {
                         setActiveApp(t.action_id || "generation");
                       }
-                    }} className="bg-[#121214] border border-white/5 rounded-3xl p-6 cursor-pointer hover:border-purple-500/30 hover:bg-[#18181b] transition-all group">
-                      <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-                        <Icon className="text-purple-400" size={24} />
+                    }} className="snap-center shrink-0 w-[78vw] max-w-[300px] md:w-auto md:max-w-none bg-[#121214] border border-white/5 rounded-2xl sm:rounded-3xl p-5 sm:p-6 cursor-pointer hover:border-purple-500/30 hover:bg-[#18181b] transition-all group active:scale-[0.98]">
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-purple-500/20 flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
+                        <Icon className="text-purple-400" size={22} />
                       </div>
-                      <h3 className="text-lg font-bold text-white mb-2">{t.title}</h3>
-                      <p className="text-zinc-500 text-sm leading-relaxed">{t.description}</p>
+                      <h3 className="text-base sm:text-lg font-bold text-white mb-2">{t.title}</h3>
+                      <p className="text-zinc-500 text-sm leading-relaxed line-clamp-3">{t.description}</p>
                     </div>
                   );
                 })}
@@ -1258,15 +1294,15 @@ export default function Home() {
             </section>
 
             {/* Explore Apps Section */}
-            <section id="apps" className="max-w-[1400px] mx-auto w-full mb-20 mt-20 px-4">
-              <div className="text-center mb-12">
-                <h2 className="text-4xl font-bold mb-4 font-display">Explore <span className="text-purple-400">H_ARCH Apps</span></h2>
-                <p className="text-zinc-400 max-w-2xl mx-auto">Explore our innovative AI Powered applications and tools for creative professionals.</p>
+            <section id="apps" className="max-w-[1400px] mx-auto w-full mb-12 sm:mb-20 mt-8 sm:mt-20">
+              <div className="text-center mb-8 sm:mb-12 px-2">
+                <h2 className="text-2xl sm:text-4xl font-bold mb-3 sm:mb-4 font-display">Explore <span className="text-purple-400">H_ARCH Apps</span></h2>
+                <p className="text-zinc-400 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">Innovative AI applications and tools for creative professionals.</p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 {dbApps.map((a) => (
-                  <div key={a.id} className="flex flex-col gap-4">
-                    <div className="aspect-[4/5] rounded-3xl overflow-hidden relative group cursor-pointer" onClick={() => router.push(`/apps/${a.id}`)}>
+                  <div key={a.id} className="flex flex-col gap-3 sm:gap-4">
+                    <div className="aspect-[4/5] rounded-2xl sm:rounded-3xl overflow-hidden relative group cursor-pointer active:scale-[0.98] transition-transform" onClick={() => router.push(`/apps/${a.id}`)}>
                       <div className="absolute top-4 left-4 z-10 px-3 py-1.5 rounded-full bg-purple-500 text-white text-[11px] font-bold shadow-lg">New</div>
                       {/* Credit cost badge */}
                       {a.credit_cost != null && (
@@ -1294,9 +1330,9 @@ export default function Home() {
                           </div>
                         )}
                       </div>
-                      <h3 className="text-lg font-bold text-white mb-2">{a.title}</h3>
-                      <p className="text-zinc-500 text-[13px] mb-4 line-clamp-2 leading-relaxed">{a.description}</p>
-                      <button onClick={() => router.push(`/apps/${a.id}`)} className="w-full py-2.5 rounded-xl border border-white/5 bg-[#121214] hover:bg-[#18181b] hover:border-white/10 transition-all flex items-center justify-center gap-2 text-sm font-medium hover:text-purple-300">
+                      <h3 className="text-base sm:text-lg font-bold text-white mb-1.5 sm:mb-2 line-clamp-1">{a.title}</h3>
+                      <p className="text-zinc-500 text-[12px] sm:text-[13px] mb-3 sm:mb-4 line-clamp-2 leading-relaxed">{a.description}</p>
+                      <button type="button" onClick={() => router.push(`/apps/${a.id}`)} className="w-full py-3 sm:py-2.5 rounded-xl border border-white/5 bg-[#121214] hover:bg-[#18181b] hover:border-white/10 transition-all flex items-center justify-center gap-2 text-sm font-medium hover:text-purple-300 tap-target">
                         <Sparkles size={16} className="text-purple-400" /> Open App
                       </button>
                     </div>
@@ -1306,10 +1342,10 @@ export default function Home() {
             </section>
 
             {/* Pricing Section (Dynamic) */}
-            <section id="pricing" className="max-w-6xl mx-auto w-full mb-24 px-4">
-              <div className="text-center mb-12">
-                <h2 className="text-4xl font-bold mb-4 font-display">Choose Your <span className="text-purple-400">Plan</span></h2>
-                <p className="text-zinc-400 max-w-2xl mx-auto">Flexible subscription options designed to fit your workflow needs.</p>
+            <section id="pricing" className="max-w-6xl mx-auto w-full mb-16 sm:mb-24">
+              <div className="text-center mb-8 sm:mb-12 px-2">
+                <h2 className="text-2xl sm:text-4xl font-bold mb-3 sm:mb-4 font-display">Choose Your <span className="text-purple-400">Plan</span></h2>
+                <p className="text-zinc-400 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">Flexible subscription options designed to fit your workflow needs.</p>
               </div>
               {subscribeMsg && (
                 <div className={`mb-6 p-4 rounded-xl text-center font-medium text-sm ${subscribeMsg.type === "success" ? "bg-emerald-500/10 border border-emerald-500/30 text-emerald-400" : "bg-red-500/10 border border-red-500/30 text-red-400"}`}>
@@ -1321,7 +1357,7 @@ export default function Home() {
                   const isCurrentPlan = user?.plan_id === p.id;
                   const isLoading = subscribingPlanId === p.id;
                   return (
-                    <div key={p.id} className={`bg-[#18181b] border ${p.is_popular ? 'border-purple-500 ring-1 ring-purple-500' : 'border-white/5'} rounded-3xl p-8 flex flex-col relative transition-all group hover:-translate-y-2 hover:shadow-[0_20px_40px_rgba(0,0,0,0.5)]`}>
+                    <div key={p.id} className={`bg-[#18181b] border ${p.is_popular ? 'border-purple-500 ring-1 ring-purple-500' : 'border-white/5'} rounded-2xl sm:rounded-3xl p-6 sm:p-8 flex flex-col relative transition-all group md:hover:-translate-y-2 md:hover:shadow-[0_20px_40px_rgba(0,0,0,0.5)]`}>
                       {p.is_popular ? (
                         <div className="absolute top-0 right-8 -translate-y-1/2 px-4 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[11px] font-bold rounded-full uppercase tracking-widest shadow-lg">
                           Most Popular
@@ -1383,24 +1419,32 @@ export default function Home() {
           </div>
         ) : (
           <div className="w-full flex-grow flex flex-col items-center animate-[fadeInUp_0.4s_ease-out]">
-            {/* Generation Interface Inspired by Image 5 */}
-            <div className="w-full max-w-4xl mx-auto flex flex-col items-center mt-10 mb-8">
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6 text-center">
-                <Layers className="text-purple-400 shrink-0" size={36} />
-                <h2 className="text-2xl sm:text-4xl font-display font-bold leading-tight max-w-2xl">Complete Architectural Rendering Workspace</h2>
+            <div className="w-full max-w-4xl mx-auto flex flex-col items-center mt-4 sm:mt-10 mb-6 sm:mb-8 px-1">
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 mb-4 sm:mb-6 text-center">
+                <Layers className="text-purple-400 shrink-0" size={28} />
+                <h2 className="text-xl sm:text-4xl font-display font-bold leading-tight max-w-2xl">Complete Architectural Rendering Workspace</h2>
               </div>
             </div>
 
-            {/* Studio Workspace - Layout: History (left, toggleable) | Gallery (center) | Settings (right) */}
-            <div id="create" className={`relative w-full grid gap-8 xl:gap-14 2xl:gap-20 animate-[fadeInUp_0.8s_ease-out_0.2s_both] scroll-mt-24 ${user && historySidebarOpen
+            <div id="create" className={`relative w-full grid gap-5 sm:gap-8 xl:gap-14 2xl:gap-20 animate-[fadeInUp_0.8s_ease-out_0.2s_both] scroll-mt-20 ${user && historySidebarOpen
               ? "grid-cols-1 xl:grid-cols-[240px_1fr_300px] 2xl:grid-cols-[260px_1fr_320px]"
               : "grid-cols-1 xl:grid-cols-[1fr_300px] 2xl:grid-cols-[1fr_320px]"
               }`}>
-              {/* Show History toggle button when sidebar is hidden */}
               {user && !historySidebarOpen && (
                 <button
+                  type="button"
                   onClick={() => setHistorySidebarOpen(true)}
-                  className="fixed left-4 top-[50%] -translate-y-1/2 z-40 flex items-center justify-center w-10 h-12 rounded-r-xl bg-slate-900/90 backdrop-blur-xl border border-l-0 border-white/10 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/20 shadow-lg transition-all hover:pl-1"
+                  className="sm:hidden order-first w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-sm font-semibold tap-target"
+                >
+                  <PanelLeft size={18} />
+                  View Session History
+                </button>
+              )}
+              {user && !historySidebarOpen && (
+                <button
+                  type="button"
+                  onClick={() => setHistorySidebarOpen(true)}
+                  className="hidden sm:flex fixed left-0 top-[50%] -translate-y-1/2 z-40 items-center justify-center w-10 h-12 rounded-r-xl bg-slate-900/90 backdrop-blur-xl border border-l-0 border-white/10 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/20 shadow-lg transition-all hover:pl-1 tap-target"
                   title="Show History"
                   aria-label="Show History"
                 >
@@ -1410,7 +1454,7 @@ export default function Home() {
 
               {/* 1. History - Left sidebar (toggleable, natural height) */}
               {user && historySidebarOpen && (
-                <div className="order-3 xl:order-1 w-full xl:self-start flex flex-col bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.3)] relative">
+                <div className="order-3 xl:order-1 w-full xl:self-start flex flex-col bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.3)] relative max-h-[280px] sm:max-h-[360px] xl:max-h-none">
                   <div className="absolute -top-24 -left-24 w-48 h-48 bg-indigo-600/15 rounded-full blur-[60px] pointer-events-none" aria-hidden />
                   <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/5 relative z-10">
                     <div className="flex flex-col flex-1 min-w-0">
@@ -1618,8 +1662,43 @@ export default function Home() {
         )}
       </main>
 
+      {loading && activeApp === "generation" && (
+        <div className="fixed left-1/2 z-[70] -translate-x-1/2 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:bottom-6 flex items-center gap-3 rounded-2xl border border-red-500/30 bg-[#18181b]/95 px-4 py-3 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-xl">
+          <Loader2 size={18} className="animate-spin text-red-400 shrink-0" />
+          <span className="text-sm font-medium text-zinc-200">Generating images…</span>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="ml-1 flex items-center gap-1.5 rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white shadow-lg shadow-red-500/30 transition-colors hover:bg-red-500 active:scale-95"
+          >
+            <X size={14} />
+            Stop
+          </button>
+        </div>
+      )}
+
+      <MobileBottomNav
+        highlight={activeApp ? "studio" : "home"}
+        userCredits={user?.credits ?? 0}
+        isLoggedIn={!!user}
+        onHome={() => {
+          setActiveApp(null);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+        onStudio={() => setActiveApp("generation")}
+        onApps={() => document.getElementById("apps")?.scrollIntoView({ behavior: "smooth" })}
+        onVideo={() => router.push("/video")}
+        onAccount={() => {
+          if (user) {
+            document.getElementById("pricing")?.scrollIntoView({ behavior: "smooth" });
+          } else {
+            router.push("/login");
+          }
+        }}
+      />
+
       {/* Footer with anchors for Pricing & API */}
-      <footer id="pricing" className="mt-16 py-10 border-t border-white/10 bg-black/40 text-center relative z-10 backdrop-blur-md scroll-mt-24">
+      <footer className="mt-8 sm:mt-16 py-8 sm:py-10 border-t border-white/10 bg-black/40 text-center relative z-10 backdrop-blur-md scroll-mt-24">
         <div className="max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-16">
           <p className="text-sm text-slate-500 font-medium">
             H_ARCH STUDIO &copy; {new Date().getFullYear()}. Empowering designers.
@@ -1629,8 +1708,6 @@ export default function Home() {
       </footer>
 
       <style jsx global>{`
-        @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;800&display=swap");
-
         @keyframes float {
           0% {
             transform: translateY(0) scale(1);

@@ -54,6 +54,13 @@ export const metadata: Metadata = {
   },
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  viewportFit: "cover" as const,
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -61,13 +68,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="preconnect" href="https://images.unsplash.com" />
-        <link rel="dns-prefetch" href="https://api-3amdwgboma-uc.a.run.app" />
-        <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
-      </head>
+      <link rel="preconnect" href="https://fonts.googleapis.com" />
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+      <link rel="preconnect" href="https://images.unsplash.com" />
+      <link rel="dns-prefetch" href="https://api-3amdwgboma-uc.a.run.app" />
+      <link rel="dns-prefetch" href="https://firebasestorage.googleapis.com" />
       <body
         className={`${inter.variable} ${outfit.variable} antialiased bg-[#040508] text-slate-50`}
       >
