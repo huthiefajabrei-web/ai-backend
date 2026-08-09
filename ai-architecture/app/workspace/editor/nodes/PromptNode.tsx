@@ -1,12 +1,13 @@
 "use client";
 
-import { Handle, Position, useReactFlow, useNodeId, useEdges } from "@xyflow/react";
+import { Handle, Position, useReactFlow, useNodeId, useEdges, NodeToolbar } from "@xyflow/react";
 import { Type, Image as ImageIcon, Video, X } from "lucide-react";
 import { useRef, useState, useEffect, useCallback } from "react";
 import {
   loadCreationImage,
   type WorkspaceReference,
 } from "@/lib/workspace/graphUtils";
+import NodeRunMenu from "../NodeRunMenu";
 
 export default function PromptNode({ data, selected }: { data: any; selected?: boolean }) {
   const { updateNodeData, getNode, setEdges } = useReactFlow();
@@ -131,6 +132,14 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
         </div>
         <span className="font-bold text-xs">Text</span>
       </div>
+
+      {selected && (
+        <NodeToolbar isVisible position={Position.Top} offset={36} className="!bg-transparent !border-0 !p-0 !shadow-none">
+          <div className="flex items-center gap-0.5 bg-[#1c1c1f] border border-white/10 rounded-xl px-1.5 py-1 shadow-xl">
+            <NodeRunMenu nodeId={nodeId} />
+          </div>
+        </NodeToolbar>
+      )}
 
       {/* Magnific left ports: text / video / image (Assets connect here) */}
       <div className="absolute -left-12 top-1/2 -translate-y-1/2 flex flex-col gap-3">

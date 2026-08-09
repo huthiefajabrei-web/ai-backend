@@ -469,6 +469,10 @@ export function getImageNodeExecutionOrder(nodes: Node[], edges: Edge[]): string
   return order;
 }
 
+/**
+ * Magnific "Run from here": walk outbound edges from any node
+ * (Creation / Text / Image) and collect reachable Image Generators.
+ */
 export function getDownstreamImageNodes(startId: string, nodes: Node[], edges: Edge[]): string[] {
   const imageIds = new Set(nodes.filter((n) => n.type === "imageNode").map((n) => n.id));
   const result: string[] = [];
@@ -481,17 +485,18 @@ export function getDownstreamImageNodes(startId: string, nodes: Node[], edges: E
     seen.add(current);
 
     for (const edge of edges.filter((e) => e.source === current)) {
-      if (imageIds.has(edge.target) && edge.target !== startId) {
+      if (imageIds.has(edge.target)) {
         result.push(edge.target);
       }
       queue.push(edge.target);
     }
   }
 
-  const all = [startId, ...result].filter((id) => imageIds.has(id));
+  // Dedupe while preserving discovery order
+  const unique = Array.from(new Set(result));
   return getImageNodeExecutionOrder(
-    nodes.filter((n) => all.includes(n.id)),
-    edges.filter((e) => all.includes(e.source) && all.includes(e.target)),
+    nodes.filter((n) => unique.includes(n.id)),
+    edges.filter((e) => unique.includes(e.source) && unique.includes(e.target)),
   );
 }
 

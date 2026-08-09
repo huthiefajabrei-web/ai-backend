@@ -15,6 +15,7 @@ import {
   loadCreationImage,
   saveCreationImage,
 } from "@/lib/workspace/graphUtils";
+import NodeRunMenu from "../NodeRunMenu";
 
 type CreationData = {
   label?: string;
@@ -122,7 +123,9 @@ export default function CreationNode({ data, selected }: { data: CreationData; s
 
       {selected && (
         <NodeToolbar isVisible position={Position.Top} offset={36} className="!bg-transparent !border-0 !p-0 !shadow-none">
-          <div className="flex items-center gap-1 bg-[#1c1c1f] border border-white/10 rounded-xl px-2 py-1.5 shadow-xl">
+          <div className="flex items-center gap-0.5 bg-[#1c1c1f] border border-white/10 rounded-xl px-1.5 py-1 shadow-xl">
+            <NodeRunMenu nodeId={nodeId} />
+            <div className="w-px h-5 bg-white/10 mx-0.5" />
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
