@@ -137,14 +137,37 @@ export type WorkspaceReference = {
 
 export const CREATION_LS_KEY = (id: string) => `ws_creation_${id}`;
 
+/** In-memory fallback when localStorage quota is exceeded */
+const creationImageMemory = new Map<string, string>();
+
 export function loadCreationImage(nodeId: string): string | null {
   if (typeof window === "undefined") return null;
-  return localStorage.getItem(CREATION_LS_KEY(nodeId));
+  return creationImageMemory.get(nodeId) || localStorage.getItem(CREATION_LS_KEY(nodeId));
 }
 
 export function saveCreationImage(nodeId: string, b64: string) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(CREATION_LS_KEY(nodeId), b64);
+  creationImageMemory.set(nodeId, b64);
+  try {
+    localStorage.setItem(CREATION_LS_KEY(nodeId), b64);
+  } catch {
+    // Quota exceeded — keep memory copy so the node still shows the image
+    try {
+      localStorage.removeItem(CREATION_LS_KEY(nodeId));
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+export function clearCreationImage(nodeId: string) {
+  creationImageMemory.delete(nodeId);
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(CREATION_LS_KEY(nodeId));
+  } catch {
+    /* ignore */
+  }
 }
 
 export function nextCreationNumber(nodes: Node[]): number {
@@ -271,7 +294,8 @@ function addCreationRef(
   creationNode: Node,
   edgeId: string,
 ) {
-  const b64 = loadCreationImage(creationNode.id) || undefined;
+  const fromData = creationNode.data?.previewUrl ? String(creationNode.data.previewUrl) : undefined;
+  const b64 = loadCreationImage(creationNode.id) || fromData || undefined;
   const url = !b64 ? getImageUrlFromNode(creationNode) : undefined;
   if (!b64 && !url) return;
   const creationNumber = Number(creationNode.data?.creationNumber) || undefined;

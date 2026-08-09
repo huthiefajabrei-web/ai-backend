@@ -30,7 +30,7 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
     for (const edge of incoming) {
       const src = getNode(edge.source);
       if (!src || src.type !== "creationNode") continue;
-      const b64 = loadCreationImage(src.id);
+      const b64 = loadCreationImage(src.id) || (src.data?.previewUrl ? String(src.data.previewUrl) : null);
       if (!b64) continue;
       const creationNumber = Number(src.data?.creationNumber) || i;
       refs.push({

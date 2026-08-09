@@ -79,7 +79,7 @@ function sanitizeForFirestore(value: any): any {
     const cleaned: Record<string, any> = {};
     for (const [k, v] of Object.entries(value)) {
       if (v === undefined) continue;
-      if (k === "imageB64" || k === "compressedImageB64" || k === "localRefs") continue;
+      if (k === "imageB64" || k === "compressedImageB64" || k === "localRefs" || k === "previewUrl") continue;
       if (k === "isLoading") {
         cleaned[k] = false;
         continue;
@@ -385,8 +385,11 @@ function Flow() {
       const instance = reactFlowInstanceRef.current;
       if (!instance) return;
 
-      const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
-      if (!list.length) return;
+      const list = Array.from(files).filter((f) => f.type.startsWith("image/") || /\.(jpe?g|png|webp|gif)$/i.test(f.name));
+      if (!list.length) {
+        alert("Please choose an image file (JPG, PNG, or WebP).");
+        return;
+      }
 
       const basePos =
         position ||
@@ -394,6 +397,25 @@ function Flow() {
           x: window.innerWidth / 2,
           y: window.innerHeight / 2,
         });
+
+      // Auto-wire target: pending port, else selected Image Generator / Text
+      let connectTargetId: string | null = null;
+      let connectTargetHandle = "image-in";
+      if (pending?.fromHandleType === "target" && pending.fromHandleId?.startsWith("image")) {
+        connectTargetId = pending.fromNodeId;
+        connectTargetHandle = pending.fromHandleId || "image-in";
+      } else if (pending?.fromHandleType === "source" && pending.fromHandleId?.startsWith("image")) {
+        // Dragging from an image output into empty → Assets: Creation becomes source; wire later manually
+        connectTargetId = null;
+      } else {
+        const selected = nodesRef.current.filter(
+          (n) => n.selected && (n.type === "imageNode" || n.type === "promptNode"),
+        );
+        if (selected.length === 1) {
+          connectTargetId = selected[0].id;
+          connectTargetHandle = "image-in";
+        }
+      }
 
       let number = nextCreationNumber(nodesRef.current);
       const newNodes: any[] = [];
@@ -404,57 +426,71 @@ function Flow() {
         const id = uuidv4();
         const creationNumber = number++;
         try {
-          const b64 = await compressImageFile(file, 1280, 0.85);
+          const b64 = await compressImageFile(file, 1024, 0.8);
           saveCreationImage(id, b64);
+
           const img = await new Promise<{ w: number; h: number }>((resolve) => {
             const el = new window.Image();
             el.onload = () => resolve({ w: el.naturalWidth, h: el.naturalHeight });
-            el.onerror = () => resolve({ w: 0, h: 0 });
+            el.onerror = () => resolve({ w: 1024, h: 1024 });
             el.src = b64;
           });
 
           newNodes.push({
             id,
             type: "creationNode",
-            position: { x: basePos.x + i * 40, y: basePos.y + i * 40 },
+            position: { x: basePos.x + i * 320, y: basePos.y + (i % 2) * 40 },
             data: {
               label: `Creation #${creationNumber}`,
               creationNumber,
               hasImage: true,
+              previewUrl: b64,
               width: img.w,
               height: img.h,
             },
           });
 
-          if (pending?.fromHandleType === "target" && pending.fromHandleId?.startsWith("image")) {
+          if (connectTargetId) {
             const connection: Connection = {
               source: id,
               sourceHandle: "image-out",
-              target: pending.fromNodeId,
-              targetHandle: pending.fromHandleId,
+              target: connectTargetId,
+              targetHandle: connectTargetHandle,
             };
             const allNodes = [...nodesRef.current, ...newNodes];
             if (isValidWorkspaceConnection(connection, allNodes, [...edgesRef.current, ...newEdges])) {
               newEdges.push({
-                id: `e-${id}-${pending.fromNodeId}-image`,
-                ...connection,
+                id: `e-${id}-${connectTargetId}-image-${Date.now()}-${i}`,
                 source: id,
-                target: pending.fromNodeId,
+                target: connectTargetId,
+                sourceHandle: "image-out",
+                targetHandle: connectTargetHandle,
                 ...edgeStyleForConnection(connection),
               });
             }
           }
         } catch (err) {
           console.error("Failed to import asset", err);
+          alert("Failed to import image. Try a smaller JPG/PNG file.");
         }
       }
 
       if (newNodes.length) {
         setNodes((nds) => nds.concat(newNodes));
-        if (newEdges.length) setEdges((eds) => {
-          let next = eds;
-          for (const e of newEdges) next = replaceInputEdge(next, e);
-          return next;
+        if (newEdges.length) {
+          setEdges((eds) => {
+            let next = eds;
+            for (const e of newEdges) next = replaceInputEdge(next, e);
+            return next;
+          });
+        }
+        // Fit view lightly toward new nodes
+        requestAnimationFrame(() => {
+          try {
+            instance.fitView({ nodes: newNodes.map((n) => ({ id: n.id })), padding: 0.4, duration: 300 });
+          } catch {
+            /* ignore */
+          }
         });
         triggerSave();
       }

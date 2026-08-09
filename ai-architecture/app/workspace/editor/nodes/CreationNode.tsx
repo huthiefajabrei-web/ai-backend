@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import {
+  clearCreationImage,
   compressImageFile,
-  CREATION_LS_KEY,
   loadCreationImage,
   saveCreationImage,
 } from "@/lib/workspace/graphUtils";
@@ -22,40 +22,51 @@ type CreationData = {
   width?: number;
   height?: number;
   hasImage?: boolean;
+  /** Display + generation source — set when uploading via Assets */
+  previewUrl?: string | null;
 };
 
 export default function CreationNode({ data, selected }: { data: CreationData; selected?: boolean }) {
   const { updateNodeData, deleteElements, getNode } = useReactFlow();
   const nodeId = useNodeId();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [imageSrc, setImageSrc] = useState<string | null>(null);
+  const [imageSrc, setImageSrc] = useState<string | null>(data.previewUrl || null);
   const [dims, setDims] = useState({ w: data.width || 0, h: data.height || 0 });
 
   const number = data.creationNumber || 1;
   const title = data.label || `Creation #${number}`;
 
+  // Prefer node data (instant after Assets upload), then memory/localStorage
   useEffect(() => {
+    if (data.previewUrl) {
+      setImageSrc(data.previewUrl);
+      return;
+    }
     if (!nodeId) return;
     const stored = loadCreationImage(nodeId);
-    if (stored) {
-      setImageSrc(stored);
-      const img = new window.Image();
-      img.onload = () => {
-        setDims({ w: img.naturalWidth, h: img.naturalHeight });
+    if (stored) setImageSrc(stored);
+  }, [nodeId, data.previewUrl, data.hasImage]);
+
+  useEffect(() => {
+    if (!imageSrc) return;
+    const img = new window.Image();
+    img.onload = () => {
+      setDims({ w: img.naturalWidth, h: img.naturalHeight });
+      if (nodeId && (!data.width || !data.height)) {
         updateNodeData(nodeId, {
           hasImage: true,
           width: img.naturalWidth,
           height: img.naturalHeight,
         });
-      };
-      img.src = stored;
-    }
+      }
+    };
+    img.src = imageSrc;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodeId]);
+  }, [imageSrc, nodeId]);
 
   const applyFile = async (file: File) => {
     if (!nodeId) return;
-    const b64 = await compressImageFile(file, 1280, 0.85);
+    const b64 = await compressImageFile(file, 1024, 0.8);
     saveCreationImage(nodeId, b64);
     setImageSrc(b64);
 
@@ -64,6 +75,7 @@ export default function CreationNode({ data, selected }: { data: CreationData; s
       setDims({ w: img.naturalWidth, h: img.naturalHeight });
       updateNodeData(nodeId, {
         hasImage: true,
+        previewUrl: b64,
         width: img.naturalWidth,
         height: img.naturalHeight,
         label: `Creation #${number}`,
@@ -90,14 +102,14 @@ export default function CreationNode({ data, selected }: { data: CreationData; s
 
   const handleDelete = () => {
     if (!nodeId) return;
-    localStorage.removeItem(CREATION_LS_KEY(nodeId));
+    clearCreationImage(nodeId);
     const node = getNode(nodeId);
     if (node) deleteElements({ nodes: [node] });
   };
 
   return (
     <div
-      className={`relative bg-[#121214] rounded-2xl w-[280px] shadow-2xl transition-all border-2 overflow-hidden ${
+      className={`relative bg-[#121214] rounded-2xl w-[280px] shadow-2xl transition-all border-2 ${
         selected ? "border-blue-500 shadow-blue-500/20" : "border-white/10"
       }`}
     >
@@ -143,21 +155,20 @@ export default function CreationNode({ data, selected }: { data: CreationData; s
         </NodeToolbar>
       )}
 
-      <div className="absolute -right-12 top-1/2 -translate-y-1/2">
-        <Handle
-          type="source"
-          position={Position.Right}
-          id="image-out"
-          className="!w-8 !h-8 !bg-[#1c1c1f] !border-2 !border-blue-500/50 !rounded-full flex items-center justify-center hover:!bg-blue-500/20 transition-colors cursor-crosshair !static !transform-none"
-          title="Image output"
-        >
-          <ImageIcon size={14} className="text-blue-400 pointer-events-none" />
-        </Handle>
-      </div>
+      {/* Handle OUTSIDE overflow so it stays connectable (Magnific-style port) */}
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="image-out"
+        className="!w-8 !h-8 !-right-10 !top-1/2 !-translate-y-1/2 !bg-[#1c1c1f] !border-2 !border-blue-500/50 !rounded-full flex items-center justify-center hover:!bg-blue-500/20 transition-colors cursor-crosshair"
+        title="Image output — drag to Text or Image Generator"
+      >
+        <ImageIcon size={14} className="text-blue-400 pointer-events-none" />
+      </Handle>
 
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onPick(e)} />
 
-      <div className="relative aspect-square bg-[#0a0a0c] group">
+      <div className="relative aspect-square bg-[#0a0a0c] rounded-2xl overflow-hidden group">
         {imageSrc ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
