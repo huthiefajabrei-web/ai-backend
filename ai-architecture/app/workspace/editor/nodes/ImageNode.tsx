@@ -1,6 +1,6 @@
 "use client";
 
-import { Handle, Position, useReactFlow, useNodeId } from "@xyflow/react";
+import { Handle, Position, useReactFlow, useNodeId, useEdges } from "@xyflow/react";
 import {
   Sparkles,
   Image as ImageIcon,
@@ -12,6 +12,9 @@ import {
   Type,
   Link2,
   RotateCcw,
+  ChevronDown,
+  GitBranch,
+  Workflow,
 } from "lucide-react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createPortal } from "react-dom";
@@ -20,22 +23,25 @@ import { resolveImageNodeInputs } from "@/lib/workspace/graphUtils";
 import { runImageNodeGeneration } from "@/lib/workspace/generation";
 import { useWorkspaceEditor } from "../WorkspaceEditorContext";
 
-export default function ImageNode({ data, selected }: any) {
-  const { getEdges, getNode, updateNodeData, setNodes, setEdges } = useReactFlow();
+export default function ImageNode({ data, selected }: { data: any; selected?: boolean }) {
+  const { getEdges, getNode, getNodes, updateNodeData, setNodes, setEdges } = useReactFlow();
   const nodeId = useNodeId();
-  const { registerRunner } = useWorkspaceEditor();
+  const edges = useEdges();
+  const { registerRunner, runDownstream, runWorkflow } = useWorkspaceEditor();
 
   const [error, setError] = useState<string | null>(null);
   const [modelName, setModelName] = useState(data.modelName || "nano-banana-pro-preview");
   const [aspectRatio, setAspectRatio] = useState(data.aspectRatio || "16:9");
   const [imageCount, setImageCount] = useState(data.imageCount || 1);
   const activeJobIdsRef = useRef<string[]>([]);
+  const [showRunMenu, setShowRunMenu] = useState(false);
 
   useEffect(() => {
     if (Array.isArray(data.activeJobIds) && data.activeJobIds.length > 0) {
       activeJobIdsRef.current = data.activeJobIds;
     }
   }, [data.activeJobIds]);
+
   const isCancellingRef = useRef(false);
   const [showSettings, setShowSettings] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -49,7 +55,10 @@ export default function ImageNode({ data, selected }: any) {
     const resolved = resolveImageNodeInputs(nodeId, getNode, getEdges);
     const thumb = resolved.referenceImageUrl || resolved.referenceImageB64;
     if (thumb || resolved.promptText) {
-      setInputPreview({ label: resolved.referenceLabel || (resolved.promptText ? "Text prompt linked" : undefined), thumb });
+      setInputPreview({
+        label: resolved.referenceLabel || (resolved.promptText ? "Text prompt linked" : undefined),
+        thumb,
+      });
     } else {
       setInputPreview(null);
     }
@@ -57,7 +66,7 @@ export default function ImageNode({ data, selected }: any) {
 
   useEffect(() => {
     refreshInputPreview();
-  }, [refreshInputPreview, data.imageUrls]);
+  }, [refreshInputPreview, data.imageUrls, edges]);
 
   const handleDownload = async (url: string) => {
     try {
@@ -87,8 +96,8 @@ export default function ImageNode({ data, selected }: any) {
     isCancellingRef.current = false;
 
     const resolved = resolveImageNodeInputs(nodeId, getNode, getEdges);
-    if (!resolved.textSourceIds.length && !resolved.imageSourceIds.length) {
-      setError("Connect Text → text port and/or Image → image port");
+    if (!resolved.textSourceIds.length && !resolved.imageSourceIds.length && !data.promptOverride) {
+      setError("Connect Text → blue port and/or Image → purple port");
       return;
     }
 
@@ -156,6 +165,22 @@ export default function ImageNode({ data, selected }: any) {
     window.dispatchEvent(new Event("trigger-workspace-save"));
   };
 
+  const handleRunMode = async (mode: "node" | "workflow" | "downstream") => {
+    setShowRunMenu(false);
+    if (!nodeId) return;
+    if (mode === "node") {
+      await handleGenerate();
+      return;
+    }
+    const nodes = getNodes();
+    const edges = getEdges();
+    if (mode === "workflow") {
+      await runWorkflow(nodes, edges);
+      return;
+    }
+    await runDownstream(nodeId, nodes, edges);
+  };
+
   const displayUrl =
     data.imageUrls && data.imageUrls.length > 0 ? data.imageUrls[0] : data.imageUrl;
 
@@ -172,44 +197,44 @@ export default function ImageNode({ data, selected }: any) {
         <span className="font-bold text-xs">Image Generator</span>
       </div>
 
-      {/* Input handles — Magnific-style typed ports */}
+      {/* Inputs left — Magnific typed ports */}
       <div className="absolute -left-12 top-1/2 -translate-y-1/2 flex flex-col gap-3">
-        <div className="relative group" title="Text prompt input">
+        <div className="relative group" title="Text prompt input (blue)">
           <Handle
             type="target"
             position={Position.Left}
             id="text-in"
-            className="!w-8 !h-8 !bg-[#1c1c1f] !border-2 !border-purple-500/40 !rounded-full flex items-center justify-center hover:!bg-purple-500/20 transition-colors cursor-crosshair !static !transform-none"
+            className="!w-8 !h-8 !bg-[#1c1c1f] !border-2 !border-blue-500/50 !rounded-full flex items-center justify-center hover:!bg-blue-500/20 transition-colors cursor-crosshair !static !transform-none"
           >
-            <Type size={14} className="text-purple-400 pointer-events-none" />
+            <Type size={14} className="text-blue-400 pointer-events-none" />
           </Handle>
         </div>
-        <div className="relative group" title="Image input (upstream generation or reference)">
+        <div className="relative group" title="Image / reference input (purple)">
           <Handle
             type="target"
             position={Position.Left}
             id="image-in"
-            className="!w-8 !h-8 !bg-[#1c1c1f] !border-2 !border-teal-500/40 !rounded-full flex items-center justify-center hover:!bg-teal-500/20 transition-colors cursor-crosshair !static !transform-none"
+            className="!w-8 !h-8 !bg-[#1c1c1f] !border-2 !border-purple-500/50 !rounded-full flex items-center justify-center hover:!bg-purple-500/20 transition-colors cursor-crosshair !static !transform-none"
           >
-            <ImageIcon size={14} className="text-teal-400 pointer-events-none" />
+            <ImageIcon size={14} className="text-purple-400 pointer-events-none" />
           </Handle>
         </div>
       </div>
 
-      <div className="absolute -right-12 top-6" title="Image output — connect to next generator">
+      <div className="absolute -right-12 top-6" title="Image output — connect to next node">
         <Handle
           type="source"
           position={Position.Right}
           id="image-out"
-          className="!w-8 !h-8 !bg-[#1c1c1f] !border-2 !border-teal-500/40 !rounded-full flex items-center justify-center hover:!bg-teal-500/20 transition-colors cursor-crosshair !static !transform-none"
+          className="!w-8 !h-8 !bg-[#1c1c1f] !border-2 !border-purple-500/50 !rounded-full flex items-center justify-center hover:!bg-purple-500/20 transition-colors cursor-crosshair !static !transform-none"
         >
-          <ImageIcon size={14} className="text-teal-400 pointer-events-none" />
+          <ImageIcon size={14} className="text-purple-400 pointer-events-none" />
         </Handle>
       </div>
 
       {inputPreview && (
         <div className="mx-3 mt-3 flex items-center gap-2 rounded-lg bg-white/5 border border-white/10 px-2 py-1.5 text-[10px] text-zinc-400">
-          <Link2 size={12} className="text-purple-400 shrink-0" />
+          <Link2 size={12} className="text-blue-400 shrink-0" />
           <span className="truncate flex-1">{inputPreview.label || "Inputs connected"}</span>
           {inputPreview.thumb && (
             // eslint-disable-next-line @next/next/no-img-element
@@ -241,7 +266,7 @@ export default function ImageNode({ data, selected }: any) {
               />
               <button
                 type="button"
-                onClick={handleGenerate}
+                onClick={() => void handleGenerate()}
                 className="absolute top-2 right-2 flex items-center gap-1 px-2 py-1 rounded-lg bg-black/60 text-[10px] font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity"
                 title="Regenerate with current inputs"
               >
@@ -363,21 +388,60 @@ export default function ImageNode({ data, selected }: any) {
               <X size={18} strokeWidth={2.5} />
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={handleGenerate}
-              title="Run this node"
-              className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 hover:opacity-90 flex items-center justify-center text-white shadow-lg shadow-purple-500/30 transition-all"
-            >
-              <Play size={16} fill="currentColor" className="ml-0.5" />
-            </button>
+            <div className="relative flex items-center shrink-0">
+              <button
+                type="button"
+                onClick={() => void handleGenerate()}
+                title="Run this node"
+                className="w-10 h-10 rounded-l-full bg-gradient-to-br from-indigo-500 to-purple-600 hover:opacity-90 flex items-center justify-center text-white shadow-lg shadow-purple-500/30 transition-all"
+              >
+                <Play size={16} fill="currentColor" className="ml-0.5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowRunMenu((v) => !v)}
+                title="Run options"
+                className="w-7 h-10 rounded-r-full bg-purple-700/80 hover:bg-purple-600 flex items-center justify-center text-white border-l border-white/10"
+              >
+                <ChevronDown size={14} />
+              </button>
+
+              {showRunMenu && (
+                <div className="absolute bottom-12 right-0 w-52 bg-[#1c1c1f] border border-white/10 rounded-xl shadow-2xl overflow-hidden z-20">
+                  <button
+                    type="button"
+                    onClick={() => void handleRunMode("node")}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-xs text-zinc-200 hover:bg-white/5"
+                  >
+                    <Play size={14} className="text-purple-400" />
+                    Run Node
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleRunMode("downstream")}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-xs text-zinc-200 hover:bg-white/5"
+                  >
+                    <GitBranch size={14} className="text-blue-400" />
+                    Run Downstream
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleRunMode("workflow")}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-xs text-zinc-200 hover:bg-white/5"
+                  >
+                    <Workflow size={14} className="text-emerald-400" />
+                    Run Workflow
+                  </button>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
         {showSettings && (
           <div className="px-3 pb-3 text-[10px] text-zinc-500 leading-relaxed border-t border-white/5 pt-2 mx-1">
-            <strong className="text-zinc-400">Workflow:</strong> Text → purple port · Upstream image → teal port ·
-            Output → connect to next Image Generator for edits/variations.
+            <strong className="text-zinc-400">Ports:</strong> Text → blue · Image → purple · Drag a
+            port into empty space to add a compatible node.
           </div>
         )}
       </div>

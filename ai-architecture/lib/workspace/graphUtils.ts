@@ -1,6 +1,12 @@
 import type { Connection, Edge, Node } from "@xyflow/react";
 
+/** Magnific data types for typed ports */
 export type PortKind = "text" | "image";
+
+export const PORT_COLORS: Record<PortKind, string> = {
+  text: "#3b82f6", // blue — Magnific Text
+  image: "#a855f7", // purple — Magnific Image
+};
 
 export function portKindFromHandle(handleId?: string | null): PortKind | null {
   if (!handleId) return null;
@@ -9,12 +15,76 @@ export function portKindFromHandle(handleId?: string | null): PortKind | null {
   return null;
 }
 
-/** Magnific-style typed ports: text-out → text-in, image-out → image-in */
-export function isValidWorkspaceConnection(connection: Connection | Edge): boolean {
+export function wouldCreateCycle(
+  nodes: Node[],
+  edges: Edge[],
+  connection: Connection | Edge,
+): boolean {
+  const source = connection.source;
+  const target = connection.target;
+  if (!source || !target || source === target) return true;
+
+  const adj = new Map<string, string[]>();
+  for (const n of nodes) adj.set(n.id, []);
+  for (const e of edges) {
+    if (!adj.has(e.source)) adj.set(e.source, []);
+    adj.get(e.source)!.push(e.target);
+  }
+  // hypothetical edge
+  if (!adj.has(source)) adj.set(source, []);
+  adj.get(source)!.push(target);
+
+  const visiting = new Set<string>();
+  const visited = new Set<string>();
+
+  function dfs(id: string): boolean {
+    if (visiting.has(id)) return true;
+    if (visited.has(id)) return false;
+    visiting.add(id);
+    for (const next of adj.get(id) || []) {
+      if (dfs(next)) return true;
+    }
+    visiting.delete(id);
+    visited.add(id);
+    return false;
+  }
+
+  for (const n of nodes) {
+    if (dfs(n.id)) return true;
+  }
+  return false;
+}
+
+/** Magnific-style: matching types, no self-loop, no cycles */
+export function isValidWorkspaceConnection(
+  connection: Connection | Edge,
+  nodes: Node[] = [],
+  edges: Edge[] = [],
+): boolean {
+  if (!connection.source || !connection.target) return false;
+  if (connection.source === connection.target) return false;
+
   const sourceKind = portKindFromHandle(connection.sourceHandle);
   const targetKind = portKindFromHandle(connection.targetHandle);
   if (!sourceKind || !targetKind) return false;
-  return sourceKind === targetKind;
+  if (sourceKind !== targetKind) return false;
+
+  if (nodes.length && wouldCreateCycle(nodes, edges, connection)) return false;
+  return true;
+}
+
+/**
+ * Magnific rule: one connection per input port — replace the previous edge
+ * on the same target + targetHandle.
+ */
+export function replaceInputEdge(edges: Edge[], newEdge: Edge): Edge[] {
+  const filtered = edges.filter((e) => {
+    if (e.target !== newEdge.target) return true;
+    const a = e.targetHandle || null;
+    const b = newEdge.targetHandle || null;
+    return a !== b;
+  });
+  return [...filtered, newEdge];
 }
 
 export interface ResolvedImageInputs {
@@ -56,10 +126,10 @@ export function resolveImageNodeInputs(
     if (!source) continue;
 
     const targetHandle = edge.targetHandle || "";
-    const isTextPort = targetHandle === "text-in";
-    const isImagePort = targetHandle === "image-in";
+    const isTextPort = targetHandle === "text-in" || targetHandle.startsWith("text");
+    const isImagePort = targetHandle === "image-in" || targetHandle.startsWith("image");
 
-    if (source.type === "promptNode" && (isTextPort || !targetHandle)) {
+    if (source.type === "promptNode" && isTextPort) {
       textSourceIds.push(source.id);
       const chunk = String(source.data?.prompt || source.data?.label || "").trim();
       if (chunk) {
@@ -68,33 +138,36 @@ export function resolveImageNodeInputs(
       if (source.data?.perspective) {
         perspective = String(source.data.perspective);
       }
-      if (isImagePort || targetHandle === "text-in") {
+    }
+
+    if (isImagePort) {
+      imageSourceIds.push(source.id);
+
+      if (source.type === "imageNode") {
+        const url = getImageUrlFromNode(source);
+        if (url) {
+          referenceImageUrl = url;
+          referenceImageB64 = undefined;
+          referenceLabel = "Upstream image";
+        }
+      }
+
+      if (source.type === "promptNode") {
         const b64 = source.data?.compressedImageB64 || source.data?.imageB64;
-        if (b64 && !referenceImageB64 && !referenceImageUrl) {
+        if (b64) {
           referenceImageB64 = String(b64);
-          referenceLabel = "Text node reference";
+          referenceImageUrl = undefined;
+          referenceLabel = "Reference upload";
         }
       }
     }
 
-    if (source.type === "imageNode" && isImagePort) {
-      imageSourceIds.push(source.id);
-      const url = getImageUrlFromNode(source);
-      if (url) {
-        referenceImageUrl = url;
-        referenceImageB64 = undefined;
-        referenceLabel = "Upstream image";
-      }
-    }
-
-    if (source.type === "promptNode" && isImagePort) {
-      imageSourceIds.push(source.id);
-      const b64 = source.data?.compressedImageB64 || source.data?.imageB64;
-      if (b64) {
-        referenceImageB64 = String(b64);
-        referenceImageUrl = undefined;
-        referenceLabel = "Reference upload";
-      }
+    // Legacy edges without handles: prompt → image as text
+    if (source.type === "promptNode" && !targetHandle) {
+      textSourceIds.push(source.id);
+      const chunk = String(source.data?.prompt || source.data?.label || "").trim();
+      if (chunk) promptText = promptText ? `${promptText} ${chunk}`.trim() : chunk;
+      if (source.data?.perspective) perspective = String(source.data.perspective);
     }
   }
 
@@ -163,10 +236,72 @@ export function getDownstreamImageNodes(startId: string, nodes: Node[], edges: E
 }
 
 export function edgeStyleForConnection(connection: Connection | Edge) {
-  const kind = portKindFromHandle(connection.sourceHandle);
+  const kind = portKindFromHandle(connection.sourceHandle) || "text";
+  const stroke = PORT_COLORS[kind];
   return {
     animated: true,
-    stroke: kind === "image" ? "#14b8a6" : "#8b5cf6",
-    strokeWidth: 2,
+    style: { stroke, strokeWidth: 2 },
   };
+}
+
+export type SpotlightNodeOption = {
+  type: string;
+  label: string;
+  description: string;
+  category: string;
+  /** Which input handle to wire when placing from a source port */
+  connectTargetHandle?: string;
+  /** Which source handle to wire when placing from a target port */
+  connectSourceHandle?: string;
+  accepts: PortKind[];
+  produces: PortKind[];
+};
+
+export const SPOTLIGHT_NODES: SpotlightNodeOption[] = [
+  {
+    type: "promptNode",
+    label: "Text",
+    description: "Write prompts and feed them to generators",
+    category: "Text",
+    connectSourceHandle: "text-out",
+    accepts: [],
+    produces: ["text", "image"],
+  },
+  {
+    type: "imageNode",
+    label: "Image Generator",
+    description: "Generate images from text and/or reference images",
+    category: "Image",
+    connectTargetHandle: "text-in",
+    accepts: ["text", "image"],
+    produces: ["image"],
+  },
+];
+
+/** Filter spotlight by the port you dragged from (Magnific port-connection mode). */
+export function filterSpotlightForPort(
+  options: SpotlightNodeOption[],
+  fromHandle: string | null | undefined,
+  fromHandleType: "source" | "target" | null,
+): SpotlightNodeOption[] {
+  const kind = portKindFromHandle(fromHandle);
+  if (!kind || !fromHandleType) return options;
+
+  if (fromHandleType === "source") {
+    // Dragging FROM an output → need nodes that ACCEPT this kind
+    return options
+      .filter((o) => o.accepts.includes(kind))
+      .map((o) => ({
+        ...o,
+        connectTargetHandle: kind === "text" ? "text-in" : "image-in",
+      }));
+  }
+
+  // Dragging FROM an input → need nodes that PRODUCE this kind
+  return options
+    .filter((o) => o.produces.includes(kind))
+    .map((o) => ({
+      ...o,
+      connectSourceHandle: kind === "text" ? "text-out" : "image-out",
+    }));
 }

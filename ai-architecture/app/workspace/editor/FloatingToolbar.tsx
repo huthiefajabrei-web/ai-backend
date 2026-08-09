@@ -141,7 +141,7 @@ export default function FloatingToolbar({ onAddNode, activeTool = 'cursor', onTo
               <h3 className="text-xs font-bold text-gray-500 mb-3 tracking-wider">BASICS</h3>
               
               <button onClick={() => handleAddNode('promptNode')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#27272a] transition-colors group mb-1 text-left">
-                <div className="w-8 h-8 rounded-md bg-[#2d1b36] flex items-center justify-center text-purple-400 group-hover:bg-[#3d244a] transition-colors">
+                <div className="w-8 h-8 rounded-md bg-blue-500/15 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/25 transition-colors">
                   <Type size={16} />
                 </div>
                 <span className="text-sm font-medium text-gray-200">Text</span>
