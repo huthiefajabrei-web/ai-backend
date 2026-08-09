@@ -148,14 +148,14 @@ export default function VideoGenerationPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[#09090b] text-slate-50 font-sans selection:bg-teal-500/30 flex flex-col pb-mobile-nav">
+    <div className="min-h-[100dvh] bg-[#09090b] text-slate-50 font-sans selection:bg-amber-500/30 flex flex-col pb-mobile-nav">
       <header className="sticky top-0 z-50 h-14 md:h-20 border-b border-white/5 bg-[#09090b]/95 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 shrink-0">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-3 shrink-0 group">
-            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-[#14b8a6] to-teal-700 p-[1px] shadow-[0_0_20px_rgba(20,184,166,0.3)] transition-transform duration-300 group-hover:scale-105">
+            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-amber-700 to-yellow-700 p-[1px] shadow-[0_0_20px_rgba(184,134,11,0.3)] transition-transform duration-300 group-hover:scale-105">
               <div className="relative w-full h-full bg-[#040508] rounded-xl flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#logo-grad-teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <defs><linearGradient id="logo-grad-teal" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#2dd4bf" /><stop offset="100%" stopColor="#0f766e" /></linearGradient></defs>
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#logo-grad-gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <defs><linearGradient id="logo-grad-gold" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stopColor="#d4af37" /><stop offset="100%" stopColor="#8b6914" /></linearGradient></defs>
                   <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
                   <polyline points="2 17 12 22 22 17"></polyline>
                   <polyline points="2 12 12 17 22 12"></polyline>
@@ -163,8 +163,8 @@ export default function VideoGenerationPage() {
               </div>
             </div>
             <div className="flex flex-col leading-none">
-              <span className="font-display font-black text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-white/80">H_ARCH</span>
-              <span className="text-[9px] text-teal-400 font-bold tracking-[0.2em] uppercase mt-0.5">Studio</span>
+              <span className="font-display font-black text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-white/80">H_ARCH</span>
+              <span className="text-[9px] text-amber-500 font-bold tracking-[0.2em] uppercase mt-0.5">Studio</span>
             </div>
           </Link>
         </div>
@@ -172,7 +172,7 @@ export default function VideoGenerationPage() {
         <div className="hidden md:flex items-center gap-2 bg-[#18181b] px-3 py-2 rounded-2xl border border-white/5 mx-4">
           <button onClick={() => router.push("/")} className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><Home size={20} /></button>
           <button onClick={() => router.push("/apps/a1")} className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><Wand2 size={20} /></button>
-          <button className="p-2.5 text-[#09090b] bg-[#14b8a6] rounded-xl transition-all shadow-md"><Video size={20} strokeWidth={2.5} /></button>
+          <button className="p-2.5 text-[#09090b] bg-[#b8860b] rounded-xl transition-all shadow-md"><Video size={20} strokeWidth={2.5} /></button>
           <button className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><Search size={20} /></button>
           <button className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><LayoutGrid size={20} /></button>
           <button className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><Brush size={20} /></button>
@@ -186,13 +186,13 @@ export default function VideoGenerationPage() {
           </div>
           {user ? (
             <div className="px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-2xl bg-[#18181b] border border-white/5 flex items-center gap-2 cursor-pointer hover:bg-white/5 transition-all">
-              <div className="w-6 h-6 rounded-full bg-teal-500 flex items-center justify-center text-xs font-bold text-white uppercase shrink-0">
+              <div className="w-6 h-6 rounded-full bg-amber-700 flex items-center justify-center text-xs font-bold text-white uppercase shrink-0">
                 {user.email ? user.email.charAt(0) : "H"}
               </div>
               <span className="text-xs font-semibold text-zinc-300 hidden sm:block">{user.email.split('@')[0]}</span>
             </div>
           ) : (
-            <a href="/login" className="px-4 py-2 rounded-full bg-gradient-to-r from-teal-500 to-[#14b8a6] text-white text-xs sm:text-sm font-bold shadow-lg shadow-teal-500/20 tap-target">Login</a>
+            <a href="/login" className="px-4 py-2 rounded-full bg-gradient-to-r from-amber-700 to-yellow-600 text-white text-xs sm:text-sm font-bold shadow-lg shadow-amber-600/20 tap-target">Login</a>
           )}
         </div>
       </header>
@@ -201,8 +201,8 @@ export default function VideoGenerationPage() {
         <div className="w-full max-w-4xl animate-[fadeInUp_0.4s_ease-out]">
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 mb-6 sm:mb-8 w-full text-center">
-            <Video className="text-[#2dd4bf] shrink-0" size={32} strokeWidth={2.5} />
-            <h1 className="text-3xl sm:text-5xl md:text-[3.5rem] font-bold text-[#2dd4bf] tracking-wide font-display drop-shadow-[0_0_15px_rgba(45,212,191,0.3)]">Video</h1>
+            <Video className="text-[#d4af37] shrink-0" size={32} strokeWidth={2.5} />
+            <h1 className="text-3xl sm:text-5xl md:text-[3.5rem] font-bold text-[#d4af37] tracking-wide font-display drop-shadow-[0_0_15px_rgba(201,162,39,0.3)]">Video</h1>
           </div>
           <p className="text-center text-sm text-zinc-400 mb-6 max-w-md mx-auto leading-relaxed">
             Transform still renders into cinematic architectural walkthroughs.
@@ -214,7 +214,7 @@ export default function VideoGenerationPage() {
               onClick={() => { setVideoMode("image_to_video"); setResultVideo(null); }}
               className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-5 py-3.5 min-h-[48px] rounded-2xl border font-semibold text-sm transition-all duration-300 tap-target ${
                 videoMode === "image_to_video"
-                  ? "bg-[#14b8a6] border-[#14b8a6] text-[#09090b] shadow-[0_0_20px_rgba(20,184,166,0.4)]"
+                  ? "bg-[#b8860b] border-[#b8860b] text-[#09090b] shadow-[0_0_20px_rgba(184,134,11,0.4)]"
                   : "bg-[#18181b] border-white/10 text-zinc-400 hover:text-white hover:border-white/20"
               }`}
             >
@@ -226,7 +226,7 @@ export default function VideoGenerationPage() {
               onClick={() => { setVideoMode("frame_to_frame"); setResultVideo(null); }}
               className={`flex-1 sm:flex-none flex items-center justify-center gap-2.5 px-5 py-3.5 min-h-[48px] rounded-2xl border font-semibold text-sm transition-all duration-300 tap-target ${
                 videoMode === "frame_to_frame"
-                  ? "bg-[#14b8a6] border-[#14b8a6] text-[#09090b] shadow-[0_0_20px_rgba(20,184,166,0.4)]"
+                  ? "bg-[#b8860b] border-[#b8860b] text-[#09090b] shadow-[0_0_20px_rgba(184,134,11,0.4)]"
                   : "bg-[#18181b] border-white/10 text-zinc-400 hover:text-white hover:border-white/20"
               }`}
             >
@@ -242,13 +242,13 @@ export default function VideoGenerationPage() {
             {videoMode === "image_to_video" && (
               <div className="flex flex-col md:flex-row items-start gap-4 mb-6">
                 {/* Single Image Upload */}
-                <label className={`w-full md:w-[140px] h-[140px] border border-dashed border-[#52525b] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 hover:border-teal-500/50 transition-all relative overflow-hidden flex-shrink-0 group ${imgPreview ? 'border-transparent bg-black' : ''}`}>
+                <label className={`w-full md:w-[140px] h-[140px] border border-dashed border-[#52525b] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 hover:border-amber-600/50 transition-all relative overflow-hidden flex-shrink-0 group ${imgPreview ? 'border-transparent bg-black' : ''}`}>
                   <input type="file" onChange={handleImgFile} accept="image/*" className="hidden" />
                   {imgPreview ? (
                     <img src={imgPreview} alt="Source" className="absolute inset-0 w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
                   ) : (
                     <>
-                      <ImageIcon size={28} className="text-teal-600 mb-2" />
+                      <ImageIcon size={28} className="text-amber-700 mb-2" />
                       <span className="text-[10px] font-bold text-zinc-500 text-center uppercase tracking-widest leading-tight px-2">Source Image</span>
                       <span className="text-[9px] text-zinc-600 mt-1">Click to upload</span>
                     </>
@@ -270,7 +270,7 @@ export default function VideoGenerationPage() {
               <div className="flex flex-col md:flex-row items-start gap-4 mb-6">
                 <div className="flex items-center justify-center md:justify-start gap-4 w-full md:w-auto">
                   {/* Start Frame */}
-                  <label className={`w-[120px] h-[120px] border border-dashed border-[#52525b] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 hover:border-teal-500/50 transition-all relative overflow-hidden flex-shrink-0 group ${startPreview ? 'border-transparent bg-black' : ''}`}>
+                  <label className={`w-[120px] h-[120px] border border-dashed border-[#52525b] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 hover:border-amber-600/50 transition-all relative overflow-hidden flex-shrink-0 group ${startPreview ? 'border-transparent bg-black' : ''}`}>
                     <input type="file" onChange={handleStartFile} accept="image/*" className="hidden" />
                     {startPreview ? (
                       <img src={startPreview} alt="Start frame" className="absolute inset-0 w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
@@ -290,7 +290,7 @@ export default function VideoGenerationPage() {
                   </div>
 
                   {/* End Frame */}
-                  <label className={`w-[120px] h-[120px] border border-dashed border-[#52525b] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 hover:border-teal-500/50 transition-all relative overflow-hidden flex-shrink-0 group ${endPreview ? 'border-transparent bg-black' : ''}`}>
+                  <label className={`w-[120px] h-[120px] border border-dashed border-[#52525b] rounded-xl flex flex-col items-center justify-center cursor-pointer hover:bg-white/5 hover:border-amber-600/50 transition-all relative overflow-hidden flex-shrink-0 group ${endPreview ? 'border-transparent bg-black' : ''}`}>
                     <input type="file" onChange={handleEndFile} accept="image/*" className="hidden" />
                     {endPreview ? (
                       <img src={endPreview} alt="End frame" className="absolute inset-0 w-full h-full object-cover group-hover:opacity-70 transition-opacity" />
@@ -322,7 +322,7 @@ export default function VideoGenerationPage() {
 
                 {/* Model Selector */}
                 <div className="bg-[#18181b] hover:bg-white/5 border border-white/5 rounded-full px-4 py-2 flex items-center gap-2 cursor-pointer transition-colors relative">
-                  <Wand2 size={15} className="text-[#2dd4bf]" />
+                  <Wand2 size={15} className="text-[#d4af37]" />
                   <span className="text-xs font-bold text-zinc-300">
                     {model === 'kling-v3' ? 'Kling V3' : model === 'kling-v2-6' ? 'Kling V2.6' : model === 'kling-v1-1' ? 'Kling V1.1' : 'Veo 3.1'}
                   </span>
@@ -374,9 +374,9 @@ export default function VideoGenerationPage() {
                 {/* Audio Toggle */}
                 <button
                   onClick={() => setGenerateAudio(!generateAudio)}
-                  className={`border border-white/5 rounded-full px-4 py-2 flex items-center gap-2 transition-colors duration-300 ${generateAudio ? 'bg-[#134e4a] text-[#2dd4bf]' : 'bg-[#18181b] text-zinc-400 hover:bg-white/5'}`}
+                  className={`border border-white/5 rounded-full px-4 py-2 flex items-center gap-2 transition-colors duration-300 ${generateAudio ? 'bg-[#3a3010] text-[#d4af37]' : 'bg-[#18181b] text-zinc-400 hover:bg-white/5'}`}
                 >
-                  <Volume2 size={15} className={generateAudio ? 'text-[#2dd4bf]' : 'text-zinc-400'} />
+                  <Volume2 size={15} className={generateAudio ? 'text-[#d4af37]' : 'text-zinc-400'} />
                   <span className="text-xs font-bold">Generate Audio</span>
                 </button>
               </div>
@@ -386,7 +386,7 @@ export default function VideoGenerationPage() {
                 type="button"
                 onClick={handleGenerate}
                 disabled={isGenerating}
-                className={`w-full sm:w-auto min-h-[48px] h-12 rounded-full px-6 flex items-center justify-center gap-2 transition-all tap-target ${isGenerating ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-[#2dd4bf] text-[#09090b] hover:bg-teal-300 active:scale-[0.98] shadow-[0_0_15px_rgba(45,212,191,0.5)]'}`}
+                className={`w-full sm:w-auto min-h-[48px] h-12 rounded-full px-6 flex items-center justify-center gap-2 transition-all tap-target ${isGenerating ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed' : 'bg-[#d4af37] text-[#09090b] hover:bg-amber-400 active:scale-[0.98] shadow-[0_0_15px_rgba(201,162,39,0.5)]'}`}
               >
                 {isGenerating ? (
                   <Loader2 size={18} className="animate-spin" />
@@ -409,8 +409,8 @@ export default function VideoGenerationPage() {
               {isGenerating ? (
                 <div className="flex flex-col items-center justify-center text-center">
                   <div className="relative mb-6">
-                    <div className="absolute inset-0 bg-[#2dd4bf] blur-[30px] opacity-20 rounded-full animate-pulse"></div>
-                    <Loader2 size={48} className="text-[#2dd4bf] animate-spin relative z-10" />
+                    <div className="absolute inset-0 bg-[#d4af37] blur-[30px] opacity-20 rounded-full animate-pulse"></div>
+                    <Loader2 size={48} className="text-[#d4af37] animate-spin relative z-10" />
                   </div>
                   <h3 className="text-xl font-bold font-display text-white tracking-wide mb-2">Generating Motion...</h3>
                   <p className="text-sm text-zinc-400">Taking up to 60-120 seconds for processing and rendering highly-detailed video.</p>

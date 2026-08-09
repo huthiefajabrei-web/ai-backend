@@ -84,11 +84,11 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex items-center justify-center relative p-4 sm:p-8 overflow-hidden bg-[#040508] font-sans text-slate-50 selection:bg-purple-500/30">
+    <div className="min-h-[100dvh] flex items-center justify-center relative p-4 sm:p-8 overflow-hidden bg-[#040508] font-sans text-slate-50 selection:bg-amber-500/30">
       {/* Animated Ambient Background */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-[20%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-radial from-purple-600/20 to-transparent blur-[120px] mix-blend-screen animate-[float_20s_infinite_ease-in-out_alternate]"></div>
-        <div className="absolute -bottom-[20%] -right-[10%] w-[40vw] h-[40vw] rounded-full bg-radial from-blue-600/20 to-transparent blur-[120px] mix-blend-screen animate-[float_25s_infinite_ease-in-out_alternate-reverse]"></div>
+        <div className="absolute -top-[20%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-radial from-amber-700/20 to-transparent blur-[120px] mix-blend-screen animate-[float_20s_infinite_ease-in-out_alternate]"></div>
+        <div className="absolute -bottom-[20%] -right-[10%] w-[40vw] h-[40vw] rounded-full bg-radial from-yellow-700/15 to-transparent blur-[120px] mix-blend-screen animate-[float_25s_infinite_ease-in-out_alternate-reverse]"></div>
         <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:60px_60px] [mask-image:radial-gradient(ellipse_at_center,black_0%,transparent_80%)]"></div>
       </div>
 
@@ -107,16 +107,16 @@ export default function AuthPage() {
 
           {/* Left Side - Visual */}
           <div className="hidden lg:block flex-[1.2] relative bg-[url('https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1500&auto=format&fit=crop')] bg-cover bg-center">
-            <div className="absolute inset-0 bg-gradient-to-br from-[#040508]/80 to-purple-500/40"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-[#040508]/80 to-amber-600/40"></div>
             <div className="relative z-10 h-full p-12 flex flex-col justify-between">
 
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-600 to-blue-600 flex items-center justify-center text-white shadow-[0_0_20px_rgba(139,92,246,0.4)]">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-700 to-yellow-600 flex items-center justify-center text-white shadow-[0_0_20px_rgba(184,134,11,0.4)]">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
                 </div>
                 <div className="flex flex-col leading-none">
                   <span className="font-display font-extrabold text-2xl tracking-tight text-white">H_ARCH</span>
-                  <span className="text-xs text-purple-300 font-semibold tracking-[0.15em] uppercase mt-0.5">Studio</span>
+                  <span className="text-xs text-amber-300 font-semibold tracking-[0.15em] uppercase mt-0.5">Studio</span>
                 </div>
               </div>
 
@@ -142,7 +142,7 @@ export default function AuthPage() {
           {/* Right Side - Form */}
           <div className="flex-1 p-6 sm:p-10 md:p-14 flex flex-col justify-center bg-[#0a0c13] relative">
             <div className="mb-8 sm:mb-10">
-              <h2 className="font-display text-2xl sm:text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-white to-purple-300">
+              <h2 className="font-display text-2xl sm:text-3xl font-bold mb-2 bg-clip-text text-transparent bg-gradient-to-r from-white to-amber-300">
                 {isLogin ? "Welcome Back" : "Create Account"}
               </h2>
               <p className="text-slate-400 text-sm">
@@ -167,14 +167,14 @@ export default function AuthPage() {
               >
                 {!isLogin && (
                   <div className="relative">
-                    <div className="absolute top-1/2 left-5 -translate-y-1/2 text-slate-500 pointer-events-none transition-colors duration-300 peer-focus:text-purple-500">
+                    <div className="absolute top-1/2 left-5 -translate-y-1/2 text-slate-500 pointer-events-none transition-colors duration-300 peer-focus:text-amber-600">
                       <User size={20} />
                     </div>
                     <input
                       type="text"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pr-4 pl-14 text-white font-sans text-base transition-all duration-300 placeholder:text-white/30 focus:outline-none focus:bg-black/60 focus:border-purple-500 focus:shadow-[0_0_0_3px_rgba(139,92,246,0.15)] peer"
+                      className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pr-4 pl-14 text-white font-sans text-base transition-all duration-300 placeholder:text-white/30 focus:outline-none focus:bg-black/60 focus:border-amber-600 focus:shadow-[0_0_0_3px_rgba(184,134,11,0.15)] peer"
                       placeholder="Full Name"
                     />
                   </div>
@@ -182,28 +182,28 @@ export default function AuthPage() {
               </div>
 
               <div className="relative group/input">
-                <div className="absolute top-1/2 left-5 -translate-y-1/2 text-slate-500 pointer-events-none transition-colors duration-300 group-focus-within/input:text-purple-500">
+                <div className="absolute top-1/2 left-5 -translate-y-1/2 text-slate-500 pointer-events-none transition-colors duration-300 group-focus-within/input:text-amber-600">
                   <Mail size={20} />
                 </div>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pr-4 pl-14 text-white font-sans text-base transition-all duration-300 placeholder:text-white/30 focus:outline-none focus:bg-black/60 focus:border-purple-500 focus:shadow-[0_0_0_3px_rgba(139,92,246,0.15)]"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pr-4 pl-14 text-white font-sans text-base transition-all duration-300 placeholder:text-white/30 focus:outline-none focus:bg-black/60 focus:border-amber-600 focus:shadow-[0_0_0_3px_rgba(184,134,11,0.15)]"
                   placeholder="Email Address"
                   required
                 />
               </div>
 
               <div className="relative group/input">
-                <div className="absolute top-1/2 left-5 -translate-y-1/2 text-slate-500 pointer-events-none transition-colors duration-300 group-focus-within/input:text-purple-500">
+                <div className="absolute top-1/2 left-5 -translate-y-1/2 text-slate-500 pointer-events-none transition-colors duration-300 group-focus-within/input:text-amber-600">
                   <Lock size={20} />
                 </div>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pr-4 pl-14 text-white font-sans text-base transition-all duration-300 placeholder:text-white/30 focus:outline-none focus:bg-black/60 focus:border-purple-500 focus:shadow-[0_0_0_3px_rgba(139,92,246,0.15)]"
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pr-4 pl-14 text-white font-sans text-base transition-all duration-300 placeholder:text-white/30 focus:outline-none focus:bg-black/60 focus:border-amber-600 focus:shadow-[0_0_0_3px_rgba(184,134,11,0.15)]"
                   placeholder="Password"
                   required
                   minLength={6}
@@ -213,7 +213,7 @@ export default function AuthPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`mt-4 w-full bg-gradient-to-r from-purple-600 to-blue-600 border border-white/10 border-t-white/20 p-4 rounded-2xl text-white font-sans text-base font-semibold cursor-pointer relative overflow-hidden shadow-[0_10px_25px_-5px_rgba(139,92,246,0.5)] transition-all duration-300 group disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none ${!isLoading ? "hover:-translate-y-0.5 hover:shadow-[0_15px_35px_-5px_rgba(139,92,246,0.6)] active:translate-y-[1px]" : ""}`}
+                className={`mt-4 w-full bg-gradient-to-r from-amber-700 to-yellow-600 border border-white/10 border-t-white/20 p-4 rounded-2xl text-white font-sans text-base font-semibold cursor-pointer relative overflow-hidden shadow-[0_10px_25px_-5px_rgba(184,134,11,0.5)] transition-all duration-300 group disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none ${!isLoading ? "hover:-translate-y-0.5 hover:shadow-[0_15px_35px_-5px_rgba(184,134,11,0.6)] active:translate-y-[1px]" : ""}`}
               >
                 <div className="absolute inset-0 bg-gradient-to-b from-white/15 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>
                 <span className="relative z-10 flex items-center justify-center gap-2">
@@ -247,7 +247,7 @@ export default function AuthPage() {
               {isLogin
                 ? "Don't have an account? "
                 : "Already have an account? "}
-              <a href="#" onClick={toggleMode} className="text-purple-400 font-semibold hover:text-purple-300 hover:underline transition-colors">
+              <a href="#" onClick={toggleMode} className="text-amber-500 font-semibold hover:text-amber-300 hover:underline transition-colors">
                 {isLogin ? "Sign up for free" : "Sign in instead"}
               </a>
             </p>

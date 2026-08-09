@@ -210,7 +210,7 @@ export default function AppFeaturePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-[#09090b] flex items-center justify-center text-white">
-        <Loader2 className="animate-spin text-teal-500" size={32} />
+        <Loader2 className="animate-spin text-amber-600" size={32} />
       </div>
     );
   }
@@ -218,19 +218,19 @@ export default function AppFeaturePage() {
   if (!appData) return null;
 
   return (
-    <div className="min-h-[100dvh] bg-[#0e0e11] text-slate-50 font-sans selection:bg-teal-500/30 flex flex-col pb-mobile-nav">
+    <div className="min-h-[100dvh] bg-[#0e0e11] text-slate-50 font-sans selection:bg-amber-500/30 flex flex-col pb-mobile-nav">
       {/* HEADER BAR */}
       <header className="sticky top-0 z-50 h-14 md:h-20 border-b border-white/5 bg-[#09090b]/95 backdrop-blur-xl flex items-center justify-between px-4 md:px-6 shrink-0">
         <div className="flex items-center gap-6">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-3 shrink-0 group">
-            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-[#14b8a6] to-teal-700 p-[1px] shadow-[0_0_20px_rgba(20,184,166,0.3)] transition-transform duration-300 group-hover:scale-105">
+            <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-amber-700 to-yellow-700 p-[1px] shadow-[0_0_20px_rgba(184,134,11,0.3)] transition-transform duration-300 group-hover:scale-105">
               <div className="relative w-full h-full bg-[#040508] rounded-xl flex items-center justify-center">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#logo-grad-teal)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#logo-grad-gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <defs>
-                    <linearGradient id="logo-grad-teal" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#2dd4bf" />
-                      <stop offset="100%" stopColor="#0f766e" />
+                    <linearGradient id="logo-grad-gold" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#d4af37" />
+                      <stop offset="100%" stopColor="#8b6914" />
                     </linearGradient>
                   </defs>
                   <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
@@ -240,8 +240,8 @@ export default function AppFeaturePage() {
               </div>
             </div>
             <div className="flex flex-col leading-none">
-              <span className="font-display font-black text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-teal-400 to-white/80">H_ARCH</span>
-              <span className="text-[9px] text-teal-400 font-bold tracking-[0.2em] uppercase mt-0.5">Studio</span>
+              <span className="font-display font-black text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-white/80">H_ARCH</span>
+              <span className="text-[9px] text-amber-500 font-bold tracking-[0.2em] uppercase mt-0.5">Studio</span>
             </div>
           </Link>
         </div>
@@ -254,7 +254,7 @@ export default function AppFeaturePage() {
           <button className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><Search size={20} /></button>
           <button className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><LayoutGrid size={20} /></button>
           {/* Active Tool visually represented */}
-          <button className="p-2.5 text-[#09090b] bg-[#14b8a6] rounded-xl transition-all shadow-md"><Brush size={20} strokeWidth={2.5} /></button>
+          <button className="p-2.5 text-[#09090b] bg-[#b8860b] rounded-xl transition-all shadow-md"><Brush size={20} strokeWidth={2.5} /></button>
           <button className="p-2.5 text-zinc-400 hover:text-white hover:bg-white/5 rounded-xl transition-all"><Folder size={20} /></button>
         </div>
 
@@ -287,7 +287,7 @@ export default function AppFeaturePage() {
           <button type="button" onClick={() => { router.push("/"); setMobileMenuOpen(false); }} className="p-4 rounded-2xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5 tap-target">
             <Home size={20} /> Home
           </button>
-          <button type="button" onClick={() => setMobileMenuOpen(false)} className="p-4 rounded-2xl flex items-center gap-3 font-semibold bg-gradient-to-r from-teal-500/20 to-emerald-500/20 text-white tap-target">
+          <button type="button" onClick={() => setMobileMenuOpen(false)} className="p-4 rounded-2xl flex items-center gap-3 font-semibold bg-gradient-to-r from-amber-700/20 to-yellow-600/20 text-white tap-target">
             <Wand2 size={20} /> Current App
           </button>
           <button type="button" onClick={() => { router.push("/video"); setMobileMenuOpen(false); }} className="p-4 rounded-2xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5 tap-target">
@@ -305,7 +305,7 @@ export default function AppFeaturePage() {
         <div className="max-w-[1600px] mx-auto w-full animate-[fadeInUp_0.4s_ease-out]">
 
           <div className="mb-6 md:mb-10 pl-0 md:pl-2">
-            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-teal-400/80 mb-2">{appData.category}</p>
+            <p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-amber-500/80 mb-2">{appData.category}</p>
             <h1 className="text-2xl sm:text-3xl md:text-[2.5rem] font-bold uppercase tracking-wide mb-2 font-display leading-tight">{appData.title}</h1>
             <p className="text-sm max-w-2xl text-[#a1a1aa] font-medium leading-relaxed">
               {(appData.description || "").length > 30 ? appData.description : "Convert architectural 3D models into stunning photorealistic renderings with AI-powered materials, lighting, and environmental context."}
@@ -318,13 +318,13 @@ export default function AppFeaturePage() {
             {/* Left Column (Inputs) — result preview first on mobile for better flow */}
             <div className="flex flex-col gap-6 md:gap-8 lg:col-span-5 xl:col-span-4">
 
-              <div className="w-full aspect-[4/3] max-h-[280px] sm:max-h-none rounded-2xl md:rounded-[2rem] border-[1.5px] border-dashed border-[#14b8a6]/20 bg-[#121214]/50 hover:bg-[#121214] transition-colors flex flex-col items-center justify-center gap-4 cursor-pointer group px-4 sm:px-6 text-center relative overflow-hidden">
+              <div className="w-full aspect-[4/3] max-h-[280px] sm:max-h-none rounded-2xl md:rounded-[2rem] border-[1.5px] border-dashed border-[#b8860b]/20 bg-[#121214]/50 hover:bg-[#121214] transition-colors flex flex-col items-center justify-center gap-4 cursor-pointer group px-4 sm:px-6 text-center relative overflow-hidden">
                 <input type="file" onChange={handleFileChange} accept="image/*" className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
                 {filePreview ? (
                   <img src={filePreview} alt="Upload Preview" className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity" />
                 ) : null}
                 <div className="relative z-0 flex flex-col items-center justify-center gap-4 pointer-events-none">
-                  <div className="w-12 h-12 rounded-full bg-transparent flex items-center justify-center border border-[#ececf1] text-[#ececf1] group-hover:text-teal-400 group-hover:border-teal-400 group-hover:-translate-y-1 transition-all">
+                  <div className="w-12 h-12 rounded-full bg-transparent flex items-center justify-center border border-[#ececf1] text-[#ececf1] group-hover:text-amber-500 group-hover:border-amber-500 group-hover:-translate-y-1 transition-all">
                     <Upload size={20} strokeWidth={2} />
                   </div>
                   <div className="mt-2">
@@ -358,9 +358,9 @@ export default function AppFeaturePage() {
                       </div>
                     ))}
 
-                    <label className={`relative flex items-center justify-center cursor-pointer transition-all border border-dashed rounded-xl group ${referenceImages.length > 0 ? 'w-20 h-20 border-[#27272a] hover:border-teal-500/50 bg-[#111111] hover:bg-[#18181b]' : 'w-full h-24 border-[#27272a] hover:border-teal-500/30 bg-[#111111] hover:bg-[#18181b]'}`}>
+                    <label className={`relative flex items-center justify-center cursor-pointer transition-all border border-dashed rounded-xl group ${referenceImages.length > 0 ? 'w-20 h-20 border-[#27272a] hover:border-amber-600/50 bg-[#111111] hover:bg-[#18181b]' : 'w-full h-24 border-[#27272a] hover:border-amber-600/30 bg-[#111111] hover:bg-[#18181b]'}`}>
                       <input type="file" multiple onChange={handleRefFileChange} accept="image/*" className="hidden" />
-                      <div className="flex flex-col items-center justify-center gap-2 text-zinc-500 group-hover:text-teal-400">
+                      <div className="flex flex-col items-center justify-center gap-2 text-zinc-500 group-hover:text-amber-500">
                         {referenceImages.length > 0 ? (
                           <div className="w-8 h-8 rounded-full bg-zinc-800/30 flex items-center justify-center text-xl font-light pb-0.5">
                             +
@@ -386,7 +386,7 @@ export default function AppFeaturePage() {
                       value={customPrompt}
                       onChange={e => setCustomPrompt(e.target.value)}
                       placeholder="Describe the design, aesthetic, and architectural style you want..."
-                      className="w-full bg-[#111111] border border-[#27272a] rounded-xl px-4 py-3 text-sm font-semibold text-[#ececf1] focus:outline-none focus:border-teal-500/50 hover:bg-[#18181b] transition-colors resize-none placeholder:text-zinc-600 focus:shadow-[0_0_15px_rgba(20,184,166,0.1)] custom-scrollbar"
+                      className="w-full bg-[#111111] border border-[#27272a] rounded-xl px-4 py-3 text-sm font-semibold text-[#ececf1] focus:outline-none focus:border-amber-600/50 hover:bg-[#18181b] transition-colors resize-none placeholder:text-zinc-600 focus:shadow-[0_0_15px_rgba(184,134,11,0.1)] custom-scrollbar"
                       rows={3}
                     />
                   </div>
@@ -396,7 +396,7 @@ export default function AppFeaturePage() {
                 <div className="flex flex-col gap-2.5">
                   <label className="text-xs font-medium text-[#a1a1aa] tracking-wide">Model Selection</label>
                   <div className="relative group">
-                    <select value={model} onChange={e => setModel(e.target.value)} className="w-full appearance-none bg-[#111111] border border-[#27272a] rounded-xl px-4 py-3.5 text-sm font-semibold text-[#ececf1] focus:outline-none focus:border-teal-500/50 hover:bg-[#18181b] transition-colors cursor-pointer pl-10 tracking-wide">
+                    <select value={model} onChange={e => setModel(e.target.value)} className="w-full appearance-none bg-[#111111] border border-[#27272a] rounded-xl px-4 py-3.5 text-sm font-semibold text-[#ececf1] focus:outline-none focus:border-amber-600/50 hover:bg-[#18181b] transition-colors cursor-pointer pl-10 tracking-wide">
                       <option value="gemini-2.5-flash-image">gemini 2.5 flash image</option>
                       <option value="nano-banana-pro-preview">Nano Banana (Gemini 2.5 Flash Preview Image)</option>
                       <option value="gemini-3.1-flash-image-preview">Gemini 3.1 Flash Image</option>
@@ -414,13 +414,13 @@ export default function AppFeaturePage() {
                 <div className="flex flex-col gap-2.5">
                   <label className="text-xs font-medium text-[#a1a1aa] tracking-wide">Aspect Ratio</label>
                   <div className="relative group">
-                    <select value={aspectRatio} onChange={e => setAspectRatio(e.target.value)} className="w-full appearance-none bg-[#111111] border border-[#27272a] rounded-xl px-4 py-3.5 text-sm font-semibold text-[#ececf1] focus:outline-none focus:border-teal-500/50 hover:bg-[#18181b] transition-colors cursor-pointer pl-10 text-center tracking-wide">
+                    <select value={aspectRatio} onChange={e => setAspectRatio(e.target.value)} className="w-full appearance-none bg-[#111111] border border-[#27272a] rounded-xl px-4 py-3.5 text-sm font-semibold text-[#ececf1] focus:outline-none focus:border-amber-600/50 hover:bg-[#18181b] transition-colors cursor-pointer pl-10 text-center tracking-wide">
                       <option value="1:1">1:1</option>
                       <option value="16:9">16:9</option>
                       <option value="9:16">9:16</option>
                       <option value="4:3">4:3</option>
                     </select>
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-[#a1a1aa] rounded-sm group-hover:border-teal-400 transition-colors pointer-events-none"></div>
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 border-2 border-[#a1a1aa] rounded-sm group-hover:border-amber-500 transition-colors pointer-events-none"></div>
                     <ChevronDown size={16} className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 pointer-events-none group-hover:text-[#ececf1]" />
                   </div>
                 </div>
@@ -429,7 +429,7 @@ export default function AppFeaturePage() {
                 <div className="flex flex-col gap-2.5">
                   <label className="text-xs font-medium text-[#a1a1aa] tracking-wide">Lighting Time</label>
                   <div className="relative group">
-                    <select value={lighting} onChange={e => setLighting(e.target.value)} className="w-full appearance-none bg-[#111111] border border-[#27272a] rounded-xl px-4 py-3.5 text-sm font-semibold text-[#ececf1] focus:outline-none focus:border-teal-500/50 hover:bg-[#18181b] transition-colors cursor-pointer tracking-wide text-center">
+                    <select value={lighting} onChange={e => setLighting(e.target.value)} className="w-full appearance-none bg-[#111111] border border-[#27272a] rounded-xl px-4 py-3.5 text-sm font-semibold text-[#ececf1] focus:outline-none focus:border-amber-600/50 hover:bg-[#18181b] transition-colors cursor-pointer tracking-wide text-center">
                       <option value="default">Select lighting time</option>
                       <option value="daylight">Daylight</option>
                       <option value="sunset">Sunset / Golden Hour</option>
@@ -443,7 +443,7 @@ export default function AppFeaturePage() {
                 <div className="flex flex-col gap-2.5">
                   <label className="text-xs font-medium text-[#a1a1aa] tracking-wide">Mood</label>
                   <div className="relative group">
-                    <select value={mood} onChange={e => setMood(e.target.value)} className="w-full appearance-none bg-[#111111] border border-[#27272a] rounded-xl px-4 py-3.5 text-sm font-semibold text-[#ececf1] focus:outline-none focus:border-teal-500/50 hover:bg-[#18181b] transition-colors cursor-pointer tracking-wide text-center">
+                    <select value={mood} onChange={e => setMood(e.target.value)} className="w-full appearance-none bg-[#111111] border border-[#27272a] rounded-xl px-4 py-3.5 text-sm font-semibold text-[#ececf1] focus:outline-none focus:border-amber-600/50 hover:bg-[#18181b] transition-colors cursor-pointer tracking-wide text-center">
                       <option value="default">Select mood</option>
                       <option value="cinematic">Cinematic</option>
                       <option value="warm">Warm & Cozy</option>
@@ -456,7 +456,7 @@ export default function AppFeaturePage() {
 
               {/* Generate Button — sticky on mobile above bottom nav */}
               <div className="mt-2 lg:static sticky bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px))] z-30 bg-[#0e0e11]/95 backdrop-blur-md py-2 -mx-1 px-1 lg:mx-0 lg:px-0 lg:py-0 lg:bg-transparent lg:backdrop-blur-none">
-                <button type="button" disabled={isGenerating} onClick={handleGenerate} className={`w-full py-3.5 min-h-[48px] rounded-xl font-bold text-[15px] tracking-wide transition-all flex items-center justify-center gap-2 shadow-lg tap-target ${isGenerating ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-[#14b8a6] text-white hover:bg-teal-400 hover:shadow-[0_0_25px_rgba(20,184,166,0.3)] active:scale-[0.98]'}`}>
+                <button type="button" disabled={isGenerating} onClick={handleGenerate} className={`w-full py-3.5 min-h-[48px] rounded-xl font-bold text-[15px] tracking-wide transition-all flex items-center justify-center gap-2 shadow-lg tap-target ${isGenerating ? 'bg-zinc-800 text-zinc-400 cursor-not-allowed' : 'bg-[#b8860b] text-white hover:bg-amber-500 hover:shadow-[0_0_25px_rgba(184,134,11,0.3)] active:scale-[0.98]'}`}>
                   {isGenerating ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
                   {isGenerating ? "GENERATING..." : (
                     <>
@@ -477,7 +477,7 @@ export default function AppFeaturePage() {
             </div>
 
             {/* Right Column (Preview/Demo) — shown first on mobile */}
-            <div className={`lg:col-span-7 xl:col-span-8 bg-[#111111] border ${resultImage ? 'border-[#14b8a6]/50 shadow-[0_0_40px_rgba(20,184,166,0.1)]' : 'border-transparent'} rounded-2xl md:rounded-[2rem] p-4 md:p-6 lg:p-12 flex flex-col items-center justify-center text-center w-full min-h-[320px] sm:min-h-[420px] lg:min-h-[600px] xl:min-h-[750px] relative transition-all duration-500`}>
+            <div className={`lg:col-span-7 xl:col-span-8 bg-[#111111] border ${resultImage ? 'border-[#b8860b]/50 shadow-[0_0_40px_rgba(184,134,11,0.1)]' : 'border-transparent'} rounded-2xl md:rounded-[2rem] p-4 md:p-6 lg:p-12 flex flex-col items-center justify-center text-center w-full min-h-[320px] sm:min-h-[420px] lg:min-h-[600px] xl:min-h-[750px] relative transition-all duration-500`}>
 
               {resultImage ? (
                 // Full Result Wrapper
@@ -485,7 +485,7 @@ export default function AppFeaturePage() {
                   <div className="w-full h-full relative rounded-3xl overflow-hidden group border border-[#27272a] bg-[#09090b]">
                     <img src={resultImage} alt="Generated Result" className="w-full h-full object-contain" />
                     <div className="absolute inset-0 bg-black/40 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity flex items-end sm:items-center justify-center backdrop-blur-0 sm:backdrop-blur-sm p-4 sm:p-0">
-                      <button type="button" onClick={() => setIsFullscreen(true)} className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-[#14b8a6] hover:bg-teal-400 text-[#09090b] rounded-xl sm:rounded-full font-bold transition-transform active:scale-[0.98] shadow-[0_0_20px_rgba(20,184,166,0.5)] tap-target">
+                      <button type="button" onClick={() => setIsFullscreen(true)} className="w-full sm:w-auto px-6 sm:px-8 py-3 bg-[#b8860b] hover:bg-amber-500 text-[#09090b] rounded-xl sm:rounded-full font-bold transition-transform active:scale-[0.98] shadow-[0_0_20px_rgba(184,134,11,0.5)] tap-target">
                         View Full Size
                       </button>
                     </div>
@@ -500,14 +500,14 @@ export default function AppFeaturePage() {
                     </div>
 
                     <div className="w-8 flex items-center justify-center shrink-0">
-                      {isGenerating ? <Loader2 size={24} className="text-[#14b8a6] animate-spin" /> : <ArrowRight size={24} className="text-zinc-600" />}
+                      {isGenerating ? <Loader2 size={24} className="text-[#b8860b] animate-spin" /> : <ArrowRight size={24} className="text-zinc-600" />}
                     </div>
 
                     <div className="w-[45%] aspect-[4/3] rounded-2xl overflow-hidden border-2 border-[#18181b] shadow-2xl relative bg-[#18181b] flex items-center justify-center">
                       {isGenerating ? (
                         <>
-                          <div className="absolute inset-0 bg-gradient-to-tr from-[#14b8a6]/20 to-transparent animate-pulse"></div>
-                          <Loader2 size={32} className="text-[#14b8a6] animate-spin relative z-10" />
+                          <div className="absolute inset-0 bg-gradient-to-tr from-[#b8860b]/20 to-transparent animate-pulse"></div>
+                          <Loader2 size={32} className="text-[#b8860b] animate-spin relative z-10" />
                         </>
                       ) : (
                         <img src="https://images.unsplash.com/photo-1613490908679-b3a5105220fa?w=500&q=80" alt="Result Example" className="w-full h-full object-cover opacity-90" />

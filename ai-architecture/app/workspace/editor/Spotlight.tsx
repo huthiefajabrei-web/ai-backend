@@ -140,7 +140,7 @@ export default function Spotlight({
                   <div
                     className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
                       opt.type === "imageNode"
-                        ? "bg-purple-500/15 text-purple-400"
+                        ? "bg-amber-600/15 text-amber-500"
                         : opt.type === "creationNode"
                           ? "bg-sky-500/15 text-sky-400"
                           : "bg-blue-500/15 text-blue-400"

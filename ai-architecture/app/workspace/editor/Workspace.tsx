@@ -725,7 +725,7 @@ function Flow() {
           <button
             type="button"
             onClick={() => router.push("/login")}
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold"
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-700 to-yellow-600 text-white font-semibold"
           >
             Sign In
           </button>
@@ -779,7 +779,7 @@ function Flow() {
             <span className="text-gray-400">Personal project</span>
             <span className="text-gray-600">/</span>
             <div className="flex items-center gap-2 text-white">
-              <Zap size={14} className="text-purple-400" />
+              <Zap size={14} className="text-amber-500" />
               <span>{spaceName}</span>
             </div>
           </div>
@@ -790,7 +790,7 @@ function Flow() {
             type="button"
             disabled={isRunningWorkflow}
             onClick={handleRunWorkflow}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-90 disabled:opacity-50 text-white text-sm font-semibold shadow-lg shadow-purple-500/20"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-700 to-yellow-600 hover:opacity-90 disabled:opacity-50 text-white text-sm font-semibold shadow-lg shadow-amber-600/20"
           >
             {isRunningWorkflow ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" />}
             Run Workflow
@@ -809,15 +809,15 @@ function Flow() {
             tabIndex={0}
             onClick={() => router.push("/#pricing")}
             onKeyDown={(e) => e.key === "Enter" && router.push("/#pricing")}
-            className="text-sm font-medium text-purple-400 hover:text-purple-300 transition-colors cursor-pointer mr-1 hidden sm:inline"
+            className="text-sm font-medium text-amber-500 hover:text-amber-300 transition-colors cursor-pointer mr-1 hidden sm:inline"
           >
             Pricing
           </span>
 
           <div className="flex items-center gap-2 mr-1 hidden md:flex">
-            <Zap size={16} className="text-purple-400" />
+            <Zap size={16} className="text-amber-500" />
             <span className="text-sm font-medium text-white">H_ARCH Flows</span>
-            <span className="text-[10px] bg-purple-500/20 text-purple-300 px-1.5 py-0.5 rounded font-bold">
+            <span className="text-[10px] bg-amber-600/20 text-amber-300 px-1.5 py-0.5 rounded font-bold">
               Beta
             </span>
           </div>
@@ -921,14 +921,14 @@ function Flow() {
             <h2 className="text-xl font-display font-bold text-white mb-2">Build your workflow</h2>
             <p className="text-sm text-zinc-400 mb-6 leading-relaxed">
               Connect <span className="text-blue-400 font-semibold">Text</span> →{" "}
-              <span className="text-purple-400 font-semibold">Image Generator</span>. Press{" "}
+              <span className="text-amber-500 font-semibold">Image Generator</span>. Press{" "}
               <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[11px]">Space</kbd> or{" "}
               <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[11px]">/</kbd> for Spotlight.
             </p>
             <button
               type="button"
               onClick={addStarterWorkflow}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-600 text-white font-semibold text-sm"
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-amber-700 to-yellow-600 text-white font-semibold text-sm"
             >
               Add starter workflow
             </button>

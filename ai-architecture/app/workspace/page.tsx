@@ -199,7 +199,7 @@ export default function WorkspaceDashboard() {
           <div className="px-4 mb-6">
             <button
               onClick={() => setIsModalOpen(true)}
-              className="w-full bg-[#ff2e93] hover:bg-[#e6207f] text-white flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium transition-colors"
+              className="w-full bg-[#b8860b] hover:bg-[#9a7209] text-white flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-medium transition-colors"
             >
               <Plus size={20} />
               <span>Create</span>
@@ -251,7 +251,7 @@ export default function WorkspaceDashboard() {
           <button className="hover:text-white transition-colors"><Settings size={18} /></button>
           <button className="hover:text-white transition-colors relative">
             <Bell size={18} />
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#ff2e93] rounded-full"></span>
+            <span className="absolute -top-1 -right-1 w-2 h-2 bg-[#b8860b] rounded-full"></span>
           </button>
           <button className="hover:text-white transition-colors"><Moon size={18} /></button>
           <button className="hover:text-white transition-colors"><LogOut size={18} /></button>
@@ -273,7 +273,7 @@ export default function WorkspaceDashboard() {
           </div>
 
           <div className="flex items-center gap-2 sm:gap-5 shrink-0">
-            <Link href="/#pricing" className="hidden sm:inline text-sm font-medium text-[#ff2e93] hover:text-[#ff56a5] transition-colors">
+            <Link href="/#pricing" className="hidden sm:inline text-sm font-medium text-[#b8860b] hover:text-[#d4af37] transition-colors">
               Pricing
             </Link>
             <button type="button" className="hidden sm:flex items-center gap-2 bg-[#1c1c1f] border border-gray-800 px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#252529] transition-colors">
@@ -342,14 +342,14 @@ export default function WorkspaceDashboard() {
               >
                 <div className="h-44 w-full bg-[#1c1c1f] relative overflow-hidden flex items-center justify-center p-4">
                   {/* Decorative graphics mimicking workflow */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-900/20 to-purple-900/20 z-0"></div>
+                  <div className="absolute inset-0 bg-gradient-to-br from-amber-900/20 to-yellow-900/20 z-0"></div>
                   <div className="relative z-10 w-full h-full flex flex-col items-center justify-center">
                      <div className="w-full flex justify-between px-4 opacity-70 group-hover:opacity-100 transition-opacity">
                         <div className="w-16 h-12 bg-[#2a2a2e] rounded-md border border-gray-700 p-1 flex flex-col gap-1 shadow-lg">
                           <div className="w-full h-1 bg-gray-600 rounded-sm"></div>
                           <div className="w-3/4 h-1 bg-gray-600 rounded-sm"></div>
                         </div>
-                        <div className="w-20 h-20 bg-gradient-to-tr from-[#ff2e93] to-purple-600 rounded-md border border-gray-700 shadow-lg transform rotate-6"></div>
+                        <div className="w-20 h-20 bg-gradient-to-tr from-amber-700 to-yellow-600 rounded-md border border-gray-700 shadow-lg transform rotate-6"></div>
                      </div>
                      <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 h-1 bg-gray-600/50 rounded-full z-0 opacity-50"></div>
                   </div>
@@ -408,7 +408,7 @@ export default function WorkspaceDashboard() {
                   placeholder="e.g. Living Room Design"
                   value={newSpaceName}
                   onChange={(e) => setNewSpaceName(e.target.value)}
-                  className="w-full bg-[#0f0f11] text-white p-3 rounded-xl border border-gray-700 focus:border-[#ff2e93] focus:ring-1 focus:ring-[#ff2e93] focus:outline-none transition-all"
+                  className="w-full bg-[#0f0f11] text-white p-3 rounded-xl border border-gray-700 focus:border-[#b8860b] focus:ring-1 focus:ring-[#b8860b] focus:outline-none transition-all"
                 />
               </div>
               
@@ -423,7 +423,7 @@ export default function WorkspaceDashboard() {
                 <button
                   type="submit"
                   disabled={isCreating || !newSpaceName.trim()}
-                  className="bg-[#ff2e93] hover:bg-[#e6207f] disabled:bg-gray-700 disabled:text-gray-500 text-white px-6 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors"
+                  className="bg-[#b8860b] hover:bg-[#9a7209] disabled:bg-gray-700 disabled:text-gray-500 text-white px-6 py-2.5 rounded-xl font-medium flex items-center gap-2 transition-colors"
                 >
                   {isCreating ? 'Creating...' : 'Create Space'}
                 </button>

@@ -27,7 +27,7 @@ export default function Error({
           <button
             type="button"
             onClick={reset}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-indigo-500 to-purple-500 hover:opacity-90 transition-opacity text-sm font-semibold tap-target"
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl bg-gradient-to-r from-amber-700 to-yellow-600 hover:opacity-90 transition-opacity text-sm font-semibold tap-target"
           >
             <RefreshCw size={16} />
             Try again

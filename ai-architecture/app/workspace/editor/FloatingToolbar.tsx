@@ -148,7 +148,7 @@ export default function FloatingToolbar({ onAddNode, activeTool = 'cursor', onTo
               </button>
 
               <button onClick={() => handleAddNode('imageNode')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#27272a] transition-colors group mb-1 text-left">
-                <div className="w-8 h-8 rounded-md bg-purple-500/15 flex items-center justify-center text-purple-400 group-hover:bg-purple-500/25 transition-colors">
+                <div className="w-8 h-8 rounded-md bg-amber-600/15 flex items-center justify-center text-amber-500 group-hover:bg-amber-600/25 transition-colors">
                   <ImageIcon size={16} />
                 </div>
                 <span className="text-sm font-medium text-gray-200">Image Generator</span>
@@ -162,7 +162,7 @@ export default function FloatingToolbar({ onAddNode, activeTool = 'cursor', onTo
               </button>
 
               <button onClick={() => alert('Assistant coming soon!')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#27272a] transition-colors group mb-1 text-left">
-                <div className="w-8 h-8 rounded-md bg-[#2d1b36] flex items-center justify-center text-purple-400 group-hover:bg-[#3d244a] transition-colors">
+                <div className="w-8 h-8 rounded-md bg-[#2a2110] flex items-center justify-center text-amber-500 group-hover:bg-[#3a3018] transition-colors">
                   <Sparkles size={16} />
                 </div>
                 <span className="text-sm font-medium text-gray-200">Assistant</span>

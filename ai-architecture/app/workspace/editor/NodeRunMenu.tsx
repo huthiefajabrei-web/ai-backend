@@ -110,7 +110,7 @@ export default function NodeRunMenu({ nodeId }: Props) {
         className="p-1.5 rounded-lg text-zinc-200 hover:bg-white/10 disabled:opacity-50"
         title={mode === "all" ? "All workflow" : "Run from here"}
       >
-        {running ? <Loader2 size={15} className="animate-spin text-purple-400" /> : <FastForward size={15} />}
+        {running ? <Loader2 size={15} className="animate-spin text-amber-500" /> : <FastForward size={15} />}
       </button>
       <button
         type="button"
@@ -134,7 +134,7 @@ export default function NodeRunMenu({ nodeId }: Props) {
             className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-xs text-zinc-200 hover:bg-white/5"
           >
             {mode === "from-here" ? (
-              <Check size={14} className="text-purple-400 shrink-0" />
+              <Check size={14} className="text-amber-500 shrink-0" />
             ) : (
               <FastForward size={14} className="text-zinc-500 shrink-0" />
             )}
@@ -150,7 +150,7 @@ export default function NodeRunMenu({ nodeId }: Props) {
             className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-xs text-zinc-200 hover:bg-white/5"
           >
             {mode === "all" ? (
-              <Check size={14} className="text-purple-400 shrink-0" />
+              <Check size={14} className="text-amber-500 shrink-0" />
             ) : (
               <Workflow size={14} className="text-zinc-500 shrink-0" />
             )}

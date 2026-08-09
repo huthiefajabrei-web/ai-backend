@@ -266,12 +266,12 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
   return (
     <div
       className={`relative bg-[#121214] rounded-2xl w-[400px] shadow-2xl transition-all border-2 ${
-        selected ? "border-purple-500 shadow-purple-500/20" : "border-white/10"
+        selected ? "border-amber-600 shadow-amber-600/20" : "border-white/10"
       }`}
     >
       <div className="absolute -top-7 left-2 flex items-center gap-2 text-gray-300">
         <div className="bg-[#121214] p-1 rounded-md border border-white/10">
-          <ImageIcon size={12} className="text-purple-400" />
+          <ImageIcon size={12} className="text-amber-500" />
         </div>
         <span className="font-bold text-xs">Image Generator</span>
       </div>
@@ -292,9 +292,9 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
             type="target"
             position={Position.Left}
             id="image-in"
-            className="!w-8 !h-8 !bg-[#1c1c1f] !border-2 !border-purple-500/50 !rounded-full flex items-center justify-center hover:!bg-purple-500/20 transition-colors cursor-crosshair !static !transform-none"
+            className="!w-8 !h-8 !bg-[#1c1c1f] !border-2 !border-amber-600/50 !rounded-full flex items-center justify-center hover:!bg-amber-600/20 transition-colors cursor-crosshair !static !transform-none"
           >
-            <ImageIcon size={14} className="text-purple-400 pointer-events-none" />
+            <ImageIcon size={14} className="text-amber-500 pointer-events-none" />
           </Handle>
         </div>
       </div>
@@ -304,9 +304,9 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
           type="source"
           position={Position.Right}
           id="image-out"
-          className="!w-8 !h-8 !bg-[#1c1c1f] !border-2 !border-purple-500/50 !rounded-full flex items-center justify-center hover:!bg-purple-500/20 transition-colors cursor-crosshair !static !transform-none"
+          className="!w-8 !h-8 !bg-[#1c1c1f] !border-2 !border-amber-600/50 !rounded-full flex items-center justify-center hover:!bg-amber-600/20 transition-colors cursor-crosshair !static !transform-none"
         >
-          <ImageIcon size={14} className="text-purple-400 pointer-events-none" />
+          <ImageIcon size={14} className="text-amber-500 pointer-events-none" />
         </Handle>
       </div>
 
@@ -325,7 +325,7 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
               type="button"
               title={`Insert ${ref.mention} into prompt`}
               onClick={() => insertMention(ref)}
-              className="relative group w-14 h-14 rounded-xl overflow-hidden border border-white/10 hover:border-purple-400/60 bg-[#0a0a0c] shrink-0"
+              className="relative group w-14 h-14 rounded-xl overflow-hidden border border-white/10 hover:border-amber-500/60 bg-[#0a0a0c] shrink-0"
             >
               {ref.thumb ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -362,7 +362,7 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
             <button
               type="button"
               onClick={() => refInputRef.current?.click()}
-              className="w-14 h-14 rounded-xl border border-dashed border-white/15 hover:border-purple-400/50 flex flex-col items-center justify-center text-zinc-500 hover:text-purple-300 transition-colors"
+              className="w-14 h-14 rounded-xl border border-dashed border-white/15 hover:border-amber-500/50 flex flex-col items-center justify-center text-zinc-500 hover:text-amber-300 transition-colors"
               title="Add reference images"
             >
               <Plus size={16} />
@@ -441,15 +441,15 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
             <div className="text-gray-600 flex flex-col items-center gap-2 p-4 text-center w-full">
               {data.isLoading ? (
                 <>
-                  <Loader2 size={28} className="animate-spin text-purple-400" />
-                  <span className="text-sm font-medium text-purple-300">Generating…</span>
+                  <Loader2 size={28} className="animate-spin text-amber-500" />
+                  <span className="text-sm font-medium text-amber-300">Generating…</span>
                   <span className="text-[10px] text-zinc-500">Result appears here on this card</span>
                 </>
               ) : error ? (
                 <span className="text-sm font-medium text-red-400 max-w-[260px]">{error}</span>
               ) : (
                 <div className="flex flex-col items-center gap-2 text-zinc-500">
-                  <Sparkles size={24} className="text-purple-500/50" />
+                  <Sparkles size={24} className="text-amber-600/50" />
                   <span className="text-xs">Output appears here after Run</span>
                 </div>
               )}
@@ -482,7 +482,7 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
                   key={`chip-${ref.id}`}
                   type="button"
                   onClick={() => insertMention(ref)}
-                  className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/20 hover:bg-purple-500/25"
+                  className="text-[10px] px-2 py-0.5 rounded-full bg-amber-600/15 text-amber-300 border border-amber-600/20 hover:bg-amber-600/25"
                 >
                   {ref.mention}
                 </button>
@@ -555,7 +555,7 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
             <button
               type="button"
               onClick={() => setShowSettings(!showSettings)}
-              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${showSettings ? "bg-purple-500/20 text-purple-300" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
+              className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${showSettings ? "bg-amber-600/20 text-amber-300" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
             >
               <Settings2 size={14} />
             </button>
@@ -576,7 +576,7 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
                 type="button"
                 onClick={() => void handleGenerate()}
                 title="Run this node"
-                className="w-10 h-10 rounded-l-full bg-gradient-to-br from-indigo-500 to-purple-600 hover:opacity-90 flex items-center justify-center text-white shadow-lg shadow-purple-500/30 transition-all"
+                className="w-10 h-10 rounded-l-full bg-gradient-to-br from-amber-700 to-yellow-600 hover:opacity-90 flex items-center justify-center text-white shadow-lg shadow-amber-600/30 transition-all"
               >
                 <Play size={16} fill="currentColor" className="ml-0.5" />
               </button>
@@ -584,7 +584,7 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
                 type="button"
                 onClick={() => setShowRunMenu((v) => !v)}
                 title="Run options"
-                className="w-7 h-10 rounded-r-full bg-purple-700/80 hover:bg-purple-600 flex items-center justify-center text-white border-l border-white/10"
+                className="w-7 h-10 rounded-r-full bg-amber-800/80 hover:bg-amber-700 flex items-center justify-center text-white border-l border-white/10"
               >
                 <ChevronDown size={14} />
               </button>
@@ -596,7 +596,7 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
                     onClick={() => void handleRunMode("node")}
                     className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-xs text-zinc-200 hover:bg-white/5"
                   >
-                    <Play size={14} className="text-purple-400" />
+                    <Play size={14} className="text-amber-500" />
                     Run Node
                   </button>
                   <button
@@ -624,8 +624,8 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
         {showSettings && (
           <div className="px-3 pb-3 text-[10px] text-zinc-500 leading-relaxed border-t border-white/5 pt-2 mx-1">
             Add up to {MAX_REFERENCE_IMAGES} references. Use{" "}
-            <span className="text-purple-300">@Image1</span>,{" "}
-            <span className="text-purple-300">@Image2</span> in the prompt. The generated image
+            <span className="text-amber-300">@Image1</span>,{" "}
+            <span className="text-amber-300">@Image2</span> in the prompt. The generated image
             appears on this card.
           </div>
         )}
@@ -654,7 +654,7 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
                 <button
                   type="button"
                   onClick={() => handleDownload(displayUrl)}
-                  className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-medium"
+                  className="bg-amber-700 hover:bg-amber-600 text-white px-6 py-3 rounded-xl flex items-center gap-2 font-medium"
                 >
                   <Download size={20} />
                   Download

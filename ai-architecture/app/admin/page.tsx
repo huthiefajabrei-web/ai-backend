@@ -188,13 +188,13 @@ export default function AdminDashboard() {
   if (!authChecked || (loading && stats.users === 0)) {
     return (
       <div className="min-h-screen bg-[#09090b] flex items-center justify-center text-white">
-        <Loader2 className="animate-spin text-purple-500" size={32} />
+        <Loader2 className="animate-spin text-amber-600" size={32} />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#09090b] text-slate-50 font-sans selection:bg-purple-500/30">
+    <div className="min-h-screen bg-[#09090b] text-slate-50 font-sans selection:bg-amber-500/30">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full bg-[#09090b]/80 backdrop-blur-xl border-b border-white/5">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
@@ -203,7 +203,7 @@ export default function AdminDashboard() {
               <ArrowLeft size={18} />
             </button>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-[0_0_15px_rgba(139,92,246,0.3)]">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-700 to-yellow-600 flex items-center justify-center shadow-[0_0_15px_rgba(184,134,11,0.3)]">
                 <Settings size={16} className="text-white" />
               </div>
               <span className="font-bold text-lg tracking-tight">Admin Dashboard</span>
@@ -250,7 +250,7 @@ export default function AdminDashboard() {
                     : "text-zinc-400 hover:text-slate-200 hover:bg-white/5"
                 }`}
               >
-                <Icon size={18} className={isActive ? "text-purple-400" : ""} />
+                <Icon size={18} className={isActive ? "text-amber-500" : ""} />
                 {item.label}
               </button>
             );
@@ -269,8 +269,8 @@ export default function AdminDashboard() {
                     <h3 className="text-zinc-400 text-sm font-medium mb-1">Total Registered Users</h3>
                     <p className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">{stats.users}</p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20 group-hover:scale-110 transition-transform">
-                    <Users size={24} className="text-indigo-400" />
+                  <div className="w-12 h-12 rounded-full bg-amber-600/10 flex items-center justify-center border border-amber-600/20 group-hover:scale-110 transition-transform">
+                    <Users size={24} className="text-amber-500" />
                   </div>
                 </div>
                 <div className="bg-[#18181b] border border-white/5 rounded-2xl p-6 flex items-center justify-between group hover:border-white/10 transition-colors">
@@ -278,8 +278,8 @@ export default function AdminDashboard() {
                     <h3 className="text-zinc-400 text-sm font-medium mb-1">Total Generations & Sessions</h3>
                     <p className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-white to-zinc-400">{stats.sessions}</p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center border border-purple-500/20 group-hover:scale-110 transition-transform">
-                    <Layout size={24} className="text-purple-400" />
+                  <div className="w-12 h-12 rounded-full bg-amber-600/10 flex items-center justify-center border border-amber-600/20 group-hover:scale-110 transition-transform">
+                    <Layout size={24} className="text-amber-500" />
                   </div>
                 </div>
               </div>
@@ -291,7 +291,7 @@ export default function AdminDashboard() {
             <div className="space-y-6 animate-[fadeInUp_0.4s_ease-out]">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold font-display">Manage Hero Slider</h2>
-                <button onClick={() => setEditHero({ id: "", title: "New Slide", image_url: "" })} className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm font-semibold transition-colors">
+                <button onClick={() => setEditHero({ id: "", title: "New Slide", image_url: "" })} className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-lg text-sm font-semibold transition-colors">
                   <Plus size={16} /> Add Image
                 </button>
               </div>
@@ -301,7 +301,7 @@ export default function AdminDashboard() {
                     <div className="h-40 w-full relative overflow-hidden">
                       <img src={h.image_url || 'https://via.placeholder.com/300x150?text=No+Image'} alt={h.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       <div className="absolute inset-x-0 top-0 p-2 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-b from-black/60 to-transparent">
-                        <button onClick={() => setEditHero(h)} className="p-1.5 bg-black/50 hover:bg-indigo-500 text-white rounded-md backdrop-blur-sm transition-colors"><Pencil size={14} /></button>
+                        <button onClick={() => setEditHero(h)} className="p-1.5 bg-black/50 hover:bg-amber-700 text-white rounded-md backdrop-blur-sm transition-colors"><Pencil size={14} /></button>
                         <button onClick={() => handleDelete('hero', h.id)} className="p-1.5 bg-black/50 hover:bg-red-500 text-white rounded-md backdrop-blur-sm transition-colors"><Trash2 size={14} /></button>
                       </div>
                     </div>
@@ -319,7 +319,7 @@ export default function AdminDashboard() {
             <div className="space-y-6 animate-[fadeInUp_0.4s_ease-out]">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold font-display">Manage Tools</h2>
-                <button onClick={() => setEditTool({ id: "", title: "New Tool", description: "", icon: "Wand2", action_id: "generation" })} className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm font-semibold transition-colors">
+                <button onClick={() => setEditTool({ id: "", title: "New Tool", description: "", icon: "Wand2", action_id: "generation" })} className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-lg text-sm font-semibold transition-colors">
                   <Plus size={16} /> Add Tool
                 </button>
               </div>
@@ -328,8 +328,8 @@ export default function AdminDashboard() {
                   <div key={t.id} className="bg-[#18181b] border border-white/5 rounded-xl p-5 flex flex-col gap-3 group relative overflow-hidden">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                          <span className="text-purple-400 text-xs font-bold">{t.icon}</span>
+                        <div className="w-10 h-10 rounded-lg bg-amber-600/10 flex items-center justify-center">
+                          <span className="text-amber-500 text-xs font-bold">{t.icon}</span>
                         </div>
                         <div>
                           <h3 className="font-bold text-white">{t.title}</h3>
@@ -337,7 +337,7 @@ export default function AdminDashboard() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEditTool(t)} className="p-1.5 bg-white/5 hover:bg-indigo-500/20 text-zinc-400 hover:text-indigo-400 rounded-md transition-colors"><Pencil size={14} /></button>
+                        <button onClick={() => setEditTool(t)} className="p-1.5 bg-white/5 hover:bg-amber-600/20 text-zinc-400 hover:text-amber-500 rounded-md transition-colors"><Pencil size={14} /></button>
                         <button onClick={() => handleDelete('tools', t.id)} className="p-1.5 bg-white/5 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-md transition-colors"><Trash2 size={14} /></button>
                       </div>
                     </div>
@@ -353,7 +353,7 @@ export default function AdminDashboard() {
             <div className="space-y-6 animate-[fadeInUp_0.4s_ease-out]">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold font-display">Manage H_ARCH Apps</h2>
-                <button onClick={() => setEditApp({ id: "", title: "New App", description: "", image_url: "", category: "Architecture", action_id: "generation", credit_cost: 1 })} className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm font-semibold transition-colors">
+                <button onClick={() => setEditApp({ id: "", title: "New App", description: "", image_url: "", category: "Architecture", action_id: "generation", credit_cost: 1 })} className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-lg text-sm font-semibold transition-colors">
                   <Plus size={16} /> Add App
                 </button>
               </div>
@@ -363,13 +363,13 @@ export default function AdminDashboard() {
                     <div className="h-32 w-full relative overflow-hidden">
                       <img src={a.image_url || 'https://via.placeholder.com/300x150?text=No+Image'} alt={a.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                       <div className="absolute inset-x-0 top-0 p-2 flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-b from-black/60 to-transparent">
-                        <button onClick={() => setEditApp(a)} className="p-1.5 bg-black/50 hover:bg-indigo-500 text-white rounded-md backdrop-blur-sm transition-colors"><Pencil size={14} /></button>
+                        <button onClick={() => setEditApp(a)} className="p-1.5 bg-black/50 hover:bg-amber-700 text-white rounded-md backdrop-blur-sm transition-colors"><Pencil size={14} /></button>
                         <button onClick={() => handleDelete('apps', a.id)} className="p-1.5 bg-black/50 hover:bg-red-500 text-white rounded-md backdrop-blur-sm transition-colors"><Trash2 size={14} /></button>
                       </div>
                     </div>
                     <div className="p-4 flex flex-col flex-1">
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-[10px] text-purple-400 uppercase tracking-wider font-bold">{a.category} • {a.action_id}</span>
+                        <span className="text-[10px] text-amber-500 uppercase tracking-wider font-bold">{a.category} • {a.action_id}</span>
                         {a.credit_cost != null && (
                           <span className="flex items-center gap-1 text-yellow-400 text-[10px] font-bold">
                             <Coins size={10} />{a.credit_cost} cr
@@ -390,22 +390,22 @@ export default function AdminDashboard() {
             <div className="space-y-6 animate-[fadeInUp_0.4s_ease-out]">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-2xl font-bold font-display">Manage Pricing Plans</h2>
-                <button onClick={() => setEditPlan({ id: "", name: "New Plan", price: 0, credits: 0, period: "mo", features: [], is_popular: 0 })} className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm font-semibold transition-colors">
+                <button onClick={() => setEditPlan({ id: "", name: "New Plan", price: 0, credits: 0, period: "mo", features: [], is_popular: 0 })} className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-lg text-sm font-semibold transition-colors">
                   <Plus size={16} /> Add Plan
                 </button>
               </div>
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {plans.map((p) => (
-                  <div key={p.id} className={`bg-[#18181b] border ${p.is_popular ? 'border-purple-500' : 'border-white/5'} rounded-2xl p-6 flex flex-col relative group hover:-translate-y-1 transition-transform`}>
+                  <div key={p.id} className={`bg-[#18181b] border ${p.is_popular ? 'border-amber-600' : 'border-white/5'} rounded-2xl p-6 flex flex-col relative group hover:-translate-y-1 transition-transform`}>
                     {p.is_popular ? (
-                      <div className="absolute top-0 right-6 -translate-y-1/2 px-3 py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[10px] font-bold rounded-full uppercase tracking-widest shadow-lg">
+                      <div className="absolute top-0 right-6 -translate-y-1/2 px-3 py-1 bg-gradient-to-r from-amber-700 to-yellow-600 text-white text-[10px] font-bold rounded-full uppercase tracking-widest shadow-lg">
                         Most Popular
                       </div>
                     ) : null}
                     <div className="flex justify-between items-start mb-4">
                       <h3 className="text-xl font-bold">{p.name}</h3>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button onClick={() => setEditPlan(p)} className="p-1.5 bg-white/5 hover:bg-indigo-500/20 text-zinc-400 hover:text-indigo-400 rounded-md transition-colors"><Pencil size={14} /></button>
+                        <button onClick={() => setEditPlan(p)} className="p-1.5 bg-white/5 hover:bg-amber-600/20 text-zinc-400 hover:text-amber-500 rounded-md transition-colors"><Pencil size={14} /></button>
                         <button onClick={() => handleDelete('plans', p.id)} className="p-1.5 bg-white/5 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-md transition-colors"><Trash2 size={14} /></button>
                       </div>
                     </div>
@@ -420,7 +420,7 @@ export default function AdminDashboard() {
                     <ul className="flex flex-col gap-3 flex-1 mb-6">
                       {p.features.map((f, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm text-zinc-400">
-                          <CheckCircle2 size={16} className="text-purple-400 shrink-0 mt-0.5" />
+                          <CheckCircle2 size={16} className="text-amber-500 shrink-0 mt-0.5" />
                           <span className="leading-snug">{f}</span>
                         </li>
                       ))}
@@ -444,10 +444,10 @@ export default function AdminDashboard() {
                             placeholder="Search prompts..." 
                             value={promptSearch}
                             onChange={(e) => setPromptSearch(e.target.value)}
-                            className="bg-[#121214] border border-white/10 rounded-xl pl-9 pr-4 py-2 w-full text-sm text-white focus:border-purple-500 outline-none transition-colors"
+                            className="bg-[#121214] border border-white/10 rounded-xl pl-9 pr-4 py-2 w-full text-sm text-white focus:border-amber-600 outline-none transition-colors"
                          />
                     </div>
-                    <button onClick={() => setEditPrompt({ id: "", title: "New Prompt", prompt_text: "", type: "Exterior" })} className="flex shrink-0 items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 rounded-lg text-sm font-semibold transition-colors">
+                    <button onClick={() => setEditPrompt({ id: "", title: "New Prompt", prompt_text: "", type: "Exterior" })} className="flex shrink-0 items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 rounded-lg text-sm font-semibold transition-colors">
                       <Plus size={16} /> Add Prompt
                     </button>
                 </div>
@@ -466,7 +466,7 @@ export default function AdminDashboard() {
                          </div>
                        </div>
                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                         <button onClick={() => setEditPrompt(p)} className="p-1.5 bg-white/5 hover:bg-indigo-500/20 text-zinc-400 hover:text-indigo-400 rounded-md transition-colors"><Pencil size={14} /></button>
+                         <button onClick={() => setEditPrompt(p)} className="p-1.5 bg-white/5 hover:bg-amber-600/20 text-zinc-400 hover:text-amber-500 rounded-md transition-colors"><Pencil size={14} /></button>
                          <button onClick={() => handleDelete('prompts', p.id)} className="p-1.5 bg-white/5 hover:bg-red-500/20 text-zinc-400 hover:text-red-400 rounded-md transition-colors"><Trash2 size={14} /></button>
                        </div>
                      </div>
@@ -551,16 +551,16 @@ export default function AdminDashboard() {
               <button onClick={() => setEditHero(null)} className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10"><X size={18} /></button>
             </div>
             <form onSubmit={handleSaveHero} className="p-6 flex flex-col gap-4">
-              <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Title</label><input required value={editHero.title} onChange={e=>setEditHero({...editHero, title: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" /></div>
+              <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Title</label><input required value={editHero.title} onChange={e=>setEditHero({...editHero, title: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors" /></div>
               <div>
                 <label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider flex justify-between">
                   <span>Image URL</span>
-                  <label className="cursor-pointer text-indigo-400 hover:text-indigo-300 flex items-center gap-1"><Upload size={12}/>Upload<input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, setEditHero, "image_url")}/></label>
+                  <label className="cursor-pointer text-amber-500 hover:text-amber-300 flex items-center gap-1"><Upload size={12}/>Upload<input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, setEditHero, "image_url")}/></label>
                 </label>
-                <input required value={editHero.image_url} onChange={e=>setEditHero({...editHero, image_url: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" />
+                <input required value={editHero.image_url} onChange={e=>setEditHero({...editHero, image_url: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors" />
                 {editHero.image_url && <div className="mt-3 aspect-video bg-[#121214] border border-white/5 rounded-xl overflow-hidden"><img src={editHero.image_url} className="w-full h-full object-cover"/></div>}
               </div>
-              <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={()=>setEditHero(null)} className="px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white/5 transition-colors">Cancel</button><button type="submit" className="px-6 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl text-sm font-semibold text-white hover:opacity-90 shadow-lg flex items-center gap-2"><Save size={16} /> Save</button></div>
+              <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={()=>setEditHero(null)} className="px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white/5 transition-colors">Cancel</button><button type="submit" className="px-6 py-2 bg-gradient-to-r from-amber-700 to-yellow-600 rounded-xl text-sm font-semibold text-white hover:opacity-90 shadow-lg flex items-center gap-2"><Save size={16} /> Save</button></div>
             </form>
           </div>
         </div>
@@ -575,13 +575,13 @@ export default function AdminDashboard() {
               <button onClick={() => setEditTool(null)} className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10"><X size={18} /></button>
             </div>
             <form onSubmit={handleSaveTool} className="p-6 flex flex-col gap-4">
-              <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Title</label><input required value={editTool.title} onChange={e=>setEditTool({...editTool, title: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" /></div>
-              <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Description</label><textarea required rows={3} value={editTool.description} onChange={e=>setEditTool({...editTool, description: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors resize-none" /></div>
+              <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Title</label><input required value={editTool.title} onChange={e=>setEditTool({...editTool, title: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors" /></div>
+              <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Description</label><textarea required rows={3} value={editTool.description} onChange={e=>setEditTool({...editTool, description: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors resize-none" /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Icon (Lucide name)</label><input required value={editTool.icon} onChange={e=>setEditTool({...editTool, icon: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" /></div>
-                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Action ID</label><input required value={editTool.action_id} onChange={e=>setEditTool({...editTool, action_id: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" /></div>
+                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Icon (Lucide name)</label><input required value={editTool.icon} onChange={e=>setEditTool({...editTool, icon: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors" /></div>
+                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Action ID</label><input required value={editTool.action_id} onChange={e=>setEditTool({...editTool, action_id: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors" /></div>
               </div>
-              <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={()=>setEditTool(null)} className="px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white/5 transition-colors">Cancel</button><button type="submit" className="px-6 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl text-sm font-semibold text-white hover:opacity-90 shadow-lg flex items-center gap-2"><Save size={16} /> Save</button></div>
+              <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={()=>setEditTool(null)} className="px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white/5 transition-colors">Cancel</button><button type="submit" className="px-6 py-2 bg-gradient-to-r from-amber-700 to-yellow-600 rounded-xl text-sm font-semibold text-white hover:opacity-90 shadow-lg flex items-center gap-2"><Save size={16} /> Save</button></div>
             </form>
           </div>
         </div>
@@ -596,18 +596,18 @@ export default function AdminDashboard() {
               <button onClick={() => setEditApp(null)} className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10"><X size={18} /></button>
             </div>
             <form onSubmit={handleSaveApp} className="p-6 flex flex-col gap-4">
-              <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Title</label><input required value={editApp.title} onChange={e=>setEditApp({...editApp, title: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" /></div>
+              <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Title</label><input required value={editApp.title} onChange={e=>setEditApp({...editApp, title: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors" /></div>
               <div>
                 <label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider flex justify-between">
                   <span>Image URL</span>
-                  <label className="cursor-pointer text-indigo-400 hover:text-indigo-300 flex items-center gap-1"><Upload size={12}/>Upload<input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, setEditApp, "image_url")}/></label>
+                  <label className="cursor-pointer text-amber-500 hover:text-amber-300 flex items-center gap-1"><Upload size={12}/>Upload<input type="file" className="hidden" accept="image/*" onChange={e => handleFileUpload(e, setEditApp, "image_url")}/></label>
                 </label>
-                <input required value={editApp.image_url} onChange={e=>setEditApp({...editApp, image_url: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" />
+                <input required value={editApp.image_url} onChange={e=>setEditApp({...editApp, image_url: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors" />
               </div>
-              <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Description</label><textarea required rows={2} value={editApp.description} onChange={e=>setEditApp({...editApp, description: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors resize-none" /></div>
+              <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Description</label><textarea required rows={2} value={editApp.description} onChange={e=>setEditApp({...editApp, description: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors resize-none" /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Category</label><input required value={editApp.category} onChange={e=>setEditApp({...editApp, category: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" /></div>
-                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Action ID</label><input required value={editApp.action_id} onChange={e=>setEditApp({...editApp, action_id: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" /></div>
+                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Category</label><input required value={editApp.category} onChange={e=>setEditApp({...editApp, category: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors" /></div>
+                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Action ID</label><input required value={editApp.action_id} onChange={e=>setEditApp({...editApp, action_id: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors" /></div>
               </div>
               <div>
                 <label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider flex items-center gap-2">
@@ -623,7 +623,7 @@ export default function AdminDashboard() {
                 />
                 <p className="text-[11px] text-zinc-500 mt-1">This will be shown on the app card. Users will be charged this many credits per use.</p>
               </div>
-              <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={()=>setEditApp(null)} className="px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white/5 transition-colors">Cancel</button><button type="submit" className="px-6 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl text-sm font-semibold text-white hover:opacity-90 shadow-lg flex items-center gap-2"><Save size={16} /> Save</button></div>
+              <div className="pt-4 flex justify-end gap-3"><button type="button" onClick={()=>setEditApp(null)} className="px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white/5 transition-colors">Cancel</button><button type="submit" className="px-6 py-2 bg-gradient-to-r from-amber-700 to-yellow-600 rounded-xl text-sm font-semibold text-white hover:opacity-90 shadow-lg flex items-center gap-2"><Save size={16} /> Save</button></div>
             </form>
           </div>
         </div>
@@ -639,24 +639,24 @@ export default function AdminDashboard() {
             </div>
             <form onSubmit={handleSavePlan} className="p-6 flex flex-col gap-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Plan Name</label><input required value={editPlan.name} onChange={e=>setEditPlan({...editPlan, name: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" /></div>
+                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Plan Name</label><input required value={editPlan.name} onChange={e=>setEditPlan({...editPlan, name: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors" /></div>
                 <div>
                   <label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Highlight Status</label>
-                  <select value={editPlan.is_popular} onChange={e=>setEditPlan({...editPlan, is_popular: parseInt(e.target.value)})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors">
+                  <select value={editPlan.is_popular} onChange={e=>setEditPlan({...editPlan, is_popular: parseInt(e.target.value)})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors">
                     <option value={0}>Standard</option>
                     <option value={1}>Most Popular</option>
                   </select>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4">
-                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Price ($)</label><input type="number" step="0.01" required value={editPlan.price} onChange={e=>setEditPlan({...editPlan, price: e.target.value === "" ? "" : parseFloat(e.target.value)})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" /></div>
-                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Credits</label><input type="number" required value={editPlan.credits} onChange={e=>setEditPlan({...editPlan, credits: e.target.value === "" ? "" : parseInt(e.target.value)})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" /></div>
-                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Period</label><input required value={editPlan.period} onChange={e=>setEditPlan({...editPlan, period: e.target.value})} placeholder="mo" className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" /></div>
+                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Price ($)</label><input type="number" step="0.01" required value={editPlan.price} onChange={e=>setEditPlan({...editPlan, price: e.target.value === "" ? "" : parseFloat(e.target.value)})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors" /></div>
+                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Credits</label><input type="number" required value={editPlan.credits} onChange={e=>setEditPlan({...editPlan, credits: e.target.value === "" ? "" : parseInt(e.target.value)})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors" /></div>
+                <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Period</label><input required value={editPlan.period} onChange={e=>setEditPlan({...editPlan, period: e.target.value})} placeholder="mo" className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors" /></div>
               </div>
               <div>
                 <label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider flex justify-between">
                   <span>Features (List)</span>
-                  <button type="button" onClick={() => setEditPlan({...editPlan, features: [...editPlan.features, "New Feature"]})} className="text-indigo-400 hover:text-indigo-300">Add Feature</button>
+                  <button type="button" onClick={() => setEditPlan({...editPlan, features: [...editPlan.features, "New Feature"]})} className="text-amber-500 hover:text-amber-300">Add Feature</button>
                 </label>
                 <div className="space-y-2">
                   {editPlan.features.length === 0 && <p className="text-xs text-zinc-500 italic">No features yet. Add one!</p>}
@@ -664,7 +664,7 @@ export default function AdminDashboard() {
                     <div key={i} className="flex items-center gap-2">
                       <input value={f} onChange={e => {
                         const newF = [...editPlan.features]; newF[i] = e.target.value; setEditPlan({...editPlan, features: newF});
-                      }} className="flex-1 bg-[#121214] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:border-purple-500 outline-none" />
+                      }} className="flex-1 bg-[#121214] border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:border-amber-600 outline-none" />
                       <button type="button" onClick={() => {
                         const newF = [...editPlan.features]; newF.splice(i, 1); setEditPlan({...editPlan, features: newF});
                       }} className="p-2 text-red-400 hover:bg-red-500/10 rounded-lg"><Trash2 size={14} /></button>
@@ -672,7 +672,7 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               </div>
-              <div className="pt-4 flex justify-end gap-3 mt-4 border-t border-white/5 pt-4"><button type="button" onClick={()=>setEditPlan(null)} className="px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white/5 transition-colors">Cancel</button><button type="submit" className="px-6 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl text-sm font-semibold text-white hover:opacity-90 shadow-lg flex items-center gap-2"><Save size={16} /> Save</button></div>
+              <div className="pt-4 flex justify-end gap-3 mt-4 border-t border-white/5 pt-4"><button type="button" onClick={()=>setEditPlan(null)} className="px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white/5 transition-colors">Cancel</button><button type="submit" className="px-6 py-2 bg-gradient-to-r from-amber-700 to-yellow-600 rounded-xl text-sm font-semibold text-white hover:opacity-90 shadow-lg flex items-center gap-2"><Save size={16} /> Save</button></div>
             </form>
           </div>
         </div>
@@ -687,16 +687,16 @@ export default function AdminDashboard() {
               <button onClick={() => setEditPrompt(null)} className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10"><X size={18} /></button>
             </div>
             <form onSubmit={handleSavePrompt} className="p-6 flex flex-col gap-4">
-              <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Title (UI Name)</label><input required value={editPrompt.title} onChange={e=>setEditPrompt({...editPrompt, title: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors" placeholder="e.g. Living Room Design" /></div>
+              <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Title (UI Name)</label><input required value={editPrompt.title} onChange={e=>setEditPrompt({...editPrompt, title: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors" placeholder="e.g. Living Room Design" /></div>
               <div>
                  <label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Type</label>
-                 <select required value={editPrompt.type} onChange={e=>setEditPrompt({...editPrompt, type: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors">
+                 <select required value={editPrompt.type} onChange={e=>setEditPrompt({...editPrompt, type: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors">
                     <option value="Exterior">Exterior</option>
                     <option value="Interior">Interior</option>
                  </select>
               </div>
-              <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Prompt Context (Backend)</label><textarea required rows={4} value={editPrompt.prompt_text} onChange={e=>setEditPrompt({...editPrompt, prompt_text: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-purple-500 outline-none transition-colors resize-none" placeholder="e.g. beautiful cozy interior, 8k..." /></div>
-              <div className="pt-4 flex justify-end gap-3 border-t border-white/5 pt-4"><button type="button" onClick={()=>setEditPrompt(null)} className="px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white/5 transition-colors">Cancel</button><button type="submit" className="px-6 py-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-xl text-sm font-semibold text-white hover:opacity-90 shadow-lg flex items-center gap-2"><Save size={16} /> Save</button></div>
+              <div><label className="text-xs font-semibold text-zinc-500 mb-1 block uppercase tracking-wider">Prompt Context (Backend)</label><textarea required rows={4} value={editPrompt.prompt_text} onChange={e=>setEditPrompt({...editPrompt, prompt_text: e.target.value})} className="w-full bg-[#121214] border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-amber-600 outline-none transition-colors resize-none" placeholder="e.g. beautiful cozy interior, 8k..." /></div>
+              <div className="pt-4 flex justify-end gap-3 border-t border-white/5 pt-4"><button type="button" onClick={()=>setEditPrompt(null)} className="px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white/5 transition-colors">Cancel</button><button type="submit" className="px-6 py-2 bg-gradient-to-r from-amber-700 to-yellow-600 rounded-xl text-sm font-semibold text-white hover:opacity-90 shadow-lg flex items-center gap-2"><Save size={16} /> Save</button></div>
             </form>
           </div>
         </div>
