@@ -1,46 +1,57 @@
 "use client";
 
-import { Handle, Position, useReactFlow, useNodeId } from "@xyflow/react";
-import { Type, Image as ImageIcon, X, Upload, Plus } from "lucide-react";
-import { useRef, useState, useEffect } from "react";
-import { v4 as uuidv4 } from "uuid";
+import { Handle, Position, useReactFlow, useNodeId, useEdges } from "@xyflow/react";
+import { Type, Image as ImageIcon, Video, X } from "lucide-react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import {
-  compressImageFile,
-  loadLocalRefs,
-  MAX_REFERENCE_IMAGES,
-  saveLocalRefs,
+  loadCreationImage,
+  type WorkspaceReference,
 } from "@/lib/workspace/graphUtils";
 
-const LS_KEY = (id: string) => `ws_img_${id}`;
-
 export default function PromptNode({ data, selected }: { data: any; selected?: boolean }) {
-  const { updateNodeData } = useReactFlow();
+  const { updateNodeData, getNode, setEdges } = useReactFlow();
   const nodeId = useNodeId();
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const edges = useEdges();
   const [dbPrompts, setDbPrompts] = useState<any[]>([]);
 
   const [localPrompt, setLocalPrompt] = useState<string>(data.prompt || data.label || "");
   const [perspective, setPerspective] = useState<string>(data.perspective || "Custom Scene");
   const [showStyles, setShowStyles] = useState(false);
-  const [localRefs, setLocalRefs] = useState<{ id: string; b64: string }[]>([]);
+  const [linkedCreations, setLinkedCreations] = useState<WorkspaceReference[]>([]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const refreshLinkedCreations = useCallback(() => {
+    if (!nodeId) return;
+    const incoming = edges.filter(
+      (e) => e.target === nodeId && (e.targetHandle === "image-in" || (e.targetHandle || "").startsWith("image")),
+    );
+    const refs: WorkspaceReference[] = [];
+    let i = 1;
+    for (const edge of incoming) {
+      const src = getNode(edge.source);
+      if (!src || src.type !== "creationNode") continue;
+      const b64 = loadCreationImage(src.id);
+      if (!b64) continue;
+      const creationNumber = Number(src.data?.creationNumber) || i;
+      refs.push({
+        id: src.id,
+        index: i,
+        name: `Creation #${creationNumber}`,
+        mention: `@Creation #${creationNumber}`,
+        source: "creation",
+        sourceNodeId: src.id,
+        creationNumber,
+        thumb: b64,
+        b64,
+      });
+      i += 1;
+    }
+    setLinkedCreations(refs);
+  }, [nodeId, edges, getNode]);
 
   useEffect(() => {
-    if (!nodeId) return;
-    const fromStore = loadLocalRefs(nodeId);
-    if (fromStore.length) {
-      setLocalRefs(fromStore);
-      return;
-    }
-    // Migrate legacy single image
-    const legacy = data.compressedImageB64 || localStorage.getItem(LS_KEY(nodeId));
-    if (legacy) {
-      const migrated = [{ id: uuidv4(), b64: String(legacy) }];
-      saveLocalRefs(nodeId, migrated);
-      setLocalRefs(migrated);
-      updateNodeData(nodeId, { compressedImageB64: String(legacy), localRefCount: 1 });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodeId]);
+    refreshLinkedCreations();
+  }, [refreshLinkedCreations]);
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -79,42 +90,33 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
     return acc;
   }, {});
 
-  const persistRefs = (next: { id: string; b64: string }[]) => {
-    if (!nodeId) return;
-    setLocalRefs(next);
-    saveLocalRefs(nodeId, next);
-    if (next[0]) {
-      localStorage.setItem(LS_KEY(nodeId), next[0].b64);
-      updateNodeData(nodeId, { compressedImageB64: next[0].b64, localRefCount: next.length });
+  const insertMention = (mention: string) => {
+    const el = textareaRef.current;
+    const current = localPrompt;
+    let next: string;
+    if (el && typeof el.selectionStart === "number") {
+      const start = el.selectionStart;
+      const end = el.selectionEnd;
+      const before = current.slice(0, start);
+      const after = current.slice(end);
+      const needsSpace = before.length > 0 && !before.endsWith(" ") && !before.endsWith("\n");
+      next = `${before}${needsSpace ? " " : ""}${mention} ${after}`;
     } else {
-      localStorage.removeItem(LS_KEY(nodeId));
-      updateNodeData(nodeId, { compressedImageB64: null, imageB64: null, localRefCount: 0 });
+      const needsSpace = current.length > 0 && !current.endsWith(" ");
+      next = `${current}${needsSpace ? " " : ""}${mention} `;
     }
-    window.dispatchEvent(new Event("trigger-workspace-save"));
+    setLocalPrompt(next);
+    if (nodeId) {
+      updateNodeData(nodeId, { prompt: next });
+      window.dispatchEvent(new Event("trigger-workspace-save"));
+    }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length || !nodeId) return;
-
-    const room = MAX_REFERENCE_IMAGES - localRefs.length;
-    const toAdd = files.slice(0, room);
-    const next = [...localRefs];
-    for (const file of toAdd) {
-      try {
-        const b64 = await compressImageFile(file);
-        next.push({ id: uuidv4(), b64 });
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    persistRefs(next);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const removeImage = (id: string) => {
-    persistRefs(localRefs.filter((r) => r.id !== id));
-    if (fileInputRef.current) fileInputRef.current.value = "";
+  const unlinkCreation = (creationId: string) => {
+    if (!nodeId) return;
+    setEdges((eds) =>
+      eds.filter((e) => !(e.target === nodeId && e.source === creationId && e.targetHandle === "image-in")),
+    );
   };
 
   return (
@@ -130,8 +132,42 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
         <span className="font-bold text-xs">Text</span>
       </div>
 
-      <div className="absolute -right-12 top-1/2 -translate-y-1/2 flex flex-col gap-3">
-        <div className="relative group" title="Text output">
+      {/* Magnific left ports: text / video / image (Assets connect here) */}
+      <div className="absolute -left-12 top-1/2 -translate-y-1/2 flex flex-col gap-3">
+        <div className="relative group" title="Text input">
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="text-in"
+            className="!w-8 !h-8 !bg-[#2a2a2e] !border-none !rounded-full flex items-center justify-center hover:!bg-[#35353a] transition-colors cursor-crosshair !static !transform-none"
+          >
+            <Type size={14} className="text-gray-400 group-hover:text-white pointer-events-none" />
+          </Handle>
+        </div>
+        <div className="relative group" title="Video (soon)">
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="video-in"
+            className="!w-8 !h-8 !bg-[#2a2a2e] !border-none !rounded-full flex items-center justify-center hover:!bg-[#35353a] transition-colors cursor-crosshair !static !transform-none opacity-40"
+          >
+            <Video size={14} className="text-gray-400 pointer-events-none" />
+          </Handle>
+        </div>
+        <div className="relative group" title="Connect Creation / Assets here">
+          <Handle
+            type="target"
+            position={Position.Left}
+            id="image-in"
+            className="!w-8 !h-8 !bg-[#1c1c1f] !border-2 !border-blue-500/50 !rounded-full flex items-center justify-center hover:!bg-blue-500/20 transition-colors cursor-crosshair !static !transform-none"
+          >
+            <ImageIcon size={14} className="text-blue-400 group-hover:text-white pointer-events-none" />
+          </Handle>
+        </div>
+      </div>
+
+      <div className="absolute -right-12 top-1/2 -translate-y-1/2">
+        <div className="relative group" title="Text output → Image Generator">
           <Handle
             type="source"
             position={Position.Right}
@@ -141,73 +177,68 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
             <Type size={14} className="text-blue-400 group-hover:text-white pointer-events-none" />
           </Handle>
         </div>
-        {localRefs.length > 0 && (
-          <div className="relative group" title="Reference images output">
-            <Handle
-              type="source"
-              position={Position.Right}
-              id="image-out"
-              className="!w-8 !h-8 !bg-[#1c1c1f] !border-2 !border-purple-500/50 !rounded-full flex items-center justify-center hover:!bg-purple-500/20 transition-colors cursor-crosshair !static !transform-none"
-            >
-              <ImageIcon size={14} className="text-purple-400 group-hover:text-white pointer-events-none" />
-            </Handle>
+      </div>
+
+      {/* Linked Creations strip */}
+      {linkedCreations.length > 0 && (
+        <div className="px-3 pt-3 border-b border-white/5 pb-3">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+              Linked assets
+            </span>
+            <span className="text-[10px] text-zinc-600">Click to insert @mention</span>
           </div>
-        )}
-      </div>
-
-      <input
-        type="file"
-        ref={fileInputRef}
-        className="hidden"
-        accept="image/*"
-        multiple
-        onChange={(e) => void handleImageUpload(e)}
-      />
-
-      <div className="px-3 pt-3 border-b border-white/5 pb-3">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-            References {localRefs.length ? `(${localRefs.length})` : ""}
-          </span>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          {localRefs.map((ref, i) => (
-            <div
-              key={ref.id}
-              className="relative group w-14 h-14 rounded-xl overflow-hidden border border-white/10 bg-[#0a0a0c]"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={ref.b64} alt={`Ref ${i + 1}`} className="w-full h-full object-cover" />
-              <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[9px] font-bold text-white text-center py-0.5">
-                {i + 1}
-              </span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {linkedCreations.map((ref) => (
               <button
+                key={ref.id}
                 type="button"
-                onClick={() => removeImage(ref.id)}
-                className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100"
+                title={`Insert ${ref.mention}`}
+                onClick={() => insertMention(ref.mention)}
+                className="relative group w-14 h-14 rounded-xl overflow-hidden border border-white/10 hover:border-blue-400/60 bg-[#0a0a0c]"
               >
-                <X size={10} />
+                {ref.thumb ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={ref.thumb} alt={ref.name} className="w-full h-full object-cover" />
+                ) : null}
+                <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[8px] font-bold text-white text-center py-0.5 truncate px-0.5">
+                  #{ref.creationNumber}
+                </span>
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (ref.sourceNodeId) unlinkCreation(ref.sourceNodeId);
+                  }}
+                  className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100"
+                >
+                  <X size={10} />
+                </span>
               </button>
-            </div>
-          ))}
-          {localRefs.length < MAX_REFERENCE_IMAGES && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="w-14 h-14 rounded-xl border border-dashed border-white/15 hover:border-blue-400/50 flex flex-col items-center justify-center text-zinc-500 hover:text-blue-300 transition-colors"
-            >
-              {localRefs.length ? <Plus size={16} /> : <Upload size={16} />}
-              <span className="text-[9px] mt-0.5">{localRefs.length ? "Add" : "Upload"}</span>
-            </button>
-          )}
+            ))}
+          </div>
+          <div className="flex flex-wrap gap-1 mt-2">
+            {linkedCreations.map((ref) => (
+              <button
+                key={`chip-${ref.id}`}
+                type="button"
+                onClick={() => insertMention(ref.mention)}
+                className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/20 hover:bg-blue-500/25"
+              >
+                {ref.mention}
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="p-1">
         <textarea
+          ref={textareaRef}
           key={nodeId}
           className="w-full bg-transparent text-sm text-gray-300 p-4 focus:outline-none resize-none h-[140px] custom-scrollbar rounded-2xl"
-          placeholder='Describe your scene — e.g. "Modern villa at golden hour, photorealistic"'
+          placeholder={'Try "Happy dog with sunglasses and floating ring"'}
           value={localPrompt}
           onChange={(e) => {
             setLocalPrompt(e.target.value);

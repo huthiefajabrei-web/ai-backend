@@ -42,6 +42,9 @@ import {
   replaceInputEdge,
   SPOTLIGHT_NODES,
   filterSpotlightForPort,
+  nextCreationNumber,
+  compressImageFile,
+  saveCreationImage,
   type SpotlightNodeOption,
   PORT_COLORS,
 } from "@/lib/workspace/graphUtils";
@@ -51,10 +54,12 @@ import FloatingToolbar from "./FloatingToolbar";
 import Spotlight from "./Spotlight";
 import PromptNode from "./nodes/PromptNode";
 import ImageNode from "./nodes/ImageNode";
+import CreationNode from "./nodes/CreationNode";
 
 const nodeTypes: NodeTypes = {
   promptNode: PromptNode,
   imageNode: ImageNode,
+  creationNode: CreationNode,
 };
 
 const initialNodes: any[] = [];
@@ -93,10 +98,15 @@ function sanitizeNodes(nodes: any[]): any[] {
   }));
 }
 
-function initialDataForType(type: string): Record<string, any> {
-  if (type === "promptNode") return { prompt: "", perspective: "Custom Scene" };
-  if (type === "imageNode") return { imageUrls: [], isLoading: false, aspectRatio: "16:9", imageCount: 1 };
-  return {};
+function initialDataForType(type: string, extras?: Record<string, any>): Record<string, any> {
+  if (type === "promptNode") return { prompt: "", perspective: "Custom Scene", ...extras };
+  if (type === "imageNode") {
+    return { imageUrls: [], isLoading: false, aspectRatio: "16:9", imageCount: 1, ...extras };
+  }
+  if (type === "creationNode") {
+    return { label: "Creation #1", creationNumber: 1, hasImage: false, ...extras };
+  }
+  return { ...extras };
 }
 
 type PendingConnect = {
@@ -129,6 +139,9 @@ function Flow() {
   const [spotlightPos, setSpotlightPos] = useState<{ x: number; y: number } | null>(null);
   const [spotlightTitle, setSpotlightTitle] = useState("Add a node");
   const pendingConnectRef = useRef<PendingConnect | null>(null);
+  const assetFileInputRef = useRef<HTMLInputElement>(null);
+  const pendingAssetConnectRef = useRef<PendingConnect | null>(null);
+  const pendingAssetPositionRef = useRef<{ x: number; y: number } | null>(null);
 
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
@@ -367,6 +380,94 @@ function Flow() {
     [openSpotlight],
   );
 
+  const createCreationNodesFromFiles = useCallback(
+    async (files: FileList | File[], position?: { x: number; y: number }, pending?: PendingConnect | null) => {
+      const instance = reactFlowInstanceRef.current;
+      if (!instance) return;
+
+      const list = Array.from(files).filter((f) => f.type.startsWith("image/"));
+      if (!list.length) return;
+
+      const basePos =
+        position ||
+        instance.screenToFlowPosition({
+          x: window.innerWidth / 2,
+          y: window.innerHeight / 2,
+        });
+
+      let number = nextCreationNumber(nodesRef.current);
+      const newNodes: any[] = [];
+      const newEdges: Edge[] = [];
+
+      for (let i = 0; i < list.length; i++) {
+        const file = list[i];
+        const id = uuidv4();
+        const creationNumber = number++;
+        try {
+          const b64 = await compressImageFile(file, 1280, 0.85);
+          saveCreationImage(id, b64);
+          const img = await new Promise<{ w: number; h: number }>((resolve) => {
+            const el = new window.Image();
+            el.onload = () => resolve({ w: el.naturalWidth, h: el.naturalHeight });
+            el.onerror = () => resolve({ w: 0, h: 0 });
+            el.src = b64;
+          });
+
+          newNodes.push({
+            id,
+            type: "creationNode",
+            position: { x: basePos.x + i * 40, y: basePos.y + i * 40 },
+            data: {
+              label: `Creation #${creationNumber}`,
+              creationNumber,
+              hasImage: true,
+              width: img.w,
+              height: img.h,
+            },
+          });
+
+          if (pending?.fromHandleType === "target" && pending.fromHandleId?.startsWith("image")) {
+            const connection: Connection = {
+              source: id,
+              sourceHandle: "image-out",
+              target: pending.fromNodeId,
+              targetHandle: pending.fromHandleId,
+            };
+            const allNodes = [...nodesRef.current, ...newNodes];
+            if (isValidWorkspaceConnection(connection, allNodes, [...edgesRef.current, ...newEdges])) {
+              newEdges.push({
+                id: `e-${id}-${pending.fromNodeId}-image`,
+                ...connection,
+                source: id,
+                target: pending.fromNodeId,
+                ...edgeStyleForConnection(connection),
+              });
+            }
+          }
+        } catch (err) {
+          console.error("Failed to import asset", err);
+        }
+      }
+
+      if (newNodes.length) {
+        setNodes((nds) => nds.concat(newNodes));
+        if (newEdges.length) setEdges((eds) => {
+          let next = eds;
+          for (const e of newEdges) next = replaceInputEdge(next, e);
+          return next;
+        });
+        triggerSave();
+      }
+    },
+    [setNodes, setEdges, triggerSave],
+  );
+
+  const openAssetPicker = useCallback((pending?: PendingConnect | null, position?: { x: number; y: number } | null) => {
+    pendingAssetConnectRef.current = pending ?? null;
+    pendingAssetPositionRef.current = position ?? null;
+    assetFileInputRef.current?.click();
+  }, []);
+
   const placeNodeFromSpotlight = useCallback(
     (option: SpotlightNodeOption) => {
       const instance = reactFlowInstanceRef.current;
@@ -383,12 +484,27 @@ function Flow() {
         y: screen.y,
       });
 
+      // Magnific: Assets / Upload → file picker → Creation node(s)
+      if (option.type === "creationNode") {
+        closeSpotlight();
+        openAssetPicker(pending, position);
+        return;
+      }
+
       const newId = uuidv4();
+      const extras =
+        option.type === "creationNode"
+          ? {
+              creationNumber: nextCreationNumber(nodesRef.current),
+              label: `Creation #${nextCreationNumber(nodesRef.current)}`,
+            }
+          : undefined;
+
       const newNode = {
         id: newId,
         type: option.type,
         position,
-        data: initialDataForType(option.type),
+        data: initialDataForType(option.type, extras),
       };
 
       setNodes((nds) => nds.concat(newNode));
@@ -434,7 +550,7 @@ function Flow() {
       closeSpotlight();
       triggerSave();
     },
-    [setNodes, setEdges, closeSpotlight, triggerSave],
+    [setNodes, setEdges, closeSpotlight, triggerSave, openAssetPicker],
   );
 
   const handleRunWorkflow = useCallback(async () => {
@@ -540,10 +656,26 @@ function Flow() {
         x: window.innerWidth / 2,
         y: window.innerHeight / 2,
       });
-      setNodes((nds) => nds.concat({ id: uuidv4(), type, position, data: initialDataForType(type) }));
+
+      if (type === "creationNode" || type === "assets" || type === "upload") {
+        openAssetPicker(null, position);
+        return;
+      }
+
+      const extras =
+        type === "creationNode"
+          ? {
+              creationNumber: nextCreationNumber(nodesRef.current),
+              label: `Creation #${nextCreationNumber(nodesRef.current)}`,
+            }
+          : undefined;
+
+      setNodes((nds) =>
+        nds.concat({ id: uuidv4(), type, position, data: initialDataForType(type, extras) }),
+      );
       triggerSave();
     },
-    [reactFlowInstance, setNodes, triggerSave],
+    [reactFlowInstance, setNodes, triggerSave, openAssetPicker],
   );
 
   if (!spaceId) return null;
@@ -575,6 +707,27 @@ function Flow() {
 
   return (
     <div className="flex h-screen w-screen bg-[#09090b] overflow-hidden text-gray-200 font-sans relative">
+      <input
+        ref={assetFileInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        className="hidden"
+        onChange={(e) => {
+          const files = e.target.files;
+          if (files?.length) {
+            void createCreationNodesFromFiles(
+              files,
+              pendingAssetPositionRef.current || undefined,
+              pendingAssetConnectRef.current,
+            );
+          }
+          pendingAssetConnectRef.current = null;
+          pendingAssetPositionRef.current = null;
+          e.target.value = "";
+        }}
+      />
+
       <div className="absolute top-0 left-0 right-0 h-16 z-50 flex items-center justify-between px-6 pointer-events-none">
         <div className="flex items-center gap-4 pointer-events-auto">
           <button
@@ -749,9 +902,8 @@ function Flow() {
 
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none hidden lg:block">
         <div className="bg-[#121214]/90 border border-white/10 backdrop-blur-md px-4 py-2 rounded-full text-[11px] text-zinc-400 shadow-xl">
-          <span className="text-purple-400 font-semibold">@Image1</span> ·{" "}
-          <span className="text-purple-400 font-semibold">@Image2</span> in prompt · refs on the card
-          · output appears on Image Generator
+          Assets → Creation · connect to Image Generator · use{" "}
+          <span className="text-blue-400 font-semibold">@Creation #1</span> in prompt
         </div>
       </div>
 

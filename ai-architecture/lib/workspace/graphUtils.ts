@@ -123,16 +123,63 @@ export function replaceInputEdge(edges: Edge[], newEdge: Edge): Edge[] {
 export type WorkspaceReference = {
   id: string;
   index: number;
-  /** Display name: Image 1 */
+  /** Display name: Creation #3 or Image 1 */
   name: string;
-  /** Mention token: @Image1 */
+  /** Mention token: @Creation #3 */
   mention: string;
-  source: "upload" | "edge";
+  source: "upload" | "edge" | "creation";
   sourceNodeId?: string;
+  creationNumber?: number;
   thumb?: string;
   b64?: string;
   url?: string;
 };
+
+export const CREATION_LS_KEY = (id: string) => `ws_creation_${id}`;
+
+export function loadCreationImage(nodeId: string): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(CREATION_LS_KEY(nodeId));
+}
+
+export function saveCreationImage(nodeId: string, b64: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(CREATION_LS_KEY(nodeId), b64);
+}
+
+export function nextCreationNumber(nodes: Node[]): number {
+  let max = 0;
+  for (const n of nodes) {
+    if (n.type !== "creationNode") continue;
+    const num = Number(n.data?.creationNumber) || 0;
+    if (num > max) max = num;
+  }
+  return max + 1;
+}
+
+function pushReference(
+  references: WorkspaceReference[],
+  partial: Omit<WorkspaceReference, "index" | "name" | "mention"> & {
+    name?: string;
+    mention?: string;
+    creationNumber?: number;
+  },
+) {
+  if (references.length >= MAX_REFERENCE_IMAGES) return;
+  const index = references.length + 1;
+  const creationNumber = partial.creationNumber;
+  const name =
+    partial.name ||
+    (creationNumber ? `Creation #${creationNumber}` : `Image ${index}`);
+  const mention = partial.mention || (creationNumber ? `@Creation #${creationNumber}` : `@Image${index}`);
+  references.push({
+    ...partial,
+    index,
+    name,
+    mention,
+    creationNumber,
+  });
+}
 
 export interface ResolvedImageInputs {
   promptText: string;
@@ -177,11 +224,26 @@ export function saveLocalRefs(nodeId: string, refs: LocalRefStored[]) {
   localStorage.setItem(`ws_refs_${nodeId}`, JSON.stringify(refs));
 }
 
-/** Expand @Image1 / @Image 1 → Image 1 for the model */
-export function expandImageMentions(prompt: string): string {
-  return prompt
+/** Expand @Creation #4 / @Image1 → stable labels for the model */
+export function expandImageMentions(
+  prompt: string,
+  references: WorkspaceReference[] = [],
+): string {
+  let body = prompt;
+
+  // Map @Creation #N → "Creation #N (reference image K)"
+  for (const ref of references) {
+    if (!ref.creationNumber) continue;
+    const re = new RegExp(`@Creation\\s*#?\\s*${ref.creationNumber}\\b`, "gi");
+    body = body.replace(re, `${ref.name} (reference image ${ref.index})`);
+  }
+
+  body = body
+    .replace(/@Creation\s*#?\s*(\d+)/gi, "Creation #$1")
     .replace(/@Image\s*(\d+)/gi, "Image $1")
     .replace(/@img\s*(\d+)/gi, "Image $1");
+
+  return body;
 }
 
 /** Build prompt prefix so the model knows how numbered references map */
@@ -189,21 +251,60 @@ export function buildReferenceAwarePrompt(
   userPrompt: string,
   references: WorkspaceReference[],
 ): string {
-  const body = expandImageMentions(userPrompt).trim();
+  const body = expandImageMentions(userPrompt, references).trim();
   if (!references.length) return body;
 
   const legend = references
-    .map((r) => `${r.name} = attached reference #${r.index}`)
+    .map((r) => `${r.name} = attached reference image ${r.index}`)
     .join("; ");
 
+  const labels = references.map((r) => r.name).join(", ");
   const instruction =
-    `You are given ${references.length} reference image(s) labeled ${references.map((r) => r.name).join(", ")}. ` +
-    `When the prompt mentions Image N or @ImageN, use that numbered reference. Mapping: ${legend}.`;
+    `You are given ${references.length} reference image(s): ${labels}. ` +
+    `When the prompt mentions @Creation #N, Creation #N, @ImageN, or Image N, use that exact reference. Mapping: ${legend}.`;
 
   return body ? `${instruction}\n\n${body}` : instruction;
 }
 
-/** Walk incoming edges + local uploads → numbered references (Magnific-style). */
+function addCreationRef(
+  references: WorkspaceReference[],
+  creationNode: Node,
+  edgeId: string,
+) {
+  const b64 = loadCreationImage(creationNode.id) || undefined;
+  const url = !b64 ? getImageUrlFromNode(creationNode) : undefined;
+  if (!b64 && !url) return;
+  const creationNumber = Number(creationNode.data?.creationNumber) || undefined;
+  pushReference(references, {
+    id: `creation_${edgeId}_${creationNode.id}`,
+    source: "creation",
+    sourceNodeId: creationNode.id,
+    creationNumber,
+    thumb: b64 || url,
+    b64,
+    url,
+  });
+}
+
+/** Collect Creation nodes wired into a Text node's image-in (Magnific). */
+function collectCreationsIntoTextNode(
+  textNodeId: string,
+  getNode: (id: string) => Node | undefined,
+  getEdges: () => Edge[],
+  references: WorkspaceReference[],
+) {
+  const incoming = getEdges().filter(
+    (e) => e.target === textNodeId && (e.targetHandle === "image-in" || (e.targetHandle || "").startsWith("image")),
+  );
+  for (const edge of incoming) {
+    const src = getNode(edge.source);
+    if (!src || src.type !== "creationNode") continue;
+    if (references.some((r) => r.sourceNodeId === src.id)) continue;
+    addCreationRef(references, src, edge.id);
+  }
+}
+
+/** Walk incoming edges + Creations + local uploads → Magnific-style references. */
 export function resolveImageNodeInputs(
   nodeId: string,
   getNode: (id: string) => Node | undefined,
@@ -221,35 +322,25 @@ export function resolveImageNodeInputs(
   // 1) Local uploads on the Image Generator card
   const localRefs = loadLocalRefs(nodeId);
   for (const local of localRefs) {
-    if (references.length >= MAX_REFERENCE_IMAGES) break;
-    const index = references.length + 1;
-    references.push({
+    pushReference(references, {
       id: local.id,
-      index,
-      name: `Image ${index}`,
-      mention: `@Image${index}`,
       source: "upload",
       thumb: local.b64,
       b64: local.b64,
     });
   }
 
-  // Also accept legacy single compressedImageB64 on image node
   const legacyLocal = node?.data?.compressedImageB64 || node?.data?.imageB64;
-  if (legacyLocal && !localRefs.length && references.length < MAX_REFERENCE_IMAGES) {
-    const index = references.length + 1;
-    references.push({
+  if (legacyLocal && !localRefs.length) {
+    pushReference(references, {
       id: `legacy_${nodeId}`,
-      index,
-      name: `Image ${index}`,
-      mention: `@Image${index}`,
       source: "upload",
       thumb: String(legacyLocal),
       b64: String(legacyLocal),
     });
   }
 
-  // 2) Connected image edges (multi-reference port)
+  // 2) Connected ports
   for (const edge of incoming) {
     const source = getNode(edge.source);
     if (!source) continue;
@@ -263,20 +354,20 @@ export function resolveImageNodeInputs(
       const chunk = String(source.data?.prompt || source.data?.label || "").trim();
       if (chunk) promptText = promptText ? `${promptText} ${chunk}`.trim() : chunk;
       if (source.data?.perspective) perspective = String(source.data.perspective);
+      // Creations wired into the Text node also become refs
+      collectCreationsIntoTextNode(source.id, getNode, getEdges, references);
     }
 
-    if (isImagePort && references.length < MAX_REFERENCE_IMAGES) {
+    if (isImagePort) {
       imageSourceIds.push(source.id);
 
-      if (source.type === "imageNode") {
+      if (source.type === "creationNode") {
+        addCreationRef(references, source, edge.id);
+      } else if (source.type === "imageNode") {
         const url = getImageUrlFromNode(source);
         if (url) {
-          const index = references.length + 1;
-          references.push({
+          pushReference(references, {
             id: `edge_${edge.id}`,
-            index,
-            name: `Image ${index}`,
-            mention: `@Image${index}`,
             source: "edge",
             sourceNodeId: source.id,
             thumb: url,
@@ -284,7 +375,6 @@ export function resolveImageNodeInputs(
           });
         }
       } else if (source.type === "promptNode") {
-        // Expand all uploads on the Text node into numbered refs
         const promptLocals = loadLocalRefs(source.id);
         const legacy = source.data?.compressedImageB64 || source.data?.imageB64;
         const payloads: { id: string; b64: string }[] = promptLocals.length
@@ -294,19 +384,15 @@ export function resolveImageNodeInputs(
             : [];
 
         for (const item of payloads) {
-          if (references.length >= MAX_REFERENCE_IMAGES) break;
-          const index = references.length + 1;
-          references.push({
+          pushReference(references, {
             id: `edge_${edge.id}_${item.id}`,
-            index,
-            name: `Image ${index}`,
-            mention: `@Image${index}`,
             source: "edge",
             sourceNodeId: source.id,
             thumb: item.b64,
             b64: item.b64,
           });
         }
+        collectCreationsIntoTextNode(source.id, getNode, getEdges, references);
       }
     }
 
@@ -412,7 +498,7 @@ export const SPOTLIGHT_NODES: SpotlightNodeOption[] = [
     description: "Write prompts and feed them to generators",
     category: "Text",
     connectSourceHandle: "text-out",
-    accepts: [],
+    accepts: ["image"],
     produces: ["text", "image"],
   },
   {
@@ -422,6 +508,24 @@ export const SPOTLIGHT_NODES: SpotlightNodeOption[] = [
     category: "Image",
     connectTargetHandle: "text-in",
     accepts: ["text", "image"],
+    produces: ["image"],
+  },
+  {
+    type: "creationNode",
+    label: "Assets",
+    description: "Choose an image from your device as a Creation reference",
+    category: "Media",
+    connectSourceHandle: "image-out",
+    accepts: [],
+    produces: ["image"],
+  },
+  {
+    type: "creationNode",
+    label: "Upload",
+    description: "Upload image(s) from your device onto the canvas",
+    category: "Media",
+    connectSourceHandle: "image-out",
+    accepts: [],
     produces: ["image"],
   },
 ];
@@ -435,16 +539,31 @@ export function filterSpotlightForPort(
   if (!kind || !fromHandleType) return options;
 
   if (fromHandleType === "source") {
-    return options
-      .filter((o) => o.accepts.includes(kind))
+    // Prefer unique options by label when same type appears twice (Assets/Upload)
+    const matched = options.filter((o) => o.accepts.includes(kind));
+    const seen = new Set<string>();
+    return matched
+      .filter((o) => {
+        const key = `${o.type}:${o.label}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
       .map((o) => ({
         ...o,
         connectTargetHandle: kind === "text" ? "text-in" : "image-in",
       }));
   }
 
-  return options
-    .filter((o) => o.produces.includes(kind))
+  const matched = options.filter((o) => o.produces.includes(kind));
+  const seen = new Set<string>();
+  return matched
+    .filter((o) => {
+      const key = `${o.type}:${o.label}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
     .map((o) => ({
       ...o,
       connectSourceHandle: kind === "text" ? "text-out" : "image-out",

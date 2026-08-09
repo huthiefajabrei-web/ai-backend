@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Type, Image as ImageIcon } from "lucide-react";
+import { Search, Type, Image as ImageIcon, Layers } from "lucide-react";
 import type { SpotlightNodeOption } from "@/lib/workspace/graphUtils";
 
 const ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
   promptNode: Type,
   imageNode: ImageIcon,
+  creationNode: Layers,
 };
 
 type SpotlightProps = {
@@ -128,7 +129,7 @@ export default function Spotlight({
               const active = i === activeIndex;
               return (
                 <button
-                  key={`${opt.type}-${opt.connectTargetHandle || opt.connectSourceHandle || "x"}`}
+                  key={`${opt.type}-${opt.label}-${opt.connectTargetHandle || opt.connectSourceHandle || "x"}`}
                   type="button"
                   onMouseEnter={() => setActiveIndex(i)}
                   onClick={() => onSelect(opt)}
@@ -140,7 +141,9 @@ export default function Spotlight({
                     className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
                       opt.type === "imageNode"
                         ? "bg-purple-500/15 text-purple-400"
-                        : "bg-blue-500/15 text-blue-400"
+                        : opt.type === "creationNode"
+                          ? "bg-sky-500/15 text-sky-400"
+                          : "bg-blue-500/15 text-blue-400"
                     }`}
                   >
                     <Icon size={16} />

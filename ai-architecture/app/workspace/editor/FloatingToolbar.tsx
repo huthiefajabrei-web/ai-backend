@@ -187,15 +187,15 @@ export default function FloatingToolbar({ onAddNode, activeTool = 'cursor', onTo
             <div>
               <h3 className="text-xs font-bold text-gray-500 mb-3 tracking-wider">MEDIA</h3>
               
-              <button onClick={() => alert('Upload coming soon!')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#27272a] transition-colors group mb-1 text-left">
-                <div className="w-8 h-8 rounded-md bg-[#2a2a2a] flex items-center justify-center text-gray-400 group-hover:bg-[#3a3a3a] transition-colors">
+              <button onClick={() => handleAddNode('creationNode')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#27272a] transition-colors group mb-1 text-left">
+                <div className="w-8 h-8 rounded-md bg-blue-500/15 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/25 transition-colors">
                   <Upload size={16} />
                 </div>
                 <span className="text-sm font-medium text-gray-200">Upload</span>
               </button>
 
-              <button onClick={() => alert('Assets coming soon!')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#27272a] transition-colors group mb-1 text-left">
-                <div className="w-8 h-8 rounded-md bg-[#2a2a2a] flex items-center justify-center text-gray-400 group-hover:bg-[#3a3a3a] transition-colors">
+              <button onClick={() => handleAddNode('creationNode')} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-[#27272a] transition-colors group mb-1 text-left">
+                <div className="w-8 h-8 rounded-md bg-blue-500/15 flex items-center justify-center text-blue-400 group-hover:bg-blue-500/25 transition-colors">
                   <Layers size={16} />
                 </div>
                 <span className="text-sm font-medium text-gray-200">Assets</span>

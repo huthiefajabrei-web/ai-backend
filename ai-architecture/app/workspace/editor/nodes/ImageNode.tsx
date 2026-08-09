@@ -335,8 +335,8 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
                   <ImageIcon size={16} />
                 </div>
               )}
-              <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[9px] font-bold text-white text-center py-0.5">
-                {ref.index}
+              <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[8px] font-bold text-white text-center py-0.5 truncate px-0.5">
+                {ref.creationNumber ? `#${ref.creationNumber}` : ref.index}
               </span>
               <span
                 role="button"
@@ -464,7 +464,7 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
             className="w-full bg-transparent text-sm text-gray-300 placeholder-gray-600 focus:outline-none"
             placeholder={
               references.length
-                ? `e.g. Keep the sofa from @Image1, wall color from @Image2…`
+                ? `e.g. Keep the sofa from ${references[0]?.mention || "@Creation #1"}…`
                 : "Prompt (or connect Text)…"
             }
             value={data.promptOverride || ""}
