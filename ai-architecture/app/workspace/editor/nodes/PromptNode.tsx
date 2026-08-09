@@ -1,8 +1,15 @@
 "use client";
 
 import { Handle, Position, useReactFlow, useNodeId } from "@xyflow/react";
-import { Type, Image as ImageIcon, X, Upload } from "lucide-react";
+import { Type, Image as ImageIcon, X, Upload, Plus } from "lucide-react";
 import { useRef, useState, useEffect } from "react";
+import { v4 as uuidv4 } from "uuid";
+import {
+  compressImageFile,
+  loadLocalRefs,
+  MAX_REFERENCE_IMAGES,
+  saveLocalRefs,
+} from "@/lib/workspace/graphUtils";
 
 const LS_KEY = (id: string) => `ws_img_${id}`;
 
@@ -15,20 +22,25 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
   const [localPrompt, setLocalPrompt] = useState<string>(data.prompt || data.label || "");
   const [perspective, setPerspective] = useState<string>(data.perspective || "Custom Scene");
   const [showStyles, setShowStyles] = useState(false);
-  const [localImageB64, setLocalImageB64] = useState<string | null>(null);
+  const [localRefs, setLocalRefs] = useState<{ id: string; b64: string }[]>([]);
 
   useEffect(() => {
-    if (data.compressedImageB64) {
-      setLocalImageB64(data.compressedImageB64);
-    } else if (nodeId) {
-      const stored = localStorage.getItem(LS_KEY(nodeId));
-      if (stored) {
-        setLocalImageB64(stored);
-        updateNodeData(nodeId, { compressedImageB64: stored });
-      }
+    if (!nodeId) return;
+    const fromStore = loadLocalRefs(nodeId);
+    if (fromStore.length) {
+      setLocalRefs(fromStore);
+      return;
+    }
+    // Migrate legacy single image
+    const legacy = data.compressedImageB64 || localStorage.getItem(LS_KEY(nodeId));
+    if (legacy) {
+      const migrated = [{ id: uuidv4(), b64: String(legacy) }];
+      saveLocalRefs(nodeId, migrated);
+      setLocalRefs(migrated);
+      updateNodeData(nodeId, { compressedImageB64: String(legacy), localRefCount: 1 });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nodeId, data.compressedImageB64]);
+  }, [nodeId]);
 
   useEffect(() => {
     const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
@@ -67,52 +79,41 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
     return acc;
   }, {});
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !nodeId) return;
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const b64 = reader.result as string;
-      const img = new window.Image();
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        let { width, height } = img;
-        const MAX_SIZE = 800;
-
-        if (width > height) {
-          if (width > MAX_SIZE) {
-            height = Math.round(height * (MAX_SIZE / width));
-            width = MAX_SIZE;
-          }
-        } else if (height > MAX_SIZE) {
-          width = Math.round(width * (MAX_SIZE / height));
-          height = MAX_SIZE;
-        }
-
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, width, height);
-          const compressedB64 = canvas.toDataURL("image/jpeg", 0.8);
-          setLocalImageB64(compressedB64);
-          localStorage.setItem(LS_KEY(nodeId), compressedB64);
-          updateNodeData(nodeId, { compressedImageB64: compressedB64 });
-          window.dispatchEvent(new Event("trigger-workspace-save"));
-        }
-      };
-      img.src = b64;
-    };
-    reader.readAsDataURL(file);
+  const persistRefs = (next: { id: string; b64: string }[]) => {
+    if (!nodeId) return;
+    setLocalRefs(next);
+    saveLocalRefs(nodeId, next);
+    if (next[0]) {
+      localStorage.setItem(LS_KEY(nodeId), next[0].b64);
+      updateNodeData(nodeId, { compressedImageB64: next[0].b64, localRefCount: next.length });
+    } else {
+      localStorage.removeItem(LS_KEY(nodeId));
+      updateNodeData(nodeId, { compressedImageB64: null, imageB64: null, localRefCount: 0 });
+    }
+    window.dispatchEvent(new Event("trigger-workspace-save"));
   };
 
-  const removeImage = () => {
-    if (!nodeId) return;
-    localStorage.removeItem(LS_KEY(nodeId));
-    setLocalImageB64(null);
-    updateNodeData(nodeId, { imageB64: null, compressedImageB64: null });
-    window.dispatchEvent(new Event("trigger-workspace-save"));
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length || !nodeId) return;
+
+    const room = MAX_REFERENCE_IMAGES - localRefs.length;
+    const toAdd = files.slice(0, room);
+    const next = [...localRefs];
+    for (const file of toAdd) {
+      try {
+        const b64 = await compressImageFile(file);
+        next.push({ id: uuidv4(), b64 });
+      } catch (err) {
+        console.error(err);
+      }
+    }
+    persistRefs(next);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeImage = (id: string) => {
+    persistRefs(localRefs.filter((r) => r.id !== id));
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -129,7 +130,6 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
         <span className="font-bold text-xs">Text</span>
       </div>
 
-      {/* Magnific: Text is a source node — outputs on the right */}
       <div className="absolute -right-12 top-1/2 -translate-y-1/2 flex flex-col gap-3">
         <div className="relative group" title="Text output">
           <Handle
@@ -141,8 +141,8 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
             <Type size={14} className="text-blue-400 group-hover:text-white pointer-events-none" />
           </Handle>
         </div>
-        {localImageB64 && (
-          <div className="relative group" title="Reference image output">
+        {localRefs.length > 0 && (
+          <div className="relative group" title="Reference images output">
             <Handle
               type="source"
               position={Position.Right}
@@ -160,31 +160,48 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
         ref={fileInputRef}
         className="hidden"
         accept="image/*"
-        onChange={handleImageUpload}
+        multiple
+        onChange={(e) => void handleImageUpload(e)}
       />
 
-      {localImageB64 ? (
-        <div className="relative group w-full h-32 border-b border-gray-800">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={localImageB64} alt="Uploaded" className="w-full h-full object-cover rounded-t-2xl" />
-          <button
-            type="button"
-            onClick={removeImage}
-            className="absolute top-2 right-2 bg-black/60 p-1.5 rounded-full text-white hover:bg-red-500/80 transition-colors opacity-0 group-hover:opacity-100"
-          >
-            <X size={14} />
-          </button>
+      <div className="px-3 pt-3 border-b border-white/5 pb-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+            References {localRefs.length ? `(${localRefs.length})` : ""}
+          </span>
         </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          className="w-full flex items-center justify-center gap-2 py-2.5 text-[11px] text-zinc-500 hover:text-zinc-300 border-b border-white/5 transition-colors"
-        >
-          <Upload size={12} />
-          Optional reference image
-        </button>
-      )}
+        <div className="flex items-center gap-2 flex-wrap">
+          {localRefs.map((ref, i) => (
+            <div
+              key={ref.id}
+              className="relative group w-14 h-14 rounded-xl overflow-hidden border border-white/10 bg-[#0a0a0c]"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={ref.b64} alt={`Ref ${i + 1}`} className="w-full h-full object-cover" />
+              <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[9px] font-bold text-white text-center py-0.5">
+                {i + 1}
+              </span>
+              <button
+                type="button"
+                onClick={() => removeImage(ref.id)}
+                className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100"
+              >
+                <X size={10} />
+              </button>
+            </div>
+          ))}
+          {localRefs.length < MAX_REFERENCE_IMAGES && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-14 h-14 rounded-xl border border-dashed border-white/15 hover:border-blue-400/50 flex flex-col items-center justify-center text-zinc-500 hover:text-blue-300 transition-colors"
+            >
+              {localRefs.length ? <Plus size={16} /> : <Upload size={16} />}
+              <span className="text-[9px] mt-0.5">{localRefs.length ? "Add" : "Upload"}</span>
+            </button>
+          )}
+        </div>
+      </div>
 
       <div className="p-1">
         <textarea

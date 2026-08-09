@@ -74,7 +74,7 @@ function sanitizeForFirestore(value: any): any {
     const cleaned: Record<string, any> = {};
     for (const [k, v] of Object.entries(value)) {
       if (v === undefined) continue;
-      if (k === "imageB64") continue;
+      if (k === "imageB64" || k === "compressedImageB64" || k === "localRefs") continue;
       if (k === "isLoading") {
         cleaned[k] = false;
         continue;
@@ -749,9 +749,9 @@ function Flow() {
 
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none hidden lg:block">
         <div className="bg-[#121214]/90 border border-white/10 backdrop-blur-md px-4 py-2 rounded-full text-[11px] text-zinc-400 shadow-xl">
-          <span className="text-blue-400 font-semibold">Text</span> · blue ·{" "}
-          <span className="text-purple-400 font-semibold">Image</span> · purple · Drag port → empty
-          space to auto-wire
+          <span className="text-purple-400 font-semibold">@Image1</span> ·{" "}
+          <span className="text-purple-400 font-semibold">@Image2</span> in prompt · refs on the card
+          · output appears on Image Generator
         </div>
       </div>
 

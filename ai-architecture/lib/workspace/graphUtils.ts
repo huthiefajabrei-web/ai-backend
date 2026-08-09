@@ -4,15 +4,23 @@ import type { Connection, Edge, Node } from "@xyflow/react";
 export type PortKind = "text" | "image";
 
 export const PORT_COLORS: Record<PortKind, string> = {
-  text: "#3b82f6", // blue — Magnific Text
-  image: "#a855f7", // purple — Magnific Image
+  text: "#3b82f6",
+  image: "#a855f7",
 };
+
+/** Max reference images per Image Generator (Magnific models typically allow 4–14) */
+export const MAX_REFERENCE_IMAGES = 8;
 
 export function portKindFromHandle(handleId?: string | null): PortKind | null {
   if (!handleId) return null;
   if (handleId.startsWith("text")) return "text";
   if (handleId.startsWith("image")) return "image";
   return null;
+}
+
+/** Image reference port accepts multiple connections (Magnific Reference input). */
+export function isMultiInputHandle(handleId?: string | null): boolean {
+  return handleId === "image-in";
 }
 
 export function wouldCreateCycle(
@@ -30,7 +38,6 @@ export function wouldCreateCycle(
     if (!adj.has(e.source)) adj.set(e.source, []);
     adj.get(e.source)!.push(e.target);
   }
-  // hypothetical edge
   if (!adj.has(source)) adj.set(source, []);
   adj.get(source)!.push(target);
 
@@ -55,7 +62,6 @@ export function wouldCreateCycle(
   return false;
 }
 
-/** Magnific-style: matching types, no self-loop, no cycles */
 export function isValidWorkspaceConnection(
   connection: Connection | Edge,
   nodes: Node[] = [],
@@ -69,15 +75,42 @@ export function isValidWorkspaceConnection(
   if (!sourceKind || !targetKind) return false;
   if (sourceKind !== targetKind) return false;
 
+  // Cap multi-reference connections
+  if (isMultiInputHandle(connection.targetHandle)) {
+    const existing = edges.filter(
+      (e) =>
+        e.target === connection.target &&
+        (e.targetHandle || null) === (connection.targetHandle || null) &&
+        !(e.source === connection.source && e.sourceHandle === connection.sourceHandle),
+    );
+    if (existing.length >= MAX_REFERENCE_IMAGES) return false;
+  }
+
   if (nodes.length && wouldCreateCycle(nodes, edges, connection)) return false;
   return true;
 }
 
 /**
- * Magnific rule: one connection per input port — replace the previous edge
- * on the same target + targetHandle.
+ * Text / single ports: replace previous edge.
+ * Image reference port: allow multiple (append; skip exact duplicate).
  */
 export function replaceInputEdge(edges: Edge[], newEdge: Edge): Edge[] {
+  if (isMultiInputHandle(newEdge.targetHandle)) {
+    const duplicate = edges.some(
+      (e) =>
+        e.source === newEdge.source &&
+        e.target === newEdge.target &&
+        (e.sourceHandle || null) === (newEdge.sourceHandle || null) &&
+        (e.targetHandle || null) === (newEdge.targetHandle || null),
+    );
+    if (duplicate) return edges;
+    const onPort = edges.filter(
+      (e) => e.target === newEdge.target && (e.targetHandle || null) === (newEdge.targetHandle || null),
+    );
+    if (onPort.length >= MAX_REFERENCE_IMAGES) return edges;
+    return [...edges, newEdge];
+  }
+
   const filtered = edges.filter((e) => {
     if (e.target !== newEdge.target) return true;
     const a = e.targetHandle || null;
@@ -87,12 +120,29 @@ export function replaceInputEdge(edges: Edge[], newEdge: Edge): Edge[] {
   return [...filtered, newEdge];
 }
 
+export type WorkspaceReference = {
+  id: string;
+  index: number;
+  /** Display name: Image 1 */
+  name: string;
+  /** Mention token: @Image1 */
+  mention: string;
+  source: "upload" | "edge";
+  sourceNodeId?: string;
+  thumb?: string;
+  b64?: string;
+  url?: string;
+};
+
 export interface ResolvedImageInputs {
   promptText: string;
   perspective: string;
+  /** @deprecated use references[0] */
   referenceImageB64?: string;
+  /** @deprecated use references[0] */
   referenceImageUrl?: string;
   referenceLabel?: string;
+  references: WorkspaceReference[];
   textSourceIds: string[];
   imageSourceIds: string[];
 }
@@ -105,22 +155,101 @@ function getImageUrlFromNode(node: Node | undefined): string | undefined {
   return undefined;
 }
 
-/** Walk incoming edges and merge text + image inputs (Magnific workflow resolution). */
+export type LocalRefStored = {
+  id: string;
+  b64: string;
+};
+
+export function loadLocalRefs(nodeId: string): LocalRefStored[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(`ws_refs_${nodeId}`);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((r) => r?.id && r?.b64) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalRefs(nodeId: string, refs: LocalRefStored[]) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(`ws_refs_${nodeId}`, JSON.stringify(refs));
+}
+
+/** Expand @Image1 / @Image 1 → Image 1 for the model */
+export function expandImageMentions(prompt: string): string {
+  return prompt
+    .replace(/@Image\s*(\d+)/gi, "Image $1")
+    .replace(/@img\s*(\d+)/gi, "Image $1");
+}
+
+/** Build prompt prefix so the model knows how numbered references map */
+export function buildReferenceAwarePrompt(
+  userPrompt: string,
+  references: WorkspaceReference[],
+): string {
+  const body = expandImageMentions(userPrompt).trim();
+  if (!references.length) return body;
+
+  const legend = references
+    .map((r) => `${r.name} = attached reference #${r.index}`)
+    .join("; ");
+
+  const instruction =
+    `You are given ${references.length} reference image(s) labeled ${references.map((r) => r.name).join(", ")}. ` +
+    `When the prompt mentions Image N or @ImageN, use that numbered reference. Mapping: ${legend}.`;
+
+  return body ? `${instruction}\n\n${body}` : instruction;
+}
+
+/** Walk incoming edges + local uploads → numbered references (Magnific-style). */
 export function resolveImageNodeInputs(
   nodeId: string,
   getNode: (id: string) => Node | undefined,
   getEdges: () => Edge[],
 ): ResolvedImageInputs {
+  const node = getNode(nodeId);
   const incoming = getEdges().filter((e) => e.target === nodeId);
 
   let promptText = "";
   let perspective = "Custom Scene";
-  let referenceImageB64: string | undefined;
-  let referenceImageUrl: string | undefined;
-  let referenceLabel: string | undefined;
   const textSourceIds: string[] = [];
   const imageSourceIds: string[] = [];
+  const references: WorkspaceReference[] = [];
 
+  // 1) Local uploads on the Image Generator card
+  const localRefs = loadLocalRefs(nodeId);
+  for (const local of localRefs) {
+    if (references.length >= MAX_REFERENCE_IMAGES) break;
+    const index = references.length + 1;
+    references.push({
+      id: local.id,
+      index,
+      name: `Image ${index}`,
+      mention: `@Image${index}`,
+      source: "upload",
+      thumb: local.b64,
+      b64: local.b64,
+    });
+  }
+
+  // Also accept legacy single compressedImageB64 on image node
+  const legacyLocal = node?.data?.compressedImageB64 || node?.data?.imageB64;
+  if (legacyLocal && !localRefs.length && references.length < MAX_REFERENCE_IMAGES) {
+    const index = references.length + 1;
+    references.push({
+      id: `legacy_${nodeId}`,
+      index,
+      name: `Image ${index}`,
+      mention: `@Image${index}`,
+      source: "upload",
+      thumb: String(legacyLocal),
+      b64: String(legacyLocal),
+    });
+  }
+
+  // 2) Connected image edges (multi-reference port)
   for (const edge of incoming) {
     const source = getNode(edge.source);
     if (!source) continue;
@@ -132,37 +261,55 @@ export function resolveImageNodeInputs(
     if (source.type === "promptNode" && isTextPort) {
       textSourceIds.push(source.id);
       const chunk = String(source.data?.prompt || source.data?.label || "").trim();
-      if (chunk) {
-        promptText = promptText ? `${promptText} ${chunk}`.trim() : chunk;
-      }
-      if (source.data?.perspective) {
-        perspective = String(source.data.perspective);
-      }
+      if (chunk) promptText = promptText ? `${promptText} ${chunk}`.trim() : chunk;
+      if (source.data?.perspective) perspective = String(source.data.perspective);
     }
 
-    if (isImagePort) {
+    if (isImagePort && references.length < MAX_REFERENCE_IMAGES) {
       imageSourceIds.push(source.id);
 
       if (source.type === "imageNode") {
         const url = getImageUrlFromNode(source);
         if (url) {
-          referenceImageUrl = url;
-          referenceImageB64 = undefined;
-          referenceLabel = "Upstream image";
+          const index = references.length + 1;
+          references.push({
+            id: `edge_${edge.id}`,
+            index,
+            name: `Image ${index}`,
+            mention: `@Image${index}`,
+            source: "edge",
+            sourceNodeId: source.id,
+            thumb: url,
+            url,
+          });
         }
-      }
+      } else if (source.type === "promptNode") {
+        // Expand all uploads on the Text node into numbered refs
+        const promptLocals = loadLocalRefs(source.id);
+        const legacy = source.data?.compressedImageB64 || source.data?.imageB64;
+        const payloads: { id: string; b64: string }[] = promptLocals.length
+          ? promptLocals
+          : legacy
+            ? [{ id: `legacy_${source.id}`, b64: String(legacy) }]
+            : [];
 
-      if (source.type === "promptNode") {
-        const b64 = source.data?.compressedImageB64 || source.data?.imageB64;
-        if (b64) {
-          referenceImageB64 = String(b64);
-          referenceImageUrl = undefined;
-          referenceLabel = "Reference upload";
+        for (const item of payloads) {
+          if (references.length >= MAX_REFERENCE_IMAGES) break;
+          const index = references.length + 1;
+          references.push({
+            id: `edge_${edge.id}_${item.id}`,
+            index,
+            name: `Image ${index}`,
+            mention: `@Image${index}`,
+            source: "edge",
+            sourceNodeId: source.id,
+            thumb: item.b64,
+            b64: item.b64,
+          });
         }
       }
     }
 
-    // Legacy edges without handles: prompt → image as text
     if (source.type === "promptNode" && !targetHandle) {
       textSourceIds.push(source.id);
       const chunk = String(source.data?.prompt || source.data?.label || "").trim();
@@ -171,18 +318,22 @@ export function resolveImageNodeInputs(
     }
   }
 
+  const first = references[0];
+
   return {
     promptText,
     perspective,
-    referenceImageB64,
-    referenceImageUrl,
-    referenceLabel,
+    referenceImageB64: first?.b64,
+    referenceImageUrl: first?.url,
+    referenceLabel: references.length
+      ? `${references.length} reference${references.length > 1 ? "s" : ""}`
+      : undefined,
+    references,
     textSourceIds,
     imageSourceIds,
   };
 }
 
-/** Topological order for image nodes (dependencies first) — Run Workflow. */
 export function getImageNodeExecutionOrder(nodes: Node[], edges: Edge[]): string[] {
   const imageIds = nodes.filter((n) => n.type === "imageNode").map((n) => n.id);
   const order: string[] = [];
@@ -208,7 +359,6 @@ export function getImageNodeExecutionOrder(nodes: Node[], edges: Edge[]): string
   return order;
 }
 
-/** Downstream image nodes from a starting node (Run Downstream). */
 export function getDownstreamImageNodes(startId: string, nodes: Node[], edges: Edge[]): string[] {
   const imageIds = new Set(nodes.filter((n) => n.type === "imageNode").map((n) => n.id));
   const result: string[] = [];
@@ -249,9 +399,7 @@ export type SpotlightNodeOption = {
   label: string;
   description: string;
   category: string;
-  /** Which input handle to wire when placing from a source port */
   connectTargetHandle?: string;
-  /** Which source handle to wire when placing from a target port */
   connectSourceHandle?: string;
   accepts: PortKind[];
   produces: PortKind[];
@@ -278,7 +426,6 @@ export const SPOTLIGHT_NODES: SpotlightNodeOption[] = [
   },
 ];
 
-/** Filter spotlight by the port you dragged from (Magnific port-connection mode). */
 export function filterSpotlightForPort(
   options: SpotlightNodeOption[],
   fromHandle: string | null | undefined,
@@ -288,7 +435,6 @@ export function filterSpotlightForPort(
   if (!kind || !fromHandleType) return options;
 
   if (fromHandleType === "source") {
-    // Dragging FROM an output → need nodes that ACCEPT this kind
     return options
       .filter((o) => o.accepts.includes(kind))
       .map((o) => ({
@@ -297,11 +443,46 @@ export function filterSpotlightForPort(
       }));
   }
 
-  // Dragging FROM an input → need nodes that PRODUCE this kind
   return options
     .filter((o) => o.produces.includes(kind))
     .map((o) => ({
       ...o,
       connectSourceHandle: kind === "text" ? "text-out" : "image-out",
     }));
+}
+
+/** Compress a File / data URL for local reference storage */
+export async function compressImageFile(file: File, maxSize = 720, quality = 0.75): Promise<string> {
+  const dataUrl = await new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result));
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => {
+      let { width, height } = img;
+      if (width > height && width > maxSize) {
+        height = Math.round((height * maxSize) / width);
+        width = maxSize;
+      } else if (height > maxSize) {
+        width = Math.round((width * maxSize) / height);
+        height = maxSize;
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        reject(new Error("Canvas unsupported"));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, width, height);
+      resolve(canvas.toDataURL("image/jpeg", quality));
+    };
+    img.onerror = reject;
+    img.src = dataUrl;
+  });
 }

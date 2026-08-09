@@ -1,7 +1,11 @@
 import type { Dispatch, SetStateAction } from "react";
 import type { Edge, Node } from "@xyflow/react";
 import { authFormPost, fetchJobStatus, fetchProxyBlob, apiGetMe, setStoredUser } from "@/lib/mysql/client";
-import { resolveImageNodeInputs } from "./graphUtils";
+import {
+  buildReferenceAwarePrompt,
+  resolveImageNodeInputs,
+  type WorkspaceReference,
+} from "./graphUtils";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
 
@@ -16,28 +20,30 @@ export function dataURLtoBlob(dataurl: string): Blob {
 }
 
 async function referenceToFile(
-  referenceImageB64?: string,
-  referenceImageUrl?: string,
+  ref: WorkspaceReference,
+  filename: string,
 ): Promise<File | null> {
-  if (referenceImageB64) {
-    const blob = dataURLtoBlob(referenceImageB64);
-    return new File([blob], "reference.jpg", { type: blob.type || "image/jpeg" });
+  if (ref.b64) {
+    const blob = dataURLtoBlob(ref.b64);
+    return new File([blob], filename, { type: blob.type || "image/jpeg" });
   }
-  if (!referenceImageUrl) return null;
 
-  if (referenceImageUrl.startsWith("data:")) {
-    const blob = dataURLtoBlob(referenceImageUrl);
-    return new File([blob], "reference.jpg", { type: blob.type || "image/jpeg" });
+  const url = ref.url || ref.thumb;
+  if (!url) return null;
+
+  if (url.startsWith("data:")) {
+    const blob = dataURLtoBlob(url);
+    return new File([blob], filename, { type: blob.type || "image/jpeg" });
   }
 
   try {
-    const blob = await fetchProxyBlob(referenceImageUrl);
-    return new File([blob], "reference.jpg", { type: blob.type || "image/jpeg" });
+    const blob = await fetchProxyBlob(url);
+    return new File([blob], filename, { type: blob.type || "image/jpeg" });
   } catch {
-    const res = await fetch(referenceImageUrl);
-    if (!res.ok) throw new Error("Could not load upstream image");
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Could not load ${ref.name}`);
     const blob = await res.blob();
-    return new File([blob], "reference.jpg", { type: blob.type || "image/jpeg" });
+    return new File([blob], filename, { type: blob.type || "image/jpeg" });
   }
 }
 
@@ -87,26 +93,31 @@ export async function runImageNodeGeneration(
 
   const resolved = resolveImageNodeInputs(nodeId, getNode, getEdges);
   const override = settings.promptOverride?.trim() || "";
-  const promptText = override
+  const rawPrompt = override
     ? `${resolved.promptText} ${override}`.trim()
     : resolved.promptText;
 
-  if (!promptText && !resolved.referenceImageB64 && !resolved.referenceImageUrl) {
-    throw new Error("Connect a Text node and/or an image input");
+  const promptText = buildReferenceAwarePrompt(rawPrompt, resolved.references);
+
+  if (!promptText && !resolved.references.length) {
+    throw new Error("Connect a Text node and/or add reference images");
   }
 
   updateNodeData(nodeId, { isLoading: true, imageUrls: [] });
 
   const formData = new FormData();
   formData.append("perspective", resolved.perspective);
-  formData.append("custom_prompt", promptText);
+  formData.append("custom_prompt", promptText || "Generate an image from the attached reference images.");
   formData.append("model_name", settings.modelName);
   formData.append("aspect_ratio", settings.aspectRatio);
   formData.append("image_count", String(settings.imageCount));
   formData.append("denoise", "0.75");
 
-  const refFile = await referenceToFile(resolved.referenceImageB64, resolved.referenceImageUrl);
-  if (refFile) formData.append("file", refFile);
+  // All references go as numbered `refs` (backend labels them Image 1…N)
+  for (const ref of resolved.references) {
+    const file = await referenceToFile(ref, `image-${ref.index}.jpg`);
+    if (file) formData.append("refs", file);
+  }
 
   const response = await authFormPost(`${API_BASE}/generate`, formData);
   const responseData = await response.json();
@@ -123,8 +134,9 @@ export async function runImageNodeGeneration(
   updateNodeData(nodeId, { activeJobIds: jobIds });
   const currentNode = getNode(nodeId);
   const spawnedIds: string[] = [];
-  const incomingEdge = getEdges().find((e) => e.target === nodeId);
+  const incomingEdge = getEdges().find((e) => e.target === nodeId && e.targetHandle === "text-in");
 
+  // Multi-generation: keep first result on this node; spawn siblings for extras
   if (currentNode && jobIds.length > 1) {
     const newNodes: Node[] = [];
     const newEdges: Edge[] = [];
@@ -152,7 +164,7 @@ export async function runImageNodeGeneration(
           source: incomingEdge.source,
           sourceHandle: incomingEdge.sourceHandle,
           target: newNodeId,
-          targetHandle: incomingEdge.targetHandle || "text-in",
+          targetHandle: "text-in",
           animated: true,
           style: incomingEdge.style,
         });
@@ -171,6 +183,7 @@ export async function runImageNodeGeneration(
       if (!targetId) return;
       try {
         const finalUrl = await pollUntilComplete(jobId, isCancelled);
+        // Result appears on the Image Generator card (Magnific-style)
         updateNodeData(targetId, { imageUrls: [finalUrl], isLoading: false });
       } catch (err) {
         updateNodeData(targetId, { isLoading: false });

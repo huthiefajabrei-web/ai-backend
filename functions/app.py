@@ -1370,27 +1370,33 @@ def process_gemini_job(
         else:
             final_prompt = f"{size_hint}{no_text_hint}"
 
+        # Multi-reference: label each image as Image 1, Image 2, … so the prompt
+        # can refer to them by number (Magnific-style @ImageN / Image N).
         parts = [{"text": final_prompt}]
+        image_index = 1
+
         if input_image_b64:
-            # Compress input image to reduce Gemini API token costs
             compressed_input = compress_image_b64(input_image_b64, max_size=1024, quality=80)
+            parts.append({"text": f"\n[Image {image_index}]"})
             parts.append({
                 "inlineData": {
                     "mimeType": "image/jpeg",
                     "data": compressed_input
                 }
             })
-            
+            image_index += 1
+
         if reference_images:
             for ref in reference_images:
-                # Compress reference images to reduce input token costs
                 compressed_ref = compress_image_b64(ref["b64"], max_size=1024, quality=75)
+                parts.append({"text": f"\n[Image {image_index}]"})
                 parts.append({
                     "inlineData": {
                         "mimeType": "image/jpeg",
                         "data": compressed_ref
                     }
                 })
+                image_index += 1
                 
         GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
         if not model_name: 
