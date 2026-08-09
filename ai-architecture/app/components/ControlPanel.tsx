@@ -190,10 +190,10 @@ export default function ControlPanel({
 
   return (
     <section className="h-fit flex flex-col bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl shadow-[0_4px_24px_rgba(0,0,0,0.3)] relative">
-      <div className="absolute -top-24 -right-24 w-48 h-48 bg-purple-600/15 rounded-full blur-[60px] pointer-events-none" aria-hidden />
+      <div className="absolute -top-24 -right-24 w-48 h-48 bg-amber-700/15 rounded-full blur-[60px] pointer-events-none" aria-hidden />
       <div className="px-5 py-4 border-b border-white/5 flex justify-between items-center bg-black/20 shrink-0 z-10 backdrop-blur-sm">
         <div>
-          <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400 font-display">
+          <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-yellow-500 font-display">
             Settings
           </h2>
           <p className="text-xs text-slate-400 mt-1">
@@ -210,13 +210,13 @@ export default function ControlPanel({
         <div className="flex bg-black/40 p-1.5 rounded-xl border border-white/5 relative">
           <div
             className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-lg transition-all duration-300 ease-in-out shadow-lg border ${mode === "image"
-              ? "left-1.5 bg-purple-500/20 border-purple-500/40"
+              ? "left-1.5 bg-amber-600/20 border-amber-600/40"
               : "left-[calc(50%+4.5px)] bg-emerald-500/20 border-emerald-500/40"
               }`}
           />
           <button
             className={`flex-1 relative z-10 py-2.5 rounded-lg text-sm font-semibold transition-colors flex items-center justify-center gap-2 ${mode === "image"
-              ? "text-purple-100"
+              ? "text-amber-100"
               : "text-slate-400 hover:text-slate-200"
               }`}
             onClick={(e) => {
@@ -313,8 +313,8 @@ export default function ControlPanel({
           </label>
           <div
             className={`relative border-2 border-dashed rounded-xl flex flex-col items-center justify-center overflow-hidden transition-all duration-300 min-h-[140px] group ${file
-              ? "border-purple-500/50 bg-purple-500/5"
-              : "border-white/10 bg-black/20 hover:border-purple-500/30 hover:bg-purple-500/5"
+              ? "border-amber-600/50 bg-amber-600/5"
+              : "border-white/10 bg-black/20 hover:border-amber-600/30 hover:bg-amber-600/5"
               }`}
           >
             <input
@@ -326,7 +326,7 @@ export default function ControlPanel({
             />
             {!file && (
               <div className="p-6 flex flex-col items-center gap-3 text-center pointer-events-none">
-                <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-slate-400 group-hover:bg-purple-500 group-hover:text-white group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(139,92,246,0.4)] transition-all duration-300">
+                <div className="w-12 h-12 bg-white/5 rounded-full flex items-center justify-center text-slate-400 group-hover:bg-amber-600 group-hover:text-white group-hover:scale-110 group-hover:shadow-[0_0_20px_rgba(184,134,11,0.4)] transition-all duration-300">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="20"
@@ -460,7 +460,7 @@ export default function ControlPanel({
                   {(mode === "image" || refs.length === 0) && (
                     <label
                       htmlFor="ref-upload"
-                      className="w-[60px] h-[60px] rounded-lg border-2 border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer bg-white/5 hover:bg-white/10 hover:border-purple-400/50 transition-colors text-slate-400 hover:text-white"
+                      className="w-[60px] h-[60px] rounded-lg border-2 border-dashed border-white/20 flex flex-col items-center justify-center cursor-pointer bg-white/5 hover:bg-white/10 hover:border-amber-500/50 transition-colors text-slate-400 hover:text-white"
                     >
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
@@ -534,7 +534,7 @@ export default function ControlPanel({
           <div className="relative" ref={dropdownRef}>
             <div
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="bg-black/30 border border-white/10 rounded-xl px-4 py-3 cursor-pointer flex justify-between items-center shadow-inner hover:border-purple-500/40 transition-colors"
+              className="bg-black/30 border border-white/10 rounded-xl px-4 py-3 cursor-pointer flex justify-between items-center shadow-inner hover:border-amber-600/40 transition-colors"
             >
               <span className="text-sm text-slate-400">
                 {selectedPerspectives.length > 0
@@ -575,10 +575,10 @@ export default function ControlPanel({
                           if (p === "Floor Plan to 3D") setDenoise(0.85);
                         }
                       }}
-                      className={`px-2 py-1.5 rounded-lg cursor-pointer flex flex-wrap items-center justify-between gap-2 text-sm transition-colors ${isSelected ? "bg-purple-500/20 text-purple-200" : "text-slate-300 hover:bg-white/5"}`}
+                      className={`px-2 py-1.5 rounded-lg cursor-pointer flex flex-wrap items-center justify-between gap-2 text-sm transition-colors ${isSelected ? "bg-amber-600/20 text-amber-200" : "text-slate-300 hover:bg-white/5"}`}
                     >
                       <div className="flex items-center gap-2 min-w-[120px] flex-1">
-                        <div className={`w-[18px] h-[18px] rounded flex items-center justify-center border transition-colors flex-shrink-0 ${isSelected ? "bg-purple-500 border-purple-500" : "border-white/20 bg-black/40"}`}>
+                        <div className={`w-[18px] h-[18px] rounded flex items-center justify-center border transition-colors flex-shrink-0 ${isSelected ? "bg-amber-600 border-amber-600" : "border-white/20 bg-black/40"}`}>
                           {isSelected && <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>}
                         </div>
                         <span className="leading-snug break-words text-xs font-medium">{p}</span>
@@ -590,8 +590,8 @@ export default function ControlPanel({
                           onClick={(e) => e.stopPropagation()}
                         >
                           {/* Size Selection */}
-                          <div className="flex items-center gap-1 bg-black/40 px-1.5 py-1 rounded-md border border-purple-500/20">
-                            <span className="text-[9px] text-purple-400/80 font-bold uppercase tracking-wider">Size:</span>
+                          <div className="flex items-center gap-1 bg-black/40 px-1.5 py-1 rounded-md border border-amber-600/20">
+                            <span className="text-[9px] text-amber-500/80 font-bold uppercase tracking-wider">Size:</span>
                             <div className="relative flex items-center">
                               <select
                                 value={selectedItem.aspectRatio}
@@ -602,14 +602,14 @@ export default function ControlPanel({
                                     )
                                   );
                                 }}
-                                className="appearance-none bg-transparent text-[11px] text-purple-100 outline-none cursor-pointer pr-3 font-semibold"
+                                className="appearance-none bg-transparent text-[11px] text-amber-100 outline-none cursor-pointer pr-3 font-semibold"
                               >
                                 <option value="9:16" className="bg-slate-900">9:16</option>
                                 <option value="1:1" className="bg-slate-900">1:1</option>
                                 <option value="16:9" className="bg-slate-900">16:9</option>
                                 <option value="4:5" className="bg-slate-900">4:5</option>
                               </select>
-                              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute right-0 text-purple-400/60 pointer-events-none">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute right-0 text-amber-500/60 pointer-events-none">
                                 <polyline points="6 9 12 15 18 9"></polyline>
                               </svg>
                             </div>
@@ -617,8 +617,8 @@ export default function ControlPanel({
 
                           {/* Model Selection */}
                           {mode === "image" && (
-                            <div className="flex items-center gap-1 bg-black/40 px-1.5 py-1 rounded-md border border-purple-500/20">
-                              <span className="text-[9px] text-purple-400/80 font-bold uppercase tracking-wider">Model:</span>
+                            <div className="flex items-center gap-1 bg-black/40 px-1.5 py-1 rounded-md border border-amber-600/20">
+                              <span className="text-[9px] text-amber-500/80 font-bold uppercase tracking-wider">Model:</span>
                               <div className="relative flex items-center">
                                 <select
                                   value={selectedItem.model || "nano-banana-pro-preview"}
@@ -629,7 +629,7 @@ export default function ControlPanel({
                                       )
                                     );
                                   }}
-                                  className="appearance-none bg-transparent text-[11px] text-purple-100 outline-none cursor-pointer pr-3 font-semibold w-[120px] text-ellipsis"
+                                  className="appearance-none bg-transparent text-[11px] text-amber-100 outline-none cursor-pointer pr-3 font-semibold w-[120px] text-ellipsis"
                                 >
                                   <option value="gemini-2.5-flash-image" className="bg-slate-900">gemini 2.5 flash image</option>
                                   <option value="nano-banana-pro-preview" className="bg-slate-900">Nano Banana (Gemini 2.5 Flash Preview Image)</option>
@@ -637,7 +637,7 @@ export default function ControlPanel({
                                   <option value="gemini-3-pro-image-preview" className="bg-slate-900">Gemini 3.0 Pro Image</option>
                                   <option value="gemini-2.5-flash-lite" className="bg-slate-900">Gemini 2.5 Flash lite</option>
                                 </select>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute right-0 text-purple-400/60 pointer-events-none">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="absolute right-0 text-amber-500/60 pointer-events-none">
                                   <polyline points="6 9 12 15 18 9"></polyline>
                                 </svg>
                               </div>
@@ -646,8 +646,8 @@ export default function ControlPanel({
 
                           {/* Image Count */}
                           {mode === "image" && (
-                            <div className="flex items-center gap-1 bg-black/40 px-1.5 py-1 rounded-md border border-purple-500/20">
-                              <span className="text-[9px] text-purple-400/80 font-bold uppercase tracking-wider ml-1">Qty:</span>
+                            <div className="flex items-center gap-1 bg-black/40 px-1.5 py-1 rounded-md border border-amber-600/20">
+                              <span className="text-[9px] text-amber-500/80 font-bold uppercase tracking-wider ml-1">Qty:</span>
                               <div className="flex items-center">
                                 <button
                                   type="button"
@@ -661,7 +661,7 @@ export default function ControlPanel({
                                     )
                                   }
                                   disabled={selectedItem.imageCount <= 1}
-                                  className="w-4 h-4 flex items-center justify-center text-purple-300 hover:text-white hover:bg-purple-500/30 rounded transition-colors text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+                                  className="w-4 h-4 flex items-center justify-center text-amber-300 hover:text-white hover:bg-amber-600/30 rounded transition-colors text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed"
                                 >−</button>
                                 <span className="w-3.5 text-center text-[11px] font-bold text-white font-mono">
                                   {selectedItem.imageCount}
@@ -678,7 +678,7 @@ export default function ControlPanel({
                                     )
                                   }
                                   disabled={selectedItem.imageCount >= 4}
-                                  className="w-4 h-4 flex items-center justify-center text-purple-300 hover:text-white hover:bg-purple-500/30 rounded transition-colors text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+                                  className="w-4 h-4 flex items-center justify-center text-amber-300 hover:text-white hover:bg-amber-600/30 rounded transition-colors text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed"
                                 >+</button>
                               </div>
                             </div>
@@ -701,7 +701,7 @@ export default function ControlPanel({
             <label className="text-sm font-medium text-slate-200">
               Transformation Strength
             </label>
-            <span className="text-xs font-mono text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-md">
+            <span className="text-xs font-mono text-amber-300 bg-amber-600/10 border border-amber-600/20 px-2 py-0.5 rounded-md">
               {denoise.toFixed(2)}
             </span>
           </div>
@@ -712,7 +712,7 @@ export default function ControlPanel({
             step="0.05"
             value={denoise}
             onChange={(e) => setDenoise(parseFloat(e.target.value))}
-            className="w-full mt-2 cursor-pointer h-1.5 bg-white/10 rounded-lg appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-purple-500 [&::-webkit-slider-thumb]:rounded-full hover:[&::-webkit-slider-thumb]:scale-110"
+            className="w-full mt-2 cursor-pointer h-1.5 bg-white/10 rounded-lg appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-amber-600 [&::-webkit-slider-thumb]:rounded-full hover:[&::-webkit-slider-thumb]:scale-110"
           />
           <div className="flex justify-between text-[10px] text-slate-500 uppercase tracking-widest mt-1">
             <span>Subtle</span>
@@ -732,7 +732,7 @@ export default function ControlPanel({
             onChange={(e) => setCustomPrompt(e.target.value)}
             rows={3}
             placeholder="e.g. Modern minimalist villa with large glass windows, dusk lighting, 8k render..."
-            className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-purple-500/50 focus:ring-1 focus:ring-purple-500/50 transition-all resize-y min-h-[80px]"
+            className="w-full bg-black/40 border border-white/10 rounded-xl p-3 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-amber-600/50 focus:ring-1 focus:ring-amber-600/50 transition-all resize-y min-h-[80px]"
           />
         </div>
       </div>
@@ -781,7 +781,7 @@ export default function ControlPanel({
           <button
             className={`flex-1 relative overflow-hidden rounded-xl font-semibold text-sm transition-all duration-300 shadow-lg group ${loading ? "opacity-80 cursor-not-allowed" : "hover:-translate-y-0.5"
               } ${mode === "image"
-                ? "bg-gradient-to-r from-purple-600 to-blue-600 hover:shadow-[0_10px_20px_rgba(139,92,246,0.3)] text-white"
+                ? "bg-gradient-to-r from-amber-700 to-yellow-600 hover:shadow-[0_10px_20px_rgba(184,134,11,0.3)] text-white"
                 : "bg-gradient-to-r from-emerald-500 to-teal-600 hover:shadow-[0_10px_20px_rgba(16,185,129,0.3)] text-white"
               }`}
             onClick={() => (mode === "image" ? onSend() : onGenerateVideo())}

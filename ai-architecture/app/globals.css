@@ -84,13 +84,13 @@ body {
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(139, 92, 246, 0.5);
+  background-color: rgba(184, 134, 11, 0.5);
 }
 
 /* Custom scrollbar for dropdowns */
 .custom-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(139, 92, 246, 0.5) rgba(0, 0, 0, 0.1);
+  scrollbar-color: rgba(184, 134, 11, 0.5) rgba(0, 0, 0, 0.1);
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -104,10 +104,10 @@ body {
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background-color: rgba(139, 92, 246, 0.5);
+  background-color: rgba(184, 134, 11, 0.5);
   border-radius: 2px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(139, 92, 246, 0.7);
+  background-color: rgba(184, 134, 11, 0.7);
 }

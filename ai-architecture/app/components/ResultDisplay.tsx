@@ -242,7 +242,7 @@ export default function ResultDisplay({
 
   return (
     <section
-      className={`h-fit flex flex-col bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.3)] relative transition-all duration-300 ${isGenerating && !hasImages ? "animate-pulse ring-2 ring-purple-500/30" : ""}`}
+      className={`h-fit flex flex-col bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.3)] relative transition-all duration-300 ${isGenerating && !hasImages ? "animate-pulse ring-2 ring-amber-600/30" : ""}`}
     >
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2/3 h-2/3 bg-blue-600/10 rounded-full blur-[80px] pointer-events-none" aria-hidden />
       <div className="px-5 py-4 border-b border-white/5 flex justify-between items-center bg-black/20 shrink-0 z-10 backdrop-blur-sm">
@@ -516,14 +516,14 @@ export default function ResultDisplay({
           <div className="flex gap-4 items-start flex-wrap">
             <div className="relative shrink-0 w-20 h-20">
               {regenerationTarget.isVideo ? (
-                <video src={regenerationTarget.url} autoPlay loop muted playsInline className="w-20 h-20 object-cover rounded-xl border-2 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]" />
+                <video src={regenerationTarget.url} autoPlay loop muted playsInline className="w-20 h-20 object-cover rounded-xl border-2 border-blue-500 shadow-[0_0_15px_rgba(184,134,11,0.3)]" />
               ) : (
                 <Image
                   src={regenerationTarget.url}
                   width={80}
                   height={80}
                   unoptimized
-                  className="w-full h-full object-cover rounded-xl border-2 border-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.3)]"
+                  className="w-full h-full object-cover rounded-xl border-2 border-blue-500 shadow-[0_0_15px_rgba(184,134,11,0.3)]"
                   alt="Target"
                 />
               )}
@@ -539,7 +539,7 @@ export default function ResultDisplay({
                 rows={2}
               />
               <button
-                className="mt-2 w-full sm:w-auto self-end bg-gradient-to-r from-blue-500 to-indigo-600 hover:shadow-[0_10px_20px_rgba(59,130,246,0.3)] text-white font-semibold py-3 px-6 rounded-xl transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm"
+                className="mt-2 w-full sm:w-auto self-end bg-gradient-to-r from-amber-700 to-yellow-600 hover:shadow-[0_10px_20px_rgba(184,134,11,0.3)] text-white font-semibold py-3 px-6 rounded-xl transition-all hover:-translate-y-0.5 flex items-center justify-center gap-2 text-sm"
                 onClick={() => {
                   if (onRegenerate) {
                     onRegenerate(regenerationTarget.url, regenerationPrompt, regenerationTarget.perspective, regenerationTarget.isVideo, regenerationTarget.aspectRatio);
@@ -557,19 +557,19 @@ export default function ResultDisplay({
       )}
 
       {isGenerating && hasImages && progress > 0 && (
-        <div className="p-4 bg-purple-500/10 border-b border-purple-500/20 z-10 backdrop-blur-md">
+        <div className="p-4 bg-amber-600/10 border-b border-amber-600/20 z-10 backdrop-blur-md">
           <div className="flex justify-between items-center mb-2">
-            <h3 className="text-purple-400 text-sm font-semibold flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse"></div>
+            <h3 className="text-amber-500 text-sm font-semibold flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-amber-600 animate-pulse"></div>
               Generation in Progress...
             </h3>
-            <span className="text-purple-300 font-bold font-mono bg-purple-500/20 px-2 py-0.5 rounded-md text-xs">
+            <span className="text-amber-300 font-bold font-mono bg-amber-600/20 px-2 py-0.5 rounded-md text-xs">
               {Math.floor(progress)}%
             </span>
           </div>
-          <div className="w-full h-1.5 bg-black/40 border border-purple-500/20 rounded-full overflow-hidden">
+          <div className="w-full h-1.5 bg-black/40 border border-amber-600/20 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-500 ease-out"
+              className="h-full bg-gradient-to-r from-amber-600 to-yellow-500 transition-all duration-500 ease-out"
               style={{ width: `${progress}%` }}
             ></div>
           </div>
@@ -580,8 +580,8 @@ export default function ResultDisplay({
         {showSessionDataLoading ? (
           <div className="h-full flex flex-col items-center justify-center text-center p-6 sm:p-8 min-h-[280px] sm:min-h-[400px]">
             <div className="flex flex-col items-center max-w-md w-full gap-6">
-              <div className="w-16 h-16 rounded-full border-2 border-indigo-500/50 border-t-indigo-400 flex items-center justify-center animate-spin">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-indigo-400">
+              <div className="w-16 h-16 rounded-full border-2 border-amber-600/50 border-t-amber-400 flex items-center justify-center animate-spin">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-amber-500">
                   <circle cx="12" cy="12" r="10" strokeOpacity="0.25" />
                   <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
                 </svg>
@@ -592,7 +592,7 @@ export default function ResultDisplay({
               </div>
               <div className="w-full max-w-xs">
                 <div className="h-2 bg-black/40 border border-white/10 rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full animate-[loading-bar_1.5s_ease-in-out_infinite]" />
+                  <div className="h-full bg-gradient-to-r from-amber-700 to-yellow-600 rounded-full animate-[loading-bar_1.5s_ease-in-out_infinite]" />
                 </div>
               </div>
             </div>
@@ -602,7 +602,7 @@ export default function ResultDisplay({
             {Object.entries(groupedImages).map(([perspective, imgs]) => (
               <div key={perspective} className="flex flex-col gap-4">
                 <div className="flex items-center gap-3 pb-2 border-b border-white/10">
-                  <div className="w-1.5 h-4 bg-gradient-to-b from-purple-500 to-blue-500 rounded-full shadow-[0_0_10px_rgba(139,92,246,0.5)]"></div>
+                  <div className="w-1.5 h-4 bg-gradient-to-b from-amber-600 to-yellow-500 rounded-full shadow-[0_0_10px_rgba(184,134,11,0.5)]"></div>
                   <h3 className="text-lg font-semibold text-slate-200 tracking-wide">
                     {perspective}
                   </h3>
@@ -627,7 +627,7 @@ export default function ResultDisplay({
                         onDragStart={() => handleDragStart(perspective, idx)}
                         onDragOver={handleDragOver}
                         onDrop={() => handleDrop(perspective, idx)}
-                        className={`group relative w-full rounded-3xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] bg-[#09090b] hover:border-purple-500/50 hover:shadow-[0_12px_40px_rgba(168,85,247,0.3)] transition-all duration-500 cursor-grab active:cursor-grabbing ${openDropdown === img.url ? 'z-50' : 'z-10'}`}
+                        className={`group relative w-full rounded-3xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)] bg-[#09090b] hover:border-amber-600/50 hover:shadow-[0_12px_40px_rgba(201,162,39,0.3)] transition-all duration-500 cursor-grab active:cursor-grabbing ${openDropdown === img.url ? 'z-50' : 'z-10'}`}
                         style={{ aspectRatio: rawAspect }}
                       >
                         {/* Internal wrapper for Image to hide hover overflow without clipping dropdowns */}
@@ -730,7 +730,7 @@ export default function ResultDisplay({
                           </div>
                         )}
                         {img.isRegenerated && (
-                          <div className="absolute top-3 left-3 z-20 bg-blue-500/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.6)] backdrop-blur-sm border border-blue-400 flex items-center gap-1 animate-[fadeIn_0.5s_ease-out] pointer-events-none">
+                          <div className="absolute top-3 left-3 z-20 bg-blue-500/90 text-white text-[10px] font-bold px-2.5 py-1 rounded-full shadow-[0_0_10px_rgba(184,134,11,0.6)] backdrop-blur-sm border border-blue-400 flex items-center gap-1 animate-[fadeIn_0.5s_ease-out] pointer-events-none">
                             <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" /><path d="M16 21v-5h5" /></svg>
                             Regenerated
                           </div>
@@ -766,7 +766,7 @@ export default function ResultDisplay({
                                 Regenerate
                               </button>
                               <button
-                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:text-white hover:bg-purple-600/20 transition-all border-b border-white/5"
+                                className="w-full flex items-center gap-3 px-4 py-3 text-sm text-slate-300 hover:text-white hover:bg-amber-700/20 transition-all border-b border-white/5"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onDownload(img.url);
@@ -802,10 +802,10 @@ export default function ResultDisplay({
             {isGenerating ? (
               <div className="flex flex-col items-center max-w-sm w-full gap-6">
                 <div className="relative w-32 h-32 flex items-center justify-center">
-                  <div className="absolute inset-x-8 bottom-0 h-4 bg-purple-500/20 rounded-[100%] blur-md"></div>
-                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-0 h-32 border-l-[30px] border-r-[30px] border-b-[100px] border-l-transparent border-r-transparent border-b-purple-500/10 block blur-xl"></div>
+                  <div className="absolute inset-x-8 bottom-0 h-4 bg-amber-600/20 rounded-[100%] blur-md"></div>
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-0 h-32 border-l-[30px] border-r-[30px] border-b-[100px] border-l-transparent border-r-transparent border-b-amber-600/10 block blur-xl"></div>
 
-                  <div className="relative w-16 h-16 text-purple-400 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)] animate-pulse">
+                  <div className="relative w-16 h-16 text-amber-500 drop-shadow-[0_0_15px_rgba(201,162,39,0.5)] animate-pulse">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
                       width="64"
@@ -825,7 +825,7 @@ export default function ResultDisplay({
                 </div>
 
                 <div>
-                  <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-blue-400">
+                  <h3 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-400 to-yellow-500">
                     Rendering Masterpiece
                   </h3>
                   <p className="text-sm text-slate-400 mt-2">
@@ -836,11 +836,11 @@ export default function ResultDisplay({
                 <div className="w-full">
                   <div className="w-full h-1.5 bg-black/40 border border-white/5 rounded-full overflow-hidden mb-2">
                     <div
-                      className="h-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-300 shadow-[0_0_10px_rgba(139,92,246,0.5)]"
+                      className="h-full bg-gradient-to-r from-amber-600 to-yellow-500 transition-all duration-300 shadow-[0_0_10px_rgba(184,134,11,0.5)]"
                       style={{ width: `${progress}%` }}
                     ></div>
                   </div>
-                  <div className="text-xs font-mono text-purple-300 font-bold">
+                  <div className="text-xs font-mono text-amber-300 font-bold">
                     {Math.floor(progress)}%
                   </div>
                 </div>

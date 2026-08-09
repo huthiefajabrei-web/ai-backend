@@ -1093,11 +1093,11 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col font-sans overflow-x-hidden bg-[#09090b] text-slate-50 relative selection:bg-cyan-500/30 pb-mobile-nav">
+    <div className="min-h-screen flex flex-col font-sans overflow-x-hidden bg-[#09090b] text-slate-50 relative selection:bg-amber-500/30 pb-mobile-nav">
       {/* Ambient Background Elements */}
       <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
-        <div className="absolute -top-[20%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-radial from-purple-600/20 to-transparent blur-[120px] mix-blend-screen animate-[float_20s_infinite_ease-in-out_alternate]"></div>
-        <div className="absolute -bottom-[20%] -right-[10%] w-[40vw] h-[40vw] rounded-full bg-radial from-indigo-600/20 to-transparent blur-[120px] mix-blend-screen animate-[float_25s_infinite_ease-in-out_alternate-reverse]"></div>
+        <div className="absolute -top-[20%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-radial from-amber-700/20 to-transparent blur-[120px] mix-blend-screen animate-[float_20s_infinite_ease-in-out_alternate]"></div>
+        <div className="absolute -bottom-[20%] -right-[10%] w-[40vw] h-[40vw] rounded-full bg-radial from-yellow-700/15 to-transparent blur-[120px] mix-blend-screen animate-[float_25s_infinite_ease-in-out_alternate-reverse]"></div>
       </div>
 
       {/* Top Header - Floating Style */}
@@ -1106,14 +1106,14 @@ export default function Home() {
           <nav className="flex h-14 md:h-[72px] items-center justify-between gap-2">
             {/* Logo */}
             <a href="#" className="flex items-center gap-3 shrink-0 group" onClick={(e) => { e.preventDefault(); setActiveApp(null); window.scrollTo({ top: 0, behavior: "smooth" }); }}>
-              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 p-[1px] shadow-[0_0_20px_rgba(139,92,246,0.3)] transition-transform duration-300 group-hover:scale-105">
+              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-amber-700 via-yellow-600 to-amber-500 p-[1px] shadow-[0_0_20px_rgba(184,134,11,0.3)] transition-transform duration-300 group-hover:scale-105">
                 <div className="relative w-full h-full bg-[#040508] rounded-xl flex items-center justify-center">
                   <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="url(#logo-grad)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-300 group-hover:rotate-12">
                     <defs>
                       <linearGradient id="logo-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#818cf8" />
-                        <stop offset="50%" stopColor="#c084fc" />
-                        <stop offset="100%" stopColor="#f472b6" />
+                        <stop offset="0%" stopColor="#d4af37" />
+                        <stop offset="50%" stopColor="#c9a227" />
+                        <stop offset="100%" stopColor="#a67c00" />
                       </linearGradient>
                     </defs>
                     <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
@@ -1124,14 +1124,14 @@ export default function Home() {
               </div>
               <div className="flex flex-col leading-none">
                 <span className="font-display font-black text-xl tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-white to-white/80">H_ARCH</span>
-                <span className="text-[9px] text-purple-400 font-bold tracking-[0.2em] uppercase mt-0.5">Studio</span>
+                <span className="text-[9px] text-amber-500 font-bold tracking-[0.2em] uppercase mt-0.5">Studio</span>
               </div>
             </a>
 
             {/* Desktop Menu - Floating Pill */}
             <div className="hidden md:flex items-center bg-[#18181b] rounded-2xl p-1.5 border border-white/10 gap-1 shadow-lg shadow-black/50">
-              <button onClick={() => setActiveApp(null)} className={`p-2 rounded-xl transition-all ${!activeApp ? 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-[0_0_15px_rgba(139,92,246,0.4)]' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}><HomeIcon size={18} strokeWidth={2.5} /></button>
-              <button onClick={() => setActiveApp("generation")} className={`p-2 rounded-xl transition-all ${activeApp === "generation" ? 'bg-gradient-to-br from-indigo-500 to-purple-500 text-white shadow-[0_0_15px_rgba(139,92,246,0.4)]' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}><Wand2 size={18} strokeWidth={2} /></button>
+              <button onClick={() => setActiveApp(null)} className={`p-2 rounded-xl transition-all ${!activeApp ? 'bg-gradient-to-br from-amber-700 to-yellow-600 text-white shadow-[0_0_15px_rgba(184,134,11,0.4)]' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}><HomeIcon size={18} strokeWidth={2.5} /></button>
+              <button onClick={() => setActiveApp("generation")} className={`p-2 rounded-xl transition-all ${activeApp === "generation" ? 'bg-gradient-to-br from-amber-700 to-yellow-600 text-white shadow-[0_0_15px_rgba(184,134,11,0.4)]' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}><Wand2 size={18} strokeWidth={2} /></button>
               <button onClick={() => router.push("/video")} className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"><Video size={18} strokeWidth={2} /></button>
               <button onClick={() => router.push("/workspace")} className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"><Layers size={18} strokeWidth={2} /></button>
               <button className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/5 transition-colors"><Search size={18} strokeWidth={2} /></button>
@@ -1148,7 +1148,7 @@ export default function Home() {
               {user ? (
                 <div className="flex items-center gap-2 pl-1.5 pr-3 py-1 rounded-full bg-[#18181b] border border-white/10 cursor-pointer hover:bg-white/5 transition-colors tap-target"
                   onClick={async () => { await apiLogout(); setUser(null); }}>
-                  <div className="w-7 h-7 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold uppercase shrink-0">
+                  <div className="w-7 h-7 rounded-full bg-amber-700 text-white flex items-center justify-center text-xs font-bold uppercase shrink-0">
                     {user.full_name?.charAt(0) || user.email?.charAt(0) || 'U'}
                   </div>
                   <span className="hidden sm:block text-xs font-medium text-zinc-300 max-w-[100px] truncate">
@@ -1156,7 +1156,7 @@ export default function Home() {
                   </span>
                 </div>
               ) : (
-                <a href="/login" className="inline-flex h-9 items-center justify-center rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 px-4 sm:px-5 text-xs sm:text-sm font-semibold text-white hover:opacity-90 transition-opacity shadow-[0_0_15px_rgba(139,92,246,0.3)] tap-target">
+                <a href="/login" className="inline-flex h-9 items-center justify-center rounded-full bg-gradient-to-r from-amber-700 to-yellow-600 px-4 sm:px-5 text-xs sm:text-sm font-semibold text-white hover:opacity-90 transition-opacity shadow-[0_0_15px_rgba(184,134,11,0.3)] tap-target">
                   Sign In
                 </a>
               )}
@@ -1183,10 +1183,10 @@ export default function Home() {
               onClick={() => setMobileMenuOpen(false)}
             />
             <div className="md:hidden absolute top-full left-0 right-0 z-50 bg-[#09090b]/98 backdrop-blur-xl border-b border-white/10 flex flex-col p-3 gap-1.5 shadow-2xl max-h-[calc(100dvh-3.5rem)] overflow-y-auto">
-              <button type="button" onClick={() => { setActiveApp(null); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={`p-4 rounded-2xl flex items-center gap-3 font-semibold tap-target ${!activeApp ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
+              <button type="button" onClick={() => { setActiveApp(null); setMobileMenuOpen(false); window.scrollTo({ top: 0, behavior: "smooth" }); }} className={`p-4 rounded-2xl flex items-center gap-3 font-semibold tap-target ${!activeApp ? 'bg-gradient-to-r from-amber-700/20 to-yellow-600/20 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
                 <HomeIcon size={20} /> Home
               </button>
-              <button type="button" onClick={() => { setActiveApp("generation"); setMobileMenuOpen(false); }} className={`p-4 rounded-2xl flex items-center gap-3 font-semibold tap-target ${activeApp === "generation" ? 'bg-gradient-to-r from-indigo-500/20 to-purple-500/20 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
+              <button type="button" onClick={() => { setActiveApp("generation"); setMobileMenuOpen(false); }} className={`p-4 rounded-2xl flex items-center gap-3 font-semibold tap-target ${activeApp === "generation" ? 'bg-gradient-to-r from-amber-700/20 to-yellow-600/20 text-white' : 'text-zinc-400 hover:text-white hover:bg-white/5'}`}>
                 <Wand2 size={20} /> AI Workspace
               </button>
               <button type="button" onClick={() => { router.push("/workspace"); setMobileMenuOpen(false); }} className="p-4 rounded-2xl flex items-center gap-3 font-semibold text-zinc-400 hover:text-white hover:bg-white/5 tap-target">
@@ -1213,18 +1213,18 @@ export default function Home() {
           <div className="flex flex-col gap-12 sm:gap-16 md:gap-24 animate-[fadeInUp_0.8s_ease-out] w-full mt-2 sm:mt-4">
             {/* Hero Section */}
             <section className="flex flex-col items-center text-center mt-4 sm:mt-10">
-              <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.25em] text-purple-400/90 mb-4">
+              <p className="text-[11px] sm:text-xs font-bold uppercase tracking-[0.25em] text-amber-500/90 mb-4">
                 AI Architectural Studio
               </p>
               <h1 className="font-display text-[2rem] leading-[1.08] sm:text-5xl md:text-7xl font-bold tracking-tighter mb-5 sm:mb-8 max-w-4xl px-1">
                 Design, from Concept to{" "}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-pink-400">Reality</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-500">Reality</span>
               </h1>
               <p className="text-sm sm:text-base text-zinc-400 max-w-md sm:max-w-xl mx-auto mb-6 sm:mb-8 leading-relaxed px-2">
                 Transform sketches and photos into photorealistic architectural renders with professional AI tools.
               </p>
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 sm:gap-4 mb-8 sm:mb-16 w-full max-w-sm sm:max-w-none px-2">
-                <button type="button" onClick={() => setActiveApp("generation")} className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-[0_0_20px_rgba(139,92,246,0.4)] text-sm sm:text-base tap-target">
+                <button type="button" onClick={() => setActiveApp("generation")} className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-gradient-to-r from-amber-700 to-yellow-600 text-white font-semibold flex items-center justify-center gap-2 hover:opacity-90 transition-all shadow-[0_0_20px_rgba(184,134,11,0.4)] text-sm sm:text-base tap-target">
                   Get Started <ArrowRight size={18} className="shrink-0" />
                 </button>
                 <button type="button" onClick={() => document.getElementById("apps")?.scrollIntoView({ behavior: "smooth" })} className="w-full sm:w-auto px-6 py-3.5 rounded-full bg-[#18181b] border border-white/10 text-white font-semibold flex justify-center hover:bg-white/5 transition-all text-sm sm:text-base tap-target">
@@ -1268,7 +1268,7 @@ export default function Home() {
             {/* Explore Tools Section */}
             <section id="features" className="max-w-6xl mx-auto w-full">
               <div className="text-center mb-8 sm:mb-12 px-2">
-                <h2 className="text-2xl sm:text-4xl font-bold mb-3 sm:mb-4 font-display">Explore <span className="text-purple-400">Our Tools</span></h2>
+                <h2 className="text-2xl sm:text-4xl font-bold mb-3 sm:mb-4 font-display">Explore <span className="text-amber-500">Our Tools</span></h2>
                 <p className="text-zinc-400 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">Powerful AI tools designed to transform your architectural and interior design workflow.</p>
               </div>
               <div className="flex md:grid md:grid-cols-3 gap-4 overflow-x-auto snap-x-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0 pb-2 md:pb-0">
@@ -1281,9 +1281,9 @@ export default function Home() {
                       } else {
                         setActiveApp(t.action_id || "generation");
                       }
-                    }} className="snap-center shrink-0 w-[78vw] max-w-[300px] md:w-auto md:max-w-none bg-[#121214] border border-white/5 rounded-2xl sm:rounded-3xl p-5 sm:p-6 cursor-pointer hover:border-purple-500/30 hover:bg-[#18181b] transition-all group active:scale-[0.98]">
-                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-purple-500/20 flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
-                        <Icon className="text-purple-400" size={22} />
+                    }} className="snap-center shrink-0 w-[78vw] max-w-[300px] md:w-auto md:max-w-none bg-[#121214] border border-white/5 rounded-2xl sm:rounded-3xl p-5 sm:p-6 cursor-pointer hover:border-amber-600/30 hover:bg-[#18181b] transition-all group active:scale-[0.98]">
+                      <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl bg-amber-600/20 flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
+                        <Icon className="text-amber-500" size={22} />
                       </div>
                       <h3 className="text-base sm:text-lg font-bold text-white mb-2">{t.title}</h3>
                       <p className="text-zinc-500 text-sm leading-relaxed line-clamp-3">{t.description}</p>
@@ -1296,14 +1296,14 @@ export default function Home() {
             {/* Explore Apps Section */}
             <section id="apps" className="max-w-[1400px] mx-auto w-full mb-12 sm:mb-20 mt-8 sm:mt-20">
               <div className="text-center mb-8 sm:mb-12 px-2">
-                <h2 className="text-2xl sm:text-4xl font-bold mb-3 sm:mb-4 font-display">Explore <span className="text-purple-400">H_ARCH Apps</span></h2>
+                <h2 className="text-2xl sm:text-4xl font-bold mb-3 sm:mb-4 font-display">Explore <span className="text-amber-500">H_ARCH Apps</span></h2>
                 <p className="text-zinc-400 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">Innovative AI applications and tools for creative professionals.</p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                 {dbApps.map((a) => (
                   <div key={a.id} className="flex flex-col gap-3 sm:gap-4">
                     <div className="aspect-[4/5] rounded-2xl sm:rounded-3xl overflow-hidden relative group cursor-pointer active:scale-[0.98] transition-transform" onClick={() => router.push(`/apps/${a.id}`)}>
-                      <div className="absolute top-4 left-4 z-10 px-3 py-1.5 rounded-full bg-purple-500 text-white text-[11px] font-bold shadow-lg">New</div>
+                      <div className="absolute top-4 left-4 z-10 px-3 py-1.5 rounded-full bg-amber-600 text-white text-[11px] font-bold shadow-lg">New</div>
                       {/* Credit cost badge */}
                       {a.credit_cost != null && (
                         <div className="absolute top-4 right-4 z-10 flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-sm border border-yellow-500/30 text-yellow-400 text-[11px] font-bold shadow-lg">
@@ -1332,8 +1332,8 @@ export default function Home() {
                       </div>
                       <h3 className="text-base sm:text-lg font-bold text-white mb-1.5 sm:mb-2 line-clamp-1">{a.title}</h3>
                       <p className="text-zinc-500 text-[12px] sm:text-[13px] mb-3 sm:mb-4 line-clamp-2 leading-relaxed">{a.description}</p>
-                      <button type="button" onClick={() => router.push(`/apps/${a.id}`)} className="w-full py-3 sm:py-2.5 rounded-xl border border-white/5 bg-[#121214] hover:bg-[#18181b] hover:border-white/10 transition-all flex items-center justify-center gap-2 text-sm font-medium hover:text-purple-300 tap-target">
-                        <Sparkles size={16} className="text-purple-400" /> Open App
+                      <button type="button" onClick={() => router.push(`/apps/${a.id}`)} className="w-full py-3 sm:py-2.5 rounded-xl border border-white/5 bg-[#121214] hover:bg-[#18181b] hover:border-white/10 transition-all flex items-center justify-center gap-2 text-sm font-medium hover:text-amber-300 tap-target">
+                        <Sparkles size={16} className="text-amber-500" /> Open App
                       </button>
                     </div>
                   </div>
@@ -1344,7 +1344,7 @@ export default function Home() {
             {/* Pricing Section (Dynamic) */}
             <section id="pricing" className="max-w-6xl mx-auto w-full mb-16 sm:mb-24">
               <div className="text-center mb-8 sm:mb-12 px-2">
-                <h2 className="text-2xl sm:text-4xl font-bold mb-3 sm:mb-4 font-display">Choose Your <span className="text-purple-400">Plan</span></h2>
+                <h2 className="text-2xl sm:text-4xl font-bold mb-3 sm:mb-4 font-display">Choose Your <span className="text-amber-500">Plan</span></h2>
                 <p className="text-zinc-400 text-sm sm:text-base max-w-2xl mx-auto leading-relaxed">Flexible subscription options designed to fit your workflow needs.</p>
               </div>
               {subscribeMsg && (
@@ -1357,9 +1357,9 @@ export default function Home() {
                   const isCurrentPlan = user?.plan_id === p.id;
                   const isLoading = subscribingPlanId === p.id;
                   return (
-                    <div key={p.id} className={`bg-[#18181b] border ${p.is_popular ? 'border-purple-500 ring-1 ring-purple-500' : 'border-white/5'} rounded-2xl sm:rounded-3xl p-6 sm:p-8 flex flex-col relative transition-all group md:hover:-translate-y-2 md:hover:shadow-[0_20px_40px_rgba(0,0,0,0.5)]`}>
+                    <div key={p.id} className={`bg-[#18181b] border ${p.is_popular ? 'border-amber-600 ring-1 ring-amber-600' : 'border-white/5'} rounded-2xl sm:rounded-3xl p-6 sm:p-8 flex flex-col relative transition-all group md:hover:-translate-y-2 md:hover:shadow-[0_20px_40px_rgba(0,0,0,0.5)]`}>
                       {p.is_popular ? (
-                        <div className="absolute top-0 right-8 -translate-y-1/2 px-4 py-1.5 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-[11px] font-bold rounded-full uppercase tracking-widest shadow-lg">
+                        <div className="absolute top-0 right-8 -translate-y-1/2 px-4 py-1.5 bg-gradient-to-r from-amber-700 to-yellow-600 text-white text-[11px] font-bold rounded-full uppercase tracking-widest shadow-lg">
                           Most Popular
                         </div>
                       ) : null}
@@ -1382,7 +1382,7 @@ export default function Home() {
                       <ul className="flex flex-col gap-4 flex-1 mb-8">
                         {p.features.map((f: string, i: number) => (
                           <li key={i} className="flex items-start gap-3 text-sm text-zinc-300">
-                            <CheckCircle2 size={18} className="text-purple-400 shrink-0 mt-0.5" />
+                            <CheckCircle2 size={18} className="text-amber-500 shrink-0 mt-0.5" />
                             <span className="leading-relaxed">{f}</span>
                           </li>
                         ))}
@@ -1405,7 +1405,7 @@ export default function Home() {
                         }}
                         className={`w-full py-4 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2
                         ${isCurrentPlan ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 cursor-default' :
-                            p.is_popular ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white hover:opacity-90 shadow-lg disabled:opacity-50' :
+                            p.is_popular ? 'bg-gradient-to-r from-amber-700 to-yellow-600 text-white hover:opacity-90 shadow-lg disabled:opacity-50' :
                               'bg-[#121214] border border-white/10 text-white hover:bg-white/5 disabled:opacity-50'}`}
                       >
                         {isLoading ? <Loader2 size={16} className="animate-spin" /> : null}
@@ -1421,7 +1421,7 @@ export default function Home() {
           <div className="w-full flex-grow flex flex-col items-center animate-[fadeInUp_0.4s_ease-out]">
             <div className="w-full max-w-4xl mx-auto flex flex-col items-center mt-4 sm:mt-10 mb-6 sm:mb-8 px-1">
               <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-3 mb-4 sm:mb-6 text-center">
-                <Layers className="text-purple-400 shrink-0" size={28} />
+                <Layers className="text-amber-500 shrink-0" size={28} />
                 <h2 className="text-xl sm:text-4xl font-display font-bold leading-tight max-w-2xl">Complete Architectural Rendering Workspace</h2>
               </div>
             </div>
@@ -1434,7 +1434,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setHistorySidebarOpen(true)}
-                  className="sm:hidden order-first w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-sm font-semibold tap-target"
+                  className="sm:hidden order-first w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-amber-600/10 border border-amber-600/30 text-amber-300 text-sm font-semibold tap-target"
                 >
                   <PanelLeft size={18} />
                   View Session History
@@ -1444,7 +1444,7 @@ export default function Home() {
                 <button
                   type="button"
                   onClick={() => setHistorySidebarOpen(true)}
-                  className="hidden sm:flex fixed left-0 top-[50%] -translate-y-1/2 z-40 items-center justify-center w-10 h-12 rounded-r-xl bg-slate-900/90 backdrop-blur-xl border border-l-0 border-white/10 text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/20 shadow-lg transition-all hover:pl-1 tap-target"
+                  className="hidden sm:flex fixed left-0 top-[50%] -translate-y-1/2 z-40 items-center justify-center w-10 h-12 rounded-r-xl bg-slate-900/90 backdrop-blur-xl border border-l-0 border-white/10 text-amber-500 hover:text-amber-300 hover:bg-amber-600/20 shadow-lg transition-all hover:pl-1 tap-target"
                   title="Show History"
                   aria-label="Show History"
                 >
@@ -1455,10 +1455,10 @@ export default function Home() {
               {/* 1. History - Left sidebar (toggleable, natural height) */}
               {user && historySidebarOpen && (
                 <div className="order-3 xl:order-1 w-full xl:self-start flex flex-col bg-slate-900/50 backdrop-blur-xl border border-white/10 rounded-2xl overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.3)] relative max-h-[280px] sm:max-h-[360px] xl:max-h-none">
-                  <div className="absolute -top-24 -left-24 w-48 h-48 bg-indigo-600/15 rounded-full blur-[60px] pointer-events-none" aria-hidden />
+                  <div className="absolute -top-24 -left-24 w-48 h-48 bg-amber-700/15 rounded-full blur-[60px] pointer-events-none" aria-hidden />
                   <div className="flex items-center justify-between px-5 pt-5 pb-4 border-b border-white/5 relative z-10">
                     <div className="flex flex-col flex-1 min-w-0">
-                      <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-indigo-400 font-display">
+                      <h2 className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-amber-300 to-yellow-500 font-display">
                         History
                       </h2>
                       <p className="text-xs text-slate-400 mt-0.5">Your past creations</p>
@@ -1466,7 +1466,7 @@ export default function Home() {
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         onClick={handleNewSession}
-                        className="p-2 rounded-xl bg-gradient-to-br from-indigo-500/10 to-blue-500/10 border border-indigo-500/20 hover:bg-indigo-500/20 hover:border-indigo-400/40 text-indigo-300 hover:text-white transition-all shadow-[0_0_15px_rgba(99,102,241,0.1)] hover:shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:-translate-y-0.5"
+                        className="p-2 rounded-xl bg-gradient-to-br from-amber-600/10 to-yellow-600/10 border border-amber-600/20 hover:bg-amber-600/20 hover:border-amber-500/40 text-amber-300 hover:text-white transition-all shadow-[0_0_15px_rgba(184,134,11,0.1)] hover:shadow-[0_0_20px_rgba(184,134,11,0.3)] hover:-translate-y-0.5"
                         title="New Session"
                       >
                         <Plus size={18} strokeWidth={2.5} />
@@ -1485,7 +1485,7 @@ export default function Home() {
                   <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar flex flex-col gap-2 px-4 pb-5 relative z-10">
                     {isSessionsLoading ? (
                       <div className="flex justify-center items-center py-10">
-                        <Loader2 size={24} className="animate-spin text-indigo-500" />
+                        <Loader2 size={24} className="animate-spin text-amber-600" />
                       </div>
                     ) : sessions.length === 0 ? (
                       <div className="flex flex-col items-center justify-center text-center py-12 px-4 bg-black/20 rounded-2xl border border-white/5 border-dashed h-full">
@@ -1506,23 +1506,23 @@ export default function Home() {
                           <div
                             onClick={() => handleSelectSession(session.id, session.resps)}
                             className={`group flex items-center gap-2 p-3 rounded-2xl cursor-pointer transition-all duration-300 border relative ${isActive
-                              ? "bg-indigo-500/20 border-indigo-500/40 text-indigo-100 shadow-[0_4px_20px_rgba(99,102,241,0.15)]"
+                              ? "bg-amber-600/20 border-amber-600/40 text-amber-100 shadow-[0_4px_20px_rgba(184,134,11,0.15)]"
                               : "bg-black/20 border-white/5 hover:bg-white/5 hover:border-white/10 text-slate-300"
                               }`}
                           >
                             {isActive && (
-                              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-400 to-blue-500 rounded-l-2xl" />
+                              <div className="absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b from-amber-400 to-yellow-600 rounded-l-2xl" />
                             )}
 
                             {/* Info */}
                             <div className="flex flex-col overflow-hidden flex-1 min-w-0 ml-1">
                               <div className="flex items-center gap-2">
-                                <MessageSquare size={13} className={`shrink-0 ${isActive ? "text-indigo-400" : "text-slate-500 group-hover:text-slate-400"}`} />
+                                <MessageSquare size={13} className={`shrink-0 ${isActive ? "text-amber-500" : "text-slate-500 group-hover:text-slate-400"}`} />
                                 <span className="text-xs truncate font-medium flex-1">
                                   {session.title || "Untitled Session"}
                                 </span>
                                 {isSessionFetching && (
-                                  <Loader2 size={10} className="animate-spin text-indigo-400 shrink-0" />
+                                  <Loader2 size={10} className="animate-spin text-amber-500 shrink-0" />
                                 )}
                               </div>
                               <span className="text-[9px] text-slate-600 mt-1 ml-5 font-mono group-hover:text-slate-500 transition-colors">
@@ -1534,7 +1534,7 @@ export default function Home() {
                             <div className="relative shrink-0" data-session-menu>
                               {isDuplicating ? (
                                 <div className="p-1.5">
-                                  <Loader2 size={13} className="animate-spin text-indigo-400" />
+                                  <Loader2 size={13} className="animate-spin text-amber-500" />
                                 </div>
                               ) : (
                                 <button
@@ -1569,12 +1569,12 @@ export default function Home() {
                                   <button
                                     onClick={(e) => handleDuplicateSession(e, session)}
                                     disabled={!!duplicatingId}
-                                    className="w-full flex items-center gap-3 px-3.5 py-3 text-xs text-slate-300 hover:text-white hover:bg-indigo-500/20 transition-all group/di border-b border-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
+                                    className="w-full flex items-center gap-3 px-3.5 py-3 text-xs text-slate-300 hover:text-white hover:bg-amber-600/20 transition-all group/di border-b border-white/5 disabled:opacity-50 disabled:cursor-not-allowed"
                                   >
-                                    <span className="w-6 h-6 rounded-lg bg-indigo-500/15 flex items-center justify-center group-hover/di:bg-indigo-500/30 transition-colors shrink-0">
+                                    <span className="w-6 h-6 rounded-lg bg-amber-600/15 flex items-center justify-center group-hover/di:bg-amber-600/30 transition-colors shrink-0">
                                       {isDuplicating
-                                        ? <Loader2 size={11} className="animate-spin text-indigo-400" />
-                                        : <Copy size={11} className="text-indigo-400" />
+                                        ? <Loader2 size={11} className="animate-spin text-amber-500" />
+                                        : <Copy size={11} className="text-amber-500" />
                                       }
                                     </span>
                                     <span className="font-semibold">{isDuplicating ? "Duplicating…" : "Duplicate"}</span>
@@ -1597,7 +1597,7 @@ export default function Home() {
 
                           {/* Duplicating overlay */}
                           {isDuplicating && (
-                            <div className="mt-1 mx-0.5 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-[10px] font-medium animate-pulse">
+                            <div className="mt-1 mx-0.5 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-amber-600/10 border border-amber-600/20 text-amber-300 text-[10px] font-medium animate-pulse">
                               <Loader2 size={10} className="animate-spin shrink-0" />
                               <span>Creating copy…</span>
                             </div>
