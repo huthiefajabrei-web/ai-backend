@@ -159,6 +159,7 @@ function Flow() {
   const [spotlightPos, setSpotlightPos] = useState<{ x: number; y: number } | null>(null);
   const [spotlightTitle, setSpotlightTitle] = useState("Add a node");
   const pendingConnectRef = useRef<PendingConnect | null>(null);
+  const insertAtScreenRef = useRef<{ x: number; y: number } | null>(null);
   const assetFileInputRef = useRef<HTMLInputElement>(null);
   const pendingAssetConnectRef = useRef<PendingConnect | null>(null);
   const pendingAssetPositionRef = useRef<{ x: number; y: number } | null>(null);
@@ -282,6 +283,7 @@ function Flow() {
       pending?: PendingConnect | null;
     }) => {
       pendingConnectRef.current = opts?.pending ?? null;
+      insertAtScreenRef.current = opts?.position ?? opts?.pending?.screen ?? null;
       setSpotlightOptions(opts?.options ?? SPOTLIGHT_NODES);
       setSpotlightPos(opts?.position ?? null);
       setSpotlightTitle(opts?.title ?? "Add a node");
@@ -294,6 +296,22 @@ function Flow() {
     setSpotlightOpen(false);
     pendingConnectRef.current = null;
   }, []);
+
+  const openAddMenuAt = useCallback(
+    (event: MouseEvent | React.MouseEvent) => {
+      const el = event.target as HTMLElement | null;
+      if (el?.closest?.("input, textarea, select, [contenteditable='true']")) return;
+      event.preventDefault();
+      event.stopPropagation();
+      openSpotlight({
+        options: SPOTLIGHT_NODES,
+        position: { x: event.clientX, y: event.clientY },
+        title: "Add a node",
+        pending: null,
+      });
+    },
+    [openSpotlight],
+  );
 
   // Magnific Spotlight: Space or /
   useEffect(() => {
@@ -308,7 +326,7 @@ function Flow() {
 
       if (typing) return;
 
-      if (e.key === "/" || (e.code === "Space" && !e.metaKey && !e.ctrlKey && !e.altKey)) {
+      if (e.key === "/" || e.key.toLowerCase() === "n" || (e.code === "Space" && !e.metaKey && !e.ctrlKey && !e.altKey)) {
         e.preventDefault();
         openSpotlight({
           options: SPOTLIGHT_NODES,
@@ -535,11 +553,19 @@ function Flow() {
 
   const placeNodeFromSpotlight = useCallback(
     (option: SpotlightNodeOption) => {
+      if (option.comingSoon) return;
+
+      if (option.href) {
+        closeSpotlight();
+        router.push(option.href);
+        return;
+      }
+
       const instance = reactFlowInstanceRef.current;
       if (!instance) return;
 
       const pending = pendingConnectRef.current;
-      const screen = pending?.screen ?? {
+      const screen = pending?.screen ?? insertAtScreenRef.current ?? {
         x: window.innerWidth / 2,
         y: window.innerHeight / 2,
       };
@@ -553,6 +579,11 @@ function Flow() {
       if (option.type === "creationNode") {
         closeSpotlight();
         openAssetPicker(pending, position);
+        return;
+      }
+
+      if (option.type !== "promptNode" && option.type !== "imageNode") {
+        closeSpotlight();
         return;
       }
 
@@ -615,7 +646,7 @@ function Flow() {
       closeSpotlight();
       triggerSave();
     },
-    [setNodes, setEdges, closeSpotlight, triggerSave, openAssetPicker],
+    [setNodes, setEdges, closeSpotlight, triggerSave, openAssetPicker, router],
   );
 
   const handleRunWorkflow = useCallback(async () => {
@@ -1074,7 +1105,7 @@ function Flow() {
         </div>
       </div>
 
-      <div className="w-full h-full" ref={reactFlowWrapper}>
+      <div className="w-full h-full" ref={reactFlowWrapper} onContextMenu={openAddMenuAt}>
         <ReactFlow
           nodes={nodes}
           edges={edges}
@@ -1094,6 +1125,10 @@ function Flow() {
           }}
           onDrop={(e) => void onDrop(e)}
           onDragOver={onDragOver}
+          onPaneContextMenu={openAddMenuAt}
+          onNodeContextMenu={openAddMenuAt}
+          onEdgeContextMenu={openAddMenuAt}
+          onSelectionContextMenu={openAddMenuAt}
           nodeTypes={nodeTypes}
           fitView
           className={`bg-[#09090b] ${activeTool === "scissors" ? "cutting-mode" : ""}`}
@@ -1114,12 +1149,16 @@ function Flow() {
 
       {isLoaded && nodes.length === 0 && !spotlightOpen && !isFileDragOver && (
         <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
-          <div className="pointer-events-auto text-center bg-[#121214]/95 border border-white/10 backdrop-blur-xl rounded-2xl p-8 max-w-md shadow-2xl">
+          <div
+            className="pointer-events-auto text-center bg-[#121214]/95 border border-white/10 backdrop-blur-xl rounded-2xl p-8 max-w-md shadow-2xl"
+            onContextMenu={openAddMenuAt}
+          >
             <h2 className="text-xl font-display font-bold text-white mb-2">Build your workflow</h2>
             <p className="text-sm text-zinc-400 mb-6 leading-relaxed">
-              Drop images onto the canvas, or connect{" "}
+              Right-click to add nodes, or drop images onto the canvas. Connect{" "}
               <span className="text-blue-400 font-semibold">Text</span> →{" "}
               <span className="text-amber-500 font-semibold">Image Generator</span>. Press{" "}
+              <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[11px]">N</kbd>,{" "}
               <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[11px]">Space</kbd> or{" "}
               <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[11px]">/</kbd> for Spotlight.
             </p>

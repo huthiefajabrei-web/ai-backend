@@ -738,10 +738,14 @@ export type SpotlightNodeOption = {
   label: string;
   description: string;
   category: string;
+  group: "basics" | "media";
+  icon: "text" | "image" | "video" | "assistant" | "upscaler" | "list" | "upload" | "assets" | "stock";
   connectTargetHandle?: string;
   connectSourceHandle?: string;
   accepts: PortKind[];
   produces: PortKind[];
+  comingSoon?: boolean;
+  href?: string;
 };
 
 export const SPOTLIGHT_NODES: SpotlightNodeOption[] = [
@@ -750,6 +754,8 @@ export const SPOTLIGHT_NODES: SpotlightNodeOption[] = [
     label: "Text",
     description: "Write prompts and feed them to generators",
     category: "Text",
+    group: "basics",
+    icon: "text",
     connectSourceHandle: "text-out",
     accepts: ["image"],
     produces: ["text"],
@@ -759,8 +765,65 @@ export const SPOTLIGHT_NODES: SpotlightNodeOption[] = [
     label: "Image Generator",
     description: "Where images are produced — connect Text and/or Assets, then Run",
     category: "Image",
+    group: "basics",
+    icon: "image",
     connectTargetHandle: "text-in",
     accepts: ["text", "image"],
+    produces: ["image"],
+  },
+  {
+    type: "video",
+    label: "Video Generator",
+    description: "Open the video generation studio",
+    category: "Video",
+    group: "basics",
+    icon: "video",
+    href: "/video",
+    accepts: [],
+    produces: [],
+  },
+  {
+    type: "assistant",
+    label: "Assistant",
+    description: "AI assistant for your canvas",
+    category: "Text",
+    group: "basics",
+    icon: "assistant",
+    comingSoon: true,
+    accepts: [],
+    produces: [],
+  },
+  {
+    type: "upscaler",
+    label: "Image Upscaler",
+    description: "Upscale generated or uploaded images",
+    category: "Image",
+    group: "basics",
+    icon: "upscaler",
+    comingSoon: true,
+    accepts: ["image"],
+    produces: ["image"],
+  },
+  {
+    type: "list",
+    label: "List",
+    description: "Organize items in a list node",
+    category: "Text",
+    group: "basics",
+    icon: "list",
+    comingSoon: true,
+    accepts: [],
+    produces: [],
+  },
+  {
+    type: "creationNode",
+    label: "Upload",
+    description: "Upload image(s) from your device onto the canvas",
+    category: "Media",
+    group: "media",
+    icon: "upload",
+    connectSourceHandle: "image-out",
+    accepts: [],
     produces: ["image"],
   },
   {
@@ -768,16 +831,20 @@ export const SPOTLIGHT_NODES: SpotlightNodeOption[] = [
     label: "Assets",
     description: "Choose an image from your device as a Creation reference",
     category: "Media",
+    group: "media",
+    icon: "assets",
     connectSourceHandle: "image-out",
     accepts: [],
     produces: ["image"],
   },
   {
-    type: "creationNode",
-    label: "Upload",
-    description: "Upload image(s) from your device onto the canvas",
+    type: "stock",
+    label: "Stock",
+    description: "Browse stock images",
     category: "Media",
-    connectSourceHandle: "image-out",
+    group: "media",
+    icon: "stock",
+    comingSoon: true,
     accepts: [],
     produces: ["image"],
   },
@@ -793,7 +860,7 @@ export function filterSpotlightForPort(
 
   if (fromHandleType === "source") {
     // Prefer unique options by label when same type appears twice (Assets/Upload)
-    const matched = options.filter((o) => o.accepts.includes(kind));
+    const matched = options.filter((o) => o.accepts.includes(kind) && !o.comingSoon && !o.href);
     const seen = new Set<string>();
     return matched
       .filter((o) => {
@@ -808,7 +875,7 @@ export function filterSpotlightForPort(
       }));
   }
 
-  const matched = options.filter((o) => o.produces.includes(kind));
+  const matched = options.filter((o) => o.produces.includes(kind) && !o.comingSoon && !o.href);
   const seen = new Set<string>();
   return matched
     .filter((o) => {

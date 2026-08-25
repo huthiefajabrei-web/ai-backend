@@ -1,14 +1,54 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { Search, Type, Image as ImageIcon, Layers } from "lucide-react";
+import {
+  Search,
+  Type,
+  Image as ImageIcon,
+  Video,
+  Sparkles,
+  Zap,
+  List,
+  Upload,
+  Layers,
+  Box,
+  LayoutGrid,
+} from "lucide-react";
 import type { SpotlightNodeOption } from "@/lib/workspace/graphUtils";
 
-const ICONS: Record<string, React.ComponentType<{ size?: number; className?: string }>> = {
-  promptNode: Type,
-  imageNode: ImageIcon,
-  creationNode: Layers,
+type CategoryFilter = "all" | "text" | "image" | "video" | "media";
+
+const FILTERS: { id: CategoryFilter; icon: React.ComponentType<{ size?: number }> }[] = [
+  { id: "all", icon: LayoutGrid },
+  { id: "text", icon: Type },
+  { id: "image", icon: ImageIcon },
+  { id: "video", icon: Video },
+  { id: "media", icon: Type },
+];
+
+const ICON_MAP: Record<
+  SpotlightNodeOption["icon"],
+  { Icon: React.ComponentType<{ size?: number; className?: string }>; box: string }
+> = {
+  text: { Icon: Type, box: "bg-[#2563eb] text-white" },
+  image: { Icon: ImageIcon, box: "bg-[#ea580c] text-white" },
+  video: { Icon: Video, box: "bg-[#0d9488] text-white" },
+  assistant: { Icon: Sparkles, box: "bg-[#ca8a04] text-white" },
+  upscaler: { Icon: Zap, box: "bg-[#2563eb] text-white" },
+  list: { Icon: List, box: "bg-[#3f3f46] text-white" },
+  upload: { Icon: Upload, box: "bg-[#2563eb] text-white" },
+  assets: { Icon: Layers, box: "bg-[#2563eb] text-white" },
+  stock: { Icon: Box, box: "bg-[#3f3f46] text-white" },
 };
+
+function matchesFilter(opt: SpotlightNodeOption, filter: CategoryFilter) {
+  if (filter === "all") return true;
+  if (filter === "media") return opt.group === "media";
+  if (filter === "text") return opt.category === "Text";
+  if (filter === "image") return opt.category === "Image" || opt.icon === "upload" || opt.icon === "assets";
+  if (filter === "video") return opt.category === "Video";
+  return true;
+}
 
 type SpotlightProps = {
   open: boolean;
@@ -16,7 +56,6 @@ type SpotlightProps = {
   title?: string;
   onClose: () => void;
   onSelect: (option: SpotlightNodeOption) => void;
-  /** Screen position for floating placement (optional) */
   position?: { x: number; y: number } | null;
 };
 
@@ -29,23 +68,38 @@ export default function Spotlight({
   position,
 }: SpotlightProps) {
   const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<CategoryFilter>("all");
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return options;
-    return options.filter(
-      (o) =>
+    return options.filter((o) => {
+      if (!matchesFilter(o, filter)) return false;
+      if (!q) return true;
+      return (
         o.label.toLowerCase().includes(q) ||
         o.description.toLowerCase().includes(q) ||
-        o.category.toLowerCase().includes(q),
-    );
-  }, [options, query]);
+        o.category.toLowerCase().includes(q) ||
+        o.group.toLowerCase().includes(q)
+      );
+    });
+  }, [options, query, filter]);
+
+  const groups = useMemo(() => {
+    const basics = filtered.filter((o) => o.group === "basics");
+    const media = filtered.filter((o) => o.group === "media");
+    return [
+      { id: "basics", label: "BASICS", items: basics },
+      { id: "media", label: "MEDIA", items: media },
+    ].filter((g) => g.items.length > 0);
+  }, [filtered]);
 
   useEffect(() => {
     if (!open) return;
     setQuery("");
+    setFilter("all");
     setActiveIndex(0);
     const t = window.setTimeout(() => inputRef.current?.focus(), 30);
     return () => window.clearTimeout(t);
@@ -53,7 +107,12 @@ export default function Spotlight({
 
   useEffect(() => {
     setActiveIndex(0);
-  }, [query]);
+  }, [query, filter]);
+
+  useEffect(() => {
+    const el = listRef.current?.querySelector<HTMLElement>(`[data-spot-index="${activeIndex}"]`);
+    el?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
 
   useEffect(() => {
     if (!open) return;
@@ -70,7 +129,7 @@ export default function Spotlight({
       } else if (e.key === "Enter") {
         e.preventDefault();
         const opt = filtered[activeIndex];
-        if (opt) onSelect(opt);
+        if (opt && !opt.comingSoon) onSelect(opt);
       }
     };
     window.addEventListener("keydown", onKey);
@@ -79,95 +138,133 @@ export default function Spotlight({
 
   if (!open) return null;
 
+  const menuW = 300;
+  const menuH = 560;
   const style: React.CSSProperties = position
     ? {
-        left: Math.min(position.x, window.innerWidth - 340),
-        top: Math.min(position.y, window.innerHeight - 420),
+        left: Math.max(12, Math.min(position.x, window.innerWidth - menuW - 12)),
+        top: Math.max(12, Math.min(position.y, window.innerHeight - Math.min(menuH, window.innerHeight - 24))),
       }
     : {
         left: "50%",
-        top: "22%",
+        top: "18%",
         transform: "translateX(-50%)",
       };
+
+  let runningIndex = -1;
 
   return (
     <>
       <button
         type="button"
-        className="fixed inset-0 z-[80] bg-black/40 backdrop-blur-[2px]"
-        aria-label="Close spotlight"
+        className="fixed inset-0 z-[80] bg-transparent"
+        aria-label="Close menu"
         onClick={onClose}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          onClose();
+        }}
       />
       <div
-        className="fixed z-[90] w-[min(320px,92vw)] bg-[#18181b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+        className="fixed z-[90] w-[min(300px,92vw)] h-[min(560px,80vh)] bg-[#18181b] border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col"
         style={style}
         role="dialog"
         aria-label={title}
+        onContextMenu={(e) => e.preventDefault()}
       >
-        <div className="px-3 pt-3 pb-2 border-b border-white/5">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 mb-2 px-1">
-            {title}
-          </p>
+        <div className="p-4 border-b border-gray-800 shrink-0">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={16} />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={18} />
             <input
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search nodes…"
-              className="w-full bg-[#27272a] text-white text-sm rounded-xl pl-9 pr-3 py-2.5 outline-none focus:ring-1 focus:ring-blue-500/40 placeholder:text-zinc-500"
+              placeholder="Search"
+              className="w-full bg-[#27272a] text-white text-sm rounded-lg pl-10 pr-4 py-2 outline-none focus:ring-1 focus:ring-amber-600/40 placeholder:text-gray-500"
             />
+          </div>
+          <div className="flex items-center justify-between mt-4 px-1 text-gray-400">
+            {FILTERS.map(({ id, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setFilter(id)}
+                className={`p-1 rounded-md transition-colors ${
+                  filter === id ? "text-white bg-white/10" : "hover:text-white"
+                }`}
+                aria-label={id}
+              >
+                <Icon size={16} />
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="max-h-[320px] overflow-y-auto p-2">
+        <div ref={listRef} className="flex-1 overflow-y-auto p-4 custom-scrollbar">
           {filtered.length === 0 ? (
-            <p className="text-sm text-zinc-500 text-center py-8">No compatible nodes</p>
+            <p className="text-sm text-zinc-500 text-center py-8">No matching nodes</p>
           ) : (
-            filtered.map((opt, i) => {
-              const Icon = ICONS[opt.type] || Type;
-              const active = i === activeIndex;
-              return (
-                <button
-                  key={`${opt.type}-${opt.label}-${opt.connectTargetHandle || opt.connectSourceHandle || "x"}`}
-                  type="button"
-                  onMouseEnter={() => setActiveIndex(i)}
-                  onClick={() => onSelect(opt)}
-                  className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
-                    active ? "bg-white/10" : "hover:bg-white/5"
-                  }`}
-                >
-                  <div
-                    className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
-                      opt.type === "imageNode"
-                        ? "bg-amber-600/15 text-amber-500"
-                        : opt.type === "creationNode"
-                          ? "bg-sky-500/15 text-sky-400"
-                          : "bg-blue-500/15 text-blue-400"
-                    }`}
-                  >
-                    <Icon size={16} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-white">{opt.label}</div>
-                    <div className="text-[11px] text-zinc-500 leading-snug mt-0.5">{opt.description}</div>
-                  </div>
-                </button>
-              );
-            })
+            groups.map((group) => (
+              <div key={group.id} className="mb-5 last:mb-0">
+                <h3 className="text-xs font-bold text-gray-500 mb-3 tracking-wider">{group.label}</h3>
+                {group.items.map((opt) => {
+                  runningIndex += 1;
+                  const idx = runningIndex;
+                  const visual = ICON_MAP[opt.icon] || ICON_MAP.text;
+                  const Icon = visual.Icon;
+                  const active = idx === activeIndex;
+                  return (
+                    <button
+                      key={`${opt.type}-${opt.label}`}
+                      type="button"
+                      data-spot-index={idx}
+                      disabled={opt.comingSoon}
+                      onMouseEnter={() => setActiveIndex(idx)}
+                      onClick={() => {
+                        if (!opt.comingSoon) onSelect(opt);
+                      }}
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left transition-colors mb-1 ${
+                        opt.comingSoon
+                          ? "opacity-50 cursor-not-allowed"
+                          : active
+                            ? "bg-[#27272a]"
+                            : "hover:bg-[#27272a]"
+                      }`}
+                    >
+                      <div
+                        className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 ${visual.box}`}
+                      >
+                        <Icon size={15} />
+                      </div>
+                      <span className="text-sm font-medium text-gray-200 flex-1">{opt.label}</span>
+                      {opt.comingSoon ? (
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+                          Soon
+                        </span>
+                      ) : null}
+                    </button>
+                  );
+                })}
+              </div>
+            ))
           )}
         </div>
 
-        <div className="px-3 py-2 border-t border-white/5 flex items-center justify-between text-[10px] text-zinc-500">
-          <span>
-            <kbd className="bg-[#27272a] px-1.5 py-0.5 rounded text-zinc-400">↑↓</kbd> navigate
-          </span>
-          <span>
-            <kbd className="bg-[#27272a] px-1.5 py-0.5 rounded text-zinc-400">↵</kbd> insert
-          </span>
-          <span>
-            <kbd className="bg-[#27272a] px-1.5 py-0.5 rounded text-zinc-400">esc</kbd> close
-          </span>
+        <div className="p-3 border-t border-gray-800 bg-[#1c1c1f] flex items-center justify-between text-[10px] text-gray-500 font-medium shrink-0">
+          <div className="flex items-center gap-1">
+            <span className="bg-[#27272a] px-1.5 py-0.5 rounded text-gray-400">N</span>
+            Open
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1">
+              <span className="bg-[#27272a] px-1.5 py-0.5 rounded text-gray-400">↑↓</span>
+              Navigate
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="bg-[#27272a] px-1.5 py-0.5 rounded text-gray-400">↵</span>
+              Insert
+            </div>
+          </div>
         </div>
       </div>
     </>
