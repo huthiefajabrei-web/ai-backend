@@ -588,19 +588,11 @@ function Flow() {
       }
 
       const newId = uuidv4();
-      const extras =
-        option.type === "creationNode"
-          ? {
-              creationNumber: nextCreationNumber(nodesRef.current),
-              label: `Creation #${nextCreationNumber(nodesRef.current)}`,
-            }
-          : undefined;
-
       const newNode = {
         id: newId,
         type: option.type,
         position,
-        data: initialDataForType(option.type, extras),
+        data: initialDataForType(option.type),
       };
 
       setNodes((nds) => nds.concat(newNode));
