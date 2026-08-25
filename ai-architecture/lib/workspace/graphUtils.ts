@@ -222,7 +222,7 @@ export interface ResolvedImageInputs {
 }
 
 /** Prefer an explicit Style over default "Custom Scene". */
-export function pickPerspective(...candidates: Array<string | undefined | null>): string {
+export function pickPerspective(...candidates: Array<unknown>): string {
   let fallback = "Custom Scene";
   for (const raw of candidates) {
     const v = String(raw || "").trim();
@@ -484,7 +484,10 @@ export function resolveImageNodeInputs(
 
   // Text Style wins over Image Generator default "Custom Scene".
   // Explicit non-Custom style on Image Generator still wins.
-  const perspective = pickPerspective(node?.data?.perspective, textPerspective);
+  const perspective = pickPerspective(
+    node?.data?.perspective != null ? String(node.data.perspective) : undefined,
+    textPerspective,
+  );
 
   // Re-style / re-prompt: if no external refs but this node already has a result,
   // use the current output as the reference image (edit-in-place like Magnific).
