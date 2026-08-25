@@ -207,6 +207,10 @@ function pushReference(
 export interface ResolvedImageInputs {
   promptText: string;
   perspective: string;
+  /** From linked Text node when set */
+  modelName?: string;
+  aspectRatio?: string;
+  imageCount?: number;
   /** @deprecated use references[0] */
   referenceImageB64?: string;
   /** @deprecated use references[0] */
@@ -215,6 +219,18 @@ export interface ResolvedImageInputs {
   references: WorkspaceReference[];
   textSourceIds: string[];
   imageSourceIds: string[];
+}
+
+/** Prefer an explicit Style over default "Custom Scene". */
+export function pickPerspective(...candidates: Array<string | undefined | null>): string {
+  let fallback = "Custom Scene";
+  for (const raw of candidates) {
+    const v = String(raw || "").trim();
+    if (!v) continue;
+    if (v !== "Custom Scene") return v;
+    fallback = v;
+  }
+  return fallback;
 }
 
 function getImageUrlFromNode(node: Node | undefined): string | undefined {
@@ -284,7 +300,9 @@ export function buildReferenceAwarePrompt(
   const labels = references.map((r) => r.name).join(", ");
   const instruction =
     `You are given ${references.length} reference image(s): ${labels}. ` +
-    `When the prompt mentions @Creation #N, Creation #N, @ImageN, or Image N, use that exact reference. Mapping: ${legend}.`;
+    `When the prompt mentions @Creation #N, Creation #N, @ImageN, or Image N, use that exact reference. Mapping: ${legend}. ` +
+    `CRITICAL: Preserve the exact building massing, facade, openings, proportions, camera view, and facade colors from the reference. ` +
+    `Do not redesign, warp architectural details, or bleach/recolor the facade — apply only the requested presentation/style change.`;
 
   return body ? `${instruction}\n\n${body}` : instruction;
 }
@@ -310,8 +328,8 @@ function addCreationRef(
   });
 }
 
-/** Collect Creation nodes wired into a Text node's image-in (Magnific). */
-function collectCreationsIntoTextNode(
+/** Collect Creation + generated Image nodes wired into a Text node's image-in. */
+function collectImageRefsIntoTextNode(
   textNodeId: string,
   getNode: (id: string) => Node | undefined,
   getEdges: () => Edge[],
@@ -322,10 +340,39 @@ function collectCreationsIntoTextNode(
   );
   for (const edge of incoming) {
     const src = getNode(edge.source);
-    if (!src || src.type !== "creationNode") continue;
+    if (!src) continue;
     if (references.some((r) => r.sourceNodeId === src.id)) continue;
-    addCreationRef(references, src, edge.id);
+
+    if (src.type === "creationNode") {
+      addCreationRef(references, src, edge.id);
+      continue;
+    }
+
+    if (src.type === "imageNode") {
+      const url = getImageUrlFromNode(src);
+      if (!url) continue;
+      const n = references.length + 1;
+      pushReference(references, {
+        id: `text_img_${edge.id}_${src.id}`,
+        source: "edge",
+        sourceNodeId: src.id,
+        thumb: url,
+        url,
+        name: `Image ${n}`,
+        mention: `@Image${n}`,
+      });
+    }
   }
+}
+
+/** @deprecated use collectImageRefsIntoTextNode */
+function collectCreationsIntoTextNode(
+  textNodeId: string,
+  getNode: (id: string) => Node | undefined,
+  getEdges: () => Edge[],
+  references: WorkspaceReference[],
+) {
+  collectImageRefsIntoTextNode(textNodeId, getNode, getEdges, references);
 }
 
 /** Walk incoming edges + Creations + local uploads → Magnific-style references. */
@@ -338,10 +385,25 @@ export function resolveImageNodeInputs(
   const incoming = getEdges().filter((e) => e.target === nodeId);
 
   let promptText = "";
-  let perspective = "Custom Scene";
+  let textPerspective = "";
+  let textModelName: string | undefined;
+  let textAspectRatio: string | undefined;
+  let textImageCount: number | undefined;
   const textSourceIds: string[] = [];
   const imageSourceIds: string[] = [];
   const references: WorkspaceReference[] = [];
+
+  const applyTextNodeSettings = (source: Node) => {
+    textSourceIds.push(source.id);
+    const chunk = String(source.data?.prompt || source.data?.label || "").trim();
+    if (chunk) promptText = promptText ? `${promptText} ${chunk}`.trim() : chunk;
+    if (source.data?.perspective) textPerspective = String(source.data.perspective);
+    if (source.data?.modelName) textModelName = String(source.data.modelName);
+    if (source.data?.aspectRatio) textAspectRatio = String(source.data.aspectRatio);
+    const count = Number(source.data?.imageCount);
+    if (Number.isFinite(count) && count >= 1) textImageCount = Math.min(4, Math.max(1, count));
+    collectImageRefsIntoTextNode(source.id, getNode, getEdges, references);
+  };
 
   // 1) Local uploads on the Image Generator card
   const localRefs = loadLocalRefs(nodeId);
@@ -374,12 +436,7 @@ export function resolveImageNodeInputs(
     const isImagePort = targetHandle === "image-in" || targetHandle.startsWith("image");
 
     if (source.type === "promptNode" && isTextPort) {
-      textSourceIds.push(source.id);
-      const chunk = String(source.data?.prompt || source.data?.label || "").trim();
-      if (chunk) promptText = promptText ? `${promptText} ${chunk}`.trim() : chunk;
-      if (source.data?.perspective) perspective = String(source.data.perspective);
-      // Creations wired into the Text node also become refs
-      collectCreationsIntoTextNode(source.id, getNode, getEdges, references);
+      applyTextNodeSettings(source);
     }
 
     if (isImagePort) {
@@ -416,15 +473,33 @@ export function resolveImageNodeInputs(
             b64: item.b64,
           });
         }
-        collectCreationsIntoTextNode(source.id, getNode, getEdges, references);
+        collectImageRefsIntoTextNode(source.id, getNode, getEdges, references);
       }
     }
 
     if (source.type === "promptNode" && !targetHandle) {
-      textSourceIds.push(source.id);
-      const chunk = String(source.data?.prompt || source.data?.label || "").trim();
-      if (chunk) promptText = promptText ? `${promptText} ${chunk}`.trim() : chunk;
-      if (source.data?.perspective) perspective = String(source.data.perspective);
+      applyTextNodeSettings(source);
+    }
+  }
+
+  // Text Style wins over Image Generator default "Custom Scene".
+  // Explicit non-Custom style on Image Generator still wins.
+  const perspective = pickPerspective(node?.data?.perspective, textPerspective);
+
+  // Re-style / re-prompt: if no external refs but this node already has a result,
+  // use the current output as the reference image (edit-in-place like Magnific).
+  if (!references.length) {
+    const selfUrl = getImageUrlFromNode(node);
+    if (selfUrl) {
+      pushReference(references, {
+        id: `self_${nodeId}`,
+        source: "edge",
+        sourceNodeId: nodeId,
+        thumb: selfUrl,
+        url: selfUrl,
+        name: "Image 1",
+        mention: "@Image1",
+      });
     }
   }
 
@@ -433,6 +508,9 @@ export function resolveImageNodeInputs(
   return {
     promptText,
     perspective,
+    modelName: textModelName,
+    aspectRatio: textAspectRatio,
+    imageCount: textImageCount,
     referenceImageB64: first?.b64,
     referenceImageUrl: first?.url,
     referenceLabel: references.length
@@ -509,6 +587,149 @@ export function edgeStyleForConnection(connection: Connection | Edge) {
   };
 }
 
+/** Image Generators that eventually depend on `startId` (incoming walk). */
+export function getImageNodesDependingOn(
+  startId: string,
+  nodes: Node[],
+  edges: Edge[],
+): string[] {
+  const imageIds = nodes.filter((n) => n.type === "imageNode").map((n) => n.id);
+  const affected: string[] = [];
+  for (const imgId of imageIds) {
+    const seen = new Set<string>();
+    const queue = [imgId];
+    let hits = false;
+    while (queue.length) {
+      const cur = queue.shift()!;
+      if (seen.has(cur)) continue;
+      seen.add(cur);
+      if (cur === startId) {
+        hits = true;
+        break;
+      }
+      for (const e of edges.filter((ed) => ed.target === cur)) {
+        queue.push(e.source);
+      }
+    }
+    if (hits) affected.push(imgId);
+  }
+  return getImageNodeExecutionOrder(
+    nodes.filter((n) => affected.includes(n.id)),
+    edges,
+  );
+}
+
+export type EnsureImageGeneratorResult = {
+  nodes: Node[];
+  edges: Edge[];
+  imageNodeId: string;
+  created: boolean;
+};
+
+/**
+ * Magnific pattern: images are produced only on Image Generator.
+ * If Run is pressed from Text/Assets without one linked, auto-create and wire it.
+ *
+ * Preferred wiring (matches Magnific Spaces):
+ *   Assets → Text.image-in
+ *   Text.text-out → Image Generator.text-in
+ * (Creations on Text become reference images automatically.)
+ */
+export function ensureLinkedImageGenerator(
+  startId: string,
+  nodes: Node[],
+  edges: Edge[],
+  newId: string,
+): EnsureImageGeneratorResult {
+  const downstream = getDownstreamImageNodes(startId, nodes, edges);
+  if (downstream.length) {
+    return { nodes, edges, imageNodeId: downstream[0], created: false };
+  }
+
+  const depending = getImageNodesDependingOn(startId, nodes, edges);
+  if (depending.length) {
+    return { nodes, edges, imageNodeId: depending[0], created: false };
+  }
+
+  const start = nodes.find((n) => n.id === startId);
+  if (!start) {
+    return { nodes, edges, imageNodeId: "", created: false };
+  }
+
+  let textNode: Node | null = start.type === "promptNode" ? start : null;
+  let creationNode: Node | null = start.type === "creationNode" ? start : null;
+
+  if (start.type === "creationNode") {
+    const queue = [startId];
+    const seen = new Set<string>();
+    while (queue.length && !textNode) {
+      const cur = queue.shift()!;
+      if (seen.has(cur)) continue;
+      seen.add(cur);
+      for (const e of edges.filter((ed) => ed.source === cur)) {
+        const target = nodes.find((n) => n.id === e.target);
+        if (target?.type === "promptNode") {
+          textNode = target;
+          break;
+        }
+        queue.push(e.target);
+      }
+    }
+  }
+
+  const anchor = textNode || creationNode || start;
+  const imageNode: Node = {
+    id: newId,
+    type: "imageNode",
+    position: { x: anchor.position.x + 420, y: anchor.position.y },
+        data: {
+          imageUrls: [],
+          isLoading: false,
+          aspectRatio: "16:9",
+          imageCount: 1,
+          modelName: "nano-banana-pro-preview",
+          perspective: "Custom Scene",
+        },
+  };
+
+  let nextEdges = [...edges];
+
+  if (textNode) {
+    const connection = {
+      source: textNode.id,
+      sourceHandle: "text-out",
+      target: newId,
+      targetHandle: "text-in",
+    };
+    nextEdges = replaceInputEdge(nextEdges, {
+      id: `e-${textNode.id}-${newId}-text`,
+      ...connection,
+      ...edgeStyleForConnection(connection),
+    });
+  } else if (creationNode) {
+    const connection = {
+      source: creationNode.id,
+      sourceHandle: "image-out",
+      target: newId,
+      targetHandle: "image-in",
+    };
+    nextEdges = replaceInputEdge(nextEdges, {
+      id: `e-${creationNode.id}-${newId}-img`,
+      ...connection,
+      ...edgeStyleForConnection(connection),
+    });
+  } else {
+    return { nodes, edges, imageNodeId: "", created: false };
+  }
+
+  return {
+    nodes: [...nodes, imageNode],
+    edges: nextEdges,
+    imageNodeId: newId,
+    created: true,
+  };
+}
+
 export type SpotlightNodeOption = {
   type: string;
   label: string;
@@ -528,12 +749,12 @@ export const SPOTLIGHT_NODES: SpotlightNodeOption[] = [
     category: "Text",
     connectSourceHandle: "text-out",
     accepts: ["image"],
-    produces: ["text", "image"],
+    produces: ["text"],
   },
   {
     type: "imageNode",
     label: "Image Generator",
-    description: "Generate images from text and/or reference images",
+    description: "Where images are produced — connect Text and/or Assets, then Run",
     category: "Image",
     connectTargetHandle: "text-in",
     accepts: ["text", "image"],

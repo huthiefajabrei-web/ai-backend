@@ -1,15 +1,24 @@
 from firebase_functions import https_fn, options
-from app import app as fastapi_app
-from a2wsgi import ASGIMiddleware
 from werkzeug.wrappers import Response
 
-# Convert FastAPI ASGI app to WSGI
-wsgi_app = ASGIMiddleware(fastapi_app)
+# Lazy-load FastAPI so Firebase discovery stays under the 10s timeout.
+_wsgi_app = None
+
+
+def _get_wsgi_app():
+    global _wsgi_app
+    if _wsgi_app is None:
+        from app import app as fastapi_app
+        from a2wsgi import ASGIMiddleware
+
+        _wsgi_app = ASGIMiddleware(fastapi_app)
+    return _wsgi_app
+
 
 @https_fn.on_request(
     region="us-central1",
     timeout_sec=540,
-    memory=options.MemoryOption.GB_1
+    memory=options.MemoryOption.GB_1,
 )
 def api(req: https_fn.Request) -> https_fn.Response:
     """
@@ -17,12 +26,10 @@ def api(req: https_fn.Request) -> https_fn.Response:
     This eliminates the internal threaded Uvicorn server,
     saving RAM and removing network proxy latency.
     """
-    # Create a Werkzeug Response by running the WSGI app
-    resp = Response.from_app(wsgi_app, req.environ)
-    
-    # Return a Firebase HTTPS Response, passing the iterable for streaming support
+    resp = Response.from_app(_get_wsgi_app(), req.environ)
+
     return https_fn.Response(
         response=resp.response,
         status=resp.status_code,
-        headers=dict(resp.headers)
+        headers=dict(resp.headers),
     )

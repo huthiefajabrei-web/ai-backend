@@ -45,6 +45,7 @@ import {
   nextCreationNumber,
   compressImageFile,
   saveCreationImage,
+  ensureLinkedImageGenerator,
   type SpotlightNodeOption,
   PORT_COLORS,
 } from "@/lib/workspace/graphUtils";
@@ -99,9 +100,25 @@ function sanitizeNodes(nodes: any[]): any[] {
 }
 
 function initialDataForType(type: string, extras?: Record<string, any>): Record<string, any> {
-  if (type === "promptNode") return { prompt: "", perspective: "Custom Scene", ...extras };
+  if (type === "promptNode") {
+    return {
+      prompt: "",
+      perspective: "Custom Scene",
+      imageCount: 1,
+      aspectRatio: "16:9",
+      modelName: "nano-banana-pro-preview",
+      ...extras,
+    };
+  }
   if (type === "imageNode") {
-    return { imageUrls: [], isLoading: false, aspectRatio: "16:9", imageCount: 1, ...extras };
+    return {
+      imageUrls: [],
+      isLoading: false,
+      aspectRatio: "16:9",
+      imageCount: 1,
+      perspective: "Custom Scene",
+      ...extras,
+    };
   }
   if (type === "creationNode") {
     return { label: "Creation #1", creationNumber: 1, hasImage: false, ...extras };
@@ -132,7 +149,7 @@ function Flow() {
   const [activeTool, setActiveTool] = useState("cursor");
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [isRunningWorkflow, setIsRunningWorkflow] = useState(false);
-  const { runWorkflow } = useWorkspaceEditor();
+  const { runWorkflow, waitForRunner } = useWorkspaceEditor();
 
   const [spotlightOpen, setSpotlightOpen] = useState(false);
   const [spotlightOptions, setSpotlightOptions] = useState(SPOTLIGHT_NODES);
@@ -596,15 +613,39 @@ function Flow() {
     }
     setIsRunningWorkflow(true);
     try {
-      const currentNodes = reactFlowInstanceRef.current?.getNodes() ?? nodesRef.current;
-      const currentEdges = reactFlowInstanceRef.current?.getEdges() ?? edgesRef.current;
+      let currentNodes = reactFlowInstanceRef.current?.getNodes() ?? nodesRef.current;
+      let currentEdges = reactFlowInstanceRef.current?.getEdges() ?? edgesRef.current;
+
+      // Magnific: images only come from Image Generator — auto-wire if missing
+      if (!currentNodes.some((n: { type?: string }) => n.type === "imageNode")) {
+        const seed =
+          currentNodes.find((n: { type?: string }) => n.type === "promptNode") ||
+          currentNodes.find((n: { type?: string }) => n.type === "creationNode");
+        if (seed) {
+          const ensured = ensureLinkedImageGenerator(
+            seed.id,
+            currentNodes,
+            currentEdges,
+            uuidv4(),
+          );
+          if (ensured.created) {
+            setNodes(ensured.nodes);
+            setEdges(ensured.edges);
+            currentNodes = ensured.nodes;
+            currentEdges = ensured.edges;
+            triggerSave();
+            await waitForRunner(ensured.imageNodeId);
+          }
+        }
+      }
+
       await runWorkflow(currentNodes, currentEdges);
     } catch (e) {
       console.error(e);
     } finally {
       setIsRunningWorkflow(false);
     }
-  }, [user, router, runWorkflow]);
+  }, [user, router, runWorkflow, waitForRunner, setNodes, setEdges, triggerSave]);
 
   const onNodeDragStart = useCallback(() => {
     isDraggingRef.current = true;
@@ -662,13 +703,19 @@ function Flow() {
         id: textId,
         type: "promptNode",
         position: textPos,
-        data: { prompt: "", perspective: "Photorealistic Exterior" },
+        data: {
+          prompt: "",
+          perspective: "Photorealistic Exterior",
+          imageCount: 1,
+          aspectRatio: "16:9",
+          modelName: "nano-banana-pro-preview",
+        },
       },
       {
         id: imageId,
         type: "imageNode",
         position: imagePos,
-        data: { imageUrls: [], isLoading: false, aspectRatio: "16:9", imageCount: 1 },
+        data: { imageUrls: [], isLoading: false, aspectRatio: "16:9", imageCount: 1, perspective: "Custom Scene" },
       },
     ]);
     setEdges([
@@ -938,8 +985,9 @@ function Flow() {
 
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none hidden lg:block">
         <div className="bg-[#121214]/90 border border-white/10 backdrop-blur-md px-4 py-2 rounded-full text-[11px] text-zinc-400 shadow-xl">
-          Assets → Creation · connect to Image Generator · use{" "}
-          <span className="text-blue-400 font-semibold">@Creation #1</span> in prompt
+          Magnific flow:{" "}
+          <span className="text-zinc-200">Assets → Text → Image Generator</span>
+          {" "}· images are produced on Image Generator · Run auto-adds it if missing
         </div>
       </div>
 

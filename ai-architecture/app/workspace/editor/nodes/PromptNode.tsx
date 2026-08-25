@@ -7,19 +7,43 @@ import {
   loadCreationImage,
   type WorkspaceReference,
 } from "@/lib/workspace/graphUtils";
+import { groupStylePrompts, mergeStylePrompts, type StylePrompt } from "@/lib/workspace/perspectives";
+import { DEFAULT_IMAGE_MODEL, IMAGE_MODEL_OPTIONS } from "@/lib/workspace/imageModels";
 import NodeRunMenu from "../NodeRunMenu";
 
 export default function PromptNode({ data, selected }: { data: any; selected?: boolean }) {
   const { updateNodeData, getNode, setEdges } = useReactFlow();
   const nodeId = useNodeId();
   const edges = useEdges();
-  const [dbPrompts, setDbPrompts] = useState<any[]>([]);
+  const [dbPrompts, setDbPrompts] = useState<StylePrompt[]>([]);
 
   const [localPrompt, setLocalPrompt] = useState<string>(data.prompt || data.label || "");
   const [perspective, setPerspective] = useState<string>(data.perspective || "Custom Scene");
+  const [imageCount, setImageCount] = useState<number>(Number(data.imageCount) || 1);
+  const [aspectRatio, setAspectRatio] = useState<string>(data.aspectRatio || "16:9");
+  const [modelName, setModelName] = useState<string>(data.modelName || DEFAULT_IMAGE_MODEL);
   const [showStyles, setShowStyles] = useState(false);
   const [linkedCreations, setLinkedCreations] = useState<WorkspaceReference[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (data.perspective) setPerspective(String(data.perspective));
+  }, [data.perspective]);
+  useEffect(() => {
+    if (data.imageCount) setImageCount(Number(data.imageCount) || 1);
+  }, [data.imageCount]);
+  useEffect(() => {
+    if (data.aspectRatio) setAspectRatio(String(data.aspectRatio));
+  }, [data.aspectRatio]);
+  useEffect(() => {
+    if (data.modelName) setModelName(String(data.modelName));
+  }, [data.modelName]);
+
+  const persist = (patch: Record<string, unknown>) => {
+    if (!nodeId) return;
+    updateNodeData(nodeId, patch);
+    window.dispatchEvent(new Event("trigger-workspace-save"));
+  };
 
   const refreshLinkedCreations = useCallback(() => {
     if (!nodeId) return;
@@ -30,22 +54,44 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
     let i = 1;
     for (const edge of incoming) {
       const src = getNode(edge.source);
-      if (!src || src.type !== "creationNode") continue;
-      const b64 = loadCreationImage(src.id) || (src.data?.previewUrl ? String(src.data.previewUrl) : null);
-      if (!b64) continue;
-      const creationNumber = Number(src.data?.creationNumber) || i;
-      refs.push({
-        id: src.id,
-        index: i,
-        name: `Creation #${creationNumber}`,
-        mention: `@Creation #${creationNumber}`,
-        source: "creation",
-        sourceNodeId: src.id,
-        creationNumber,
-        thumb: b64,
-        b64,
-      });
-      i += 1;
+      if (!src) continue;
+
+      if (src.type === "creationNode") {
+        const b64 = loadCreationImage(src.id) || (src.data?.previewUrl ? String(src.data.previewUrl) : null);
+        if (!b64) continue;
+        const creationNumber = Number(src.data?.creationNumber) || i;
+        refs.push({
+          id: src.id,
+          index: i,
+          name: `Creation #${creationNumber}`,
+          mention: `@Creation #${creationNumber}`,
+          source: "creation",
+          sourceNodeId: src.id,
+          creationNumber,
+          thumb: b64,
+          b64,
+        });
+        i += 1;
+        continue;
+      }
+
+      // Generated Image Generator outputs can be re-used as references (Magnific-style)
+      if (src.type === "imageNode") {
+        const urls = src.data?.imageUrls as string[] | undefined;
+        const url = urls?.[0] ? String(urls[0]) : src.data?.imageUrl ? String(src.data.imageUrl) : null;
+        if (!url) continue;
+        refs.push({
+          id: src.id,
+          index: i,
+          name: `Image ${i}`,
+          mention: `@Image${i}`,
+          source: "edge",
+          sourceNodeId: src.id,
+          thumb: url,
+          url,
+        });
+        i += 1;
+      }
     }
     setLinkedCreations(refs);
   }, [nodeId, edges, getNode]);
@@ -64,32 +110,8 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
       .catch((err) => console.error("Failed to load prompts", err));
   }, []);
 
-  const defaultPrompts = [
-    { title: "Photorealistic Exterior", type: "Exterior" },
-    { title: "Night Shot", type: "Exterior" },
-    { title: "Sunset/Golden Hour", type: "Exterior" },
-    { title: "Photorealistic Interior", type: "Interior" },
-    { title: "Living Room Design", type: "Interior" },
-    { title: "Bedroom Design", type: "Interior" },
-    { title: "Kitchen & Dining", type: "Interior" },
-    { title: "Bathroom Design", type: "Interior" },
-    { title: "Floor Plan to 3D", type: "Plan" },
-    { title: "Architectural Plan, Elevation & Section", type: "Plan" },
-    { title: "Physical Model", type: "Model" },
-    { title: "Architectural concept sketch", type: "Sketch" },
-  ];
-
-  const allPrompts = [...dbPrompts];
-  defaultPrompts.forEach((dp) => {
-    if (!allPrompts.find((p) => p.title === dp.title)) allPrompts.push(dp);
-  });
-
-  const groupedPrompts = allPrompts.reduce((acc: Record<string, any[]>, p: any) => {
-    const t = p.type || "Other";
-    if (!acc[t]) acc[t] = [];
-    acc[t].push(p);
-    return acc;
-  }, {});
+  const allPrompts = mergeStylePrompts(dbPrompts);
+  const groupedPrompts = groupStylePrompts(allPrompts);
 
   const insertMention = (mention: string) => {
     const el = textareaRef.current;
@@ -163,7 +185,7 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
             <Video size={14} className="text-gray-400 pointer-events-none" />
           </Handle>
         </div>
-        <div className="relative group" title="Connect Creation / Assets here">
+        <div className="relative group" title="Connect Creation / generated Image here">
           <Handle
             type="target"
             position={Position.Left}
@@ -211,7 +233,7 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
                   <img src={ref.thumb} alt={ref.name} className="w-full h-full object-cover" />
                 ) : null}
                 <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[8px] font-bold text-white text-center py-0.5 truncate px-0.5">
-                  #{ref.creationNumber}
+                  {ref.creationNumber ? `#${ref.creationNumber}` : ref.name}
                 </span>
                 <span
                   role="button"
@@ -258,38 +280,99 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
           }}
         />
 
-        <div className="px-3 pb-3 border-t border-white/5 mx-2 pt-2">
-          <button
-            type="button"
-            onClick={() => setShowStyles(!showStyles)}
-            className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 hover:text-blue-400 mb-2"
-          >
-            Style / Perspective {showStyles ? "▲" : "▼"}
-          </button>
-          {showStyles && (
-            <select
-              value={perspective}
-              onChange={(e) => {
-                setPerspective(e.target.value);
-                if (nodeId) {
-                  updateNodeData(nodeId, { perspective: e.target.value });
-                  window.dispatchEvent(new Event("trigger-workspace-save"));
-                }
-              }}
-              className="w-full bg-[#1c1c1f] border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500/50"
+        <div className="px-3 pb-3 border-t border-white/5 mx-2 pt-2 space-y-3">
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowStyles(!showStyles)}
+              className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 hover:text-blue-400 mb-2"
             >
-              {Object.entries(groupedPrompts).map(([type, items]) => (
-                <optgroup key={type} label={type}>
-                  {(items as { title: string }[]).map((p) => (
-                    <option key={p.title} value={p.title}>
-                      {p.title}
-                    </option>
-                  ))}
-                </optgroup>
+              Style / Perspective {showStyles ? "▲" : "▼"}
+            </button>
+            {showStyles ? (
+              <select
+                value={perspective}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setPerspective(next);
+                  persist({ perspective: next });
+                }}
+                className="w-full bg-[#1c1c1f] border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500/50"
+              >
+                {Object.entries(groupedPrompts).map(([type, items]) => (
+                  <optgroup key={type} label={type}>
+                    {items.map((p) => (
+                      <option key={p.title} value={p.title}>
+                        {p.title}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            ) : (
+              <p className="text-[10px] text-zinc-600 truncate">{perspective}</p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center bg-[#1c1c1f] rounded-lg text-xs font-medium text-gray-300 h-8 border border-white/5">
+              <button
+                type="button"
+                className="px-2 h-full hover:bg-white/5 rounded-l-lg"
+                onClick={() => {
+                  const val = Math.max(1, imageCount - 1);
+                  setImageCount(val);
+                  persist({ imageCount: val });
+                }}
+              >
+                -
+              </button>
+              <span className="px-1.5">×{imageCount}</span>
+              <button
+                type="button"
+                className="px-2 h-full hover:bg-white/5 rounded-r-lg"
+                onClick={() => {
+                  const val = Math.min(4, imageCount + 1);
+                  setImageCount(val);
+                  persist({ imageCount: val });
+                }}
+              >
+                +
+              </button>
+            </div>
+
+            <select
+              value={modelName}
+              onChange={(e) => {
+                const next = e.target.value;
+                setModelName(next);
+                persist({ modelName: next });
+              }}
+              className="bg-[#1c1c1f] border border-white/5 rounded-lg px-2 h-8 text-[11px] text-gray-300 focus:outline-none cursor-pointer max-w-[160px]"
+              title={modelName}
+            >
+              {IMAGE_MODEL_OPTIONS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
               ))}
             </select>
-          )}
-          {!showStyles && <p className="text-[10px] text-zinc-600 truncate">{perspective}</p>}
+
+            <select
+              value={aspectRatio}
+              onChange={(e) => {
+                const next = e.target.value;
+                setAspectRatio(next);
+                persist({ aspectRatio: next });
+              }}
+              className="bg-[#1c1c1f] border border-white/5 rounded-lg px-2 h-8 text-[11px] text-gray-300 focus:outline-none cursor-pointer"
+            >
+              <option value="1:1">1:1</option>
+              <option value="9:16">9:16</option>
+              <option value="16:9">16:9</option>
+              <option value="4:3">4:3</option>
+            </select>
+          </div>
         </div>
       </div>
 

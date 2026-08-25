@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import requests
+from pydantic import BaseModel
 from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -245,7 +246,7 @@ def init_db_tables():
     if len(list(cards_ref.limit(1).stream())) == 0:
         cards = [
             {'id': 'a1', 'title': 'Shot to CAD Board', 'description': 'Transform architectural photographs into professional CAD board layouts with plans.', 'image_url': 'https://images.unsplash.com/photo-1628169222588-444a1eb405d4?w=500&q=80', 'category': 'Architecture', 'action_id': 'generation', 'credit_cost': 1, 'created_at': datetime.utcnow().isoformat()},
-            {'id': 'a2', 'title': 'Shot to Physical Model', 'description': 'Transform buildings into miniature white 3D printed architectural models on a display base.', 'image_url': 'https://images.unsplash.com/photo-1518384401463-d3876163c195?w=500&q=80', 'category': 'Architecture', 'action_id': 'generation', 'credit_cost': 1, 'created_at': datetime.utcnow().isoformat()},
+            {'id': 'a2', 'title': 'Shot to Physical Model', 'description': 'Transform buildings into color-accurate architectural scale models on a display base, preserving facade colors.', 'image_url': 'https://images.unsplash.com/photo-1518384401463-d3876163c195?w=500&q=80', 'category': 'Architecture', 'action_id': 'generation', 'credit_cost': 1, 'created_at': datetime.utcnow().isoformat()},
             {'id': 'a3', 'title': 'Model to Full Scene', 'description': 'Transform 3D models or renders into fully realized architectural scenes with environment.', 'image_url': 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=500&q=80', 'category': 'Architecture', 'action_id': 'generation', 'credit_cost': 1, 'created_at': datetime.utcnow().isoformat()},
             {'id': 'a4', 'title': 'Multiple Angles', 'description': 'Generate multiple perspective views of a building from different angles seamlessly.', 'image_url': 'https://images.unsplash.com/photo-1545083036-728b9fb6f827?w=500&q=80', 'category': 'Architecture', 'action_id': 'generation', 'credit_cost': 1, 'created_at': datetime.utcnow().isoformat()}
         ]
@@ -620,8 +621,6 @@ def proxy_download(url: str, authorization: Optional[str] = Header(None)):
 # =========================
 # Auth Endpoints
 # =========================
-from pydantic import BaseModel
-
 class RegisterBody(BaseModel):
     email: str
     password: str
@@ -1088,8 +1087,20 @@ BASE_PROMPT = """
 professional architectural visualization, accurate proportions, realistic geometry
 """.strip()
 
+# Used whenever a reference image is provided: style/presentation change — keep the building.
+STRUCTURE_LOCK = """
+CRITICAL — REFERENCE IDENTITY LOCK:
+Use the attached reference image(s) as the EXACT architectural subject.
+Preserve identical: building massing, footprint, facade composition, window and door positions/sizes,
+roof form, proportions, level heights, camera angle/viewpoint, overall spatial layout,
+AND the facade color palette / cladding colors from the reference (do not bleach, recolor, or turn the building monochrome white unless the user explicitly asks).
+Do NOT redesign, invent new volumes, remove/add major elements, warp, stretch, mirror, or rearrange
+facade details. Change only presentation context (studio base, lighting setup, miniature craft look)
+while keeping the building's geometry and facade colors faithful to the reference.
+""".strip()
+
 NEG_PROMPT = """
-top view, floor plan, blueprint, layout drawing, 2D plan, interior plan, cutaway, dollhouse view, isometric plan, schematic drawing, low quality, blurry, distorted geometry, bad proportions, warped, deformed, cartoon, unrealistic materials, noise, messy lines
+top view, floor plan, blueprint, layout drawing, 2D plan, interior plan, cutaway, dollhouse view, isometric plan, schematic drawing, low quality, blurry, distorted geometry, bad proportions, warped, deformed, cartoon, unrealistic materials, noise, messy lines, all-white building, bleached facade, wrong facade colors
 """.strip()
 
 #  Kling  . api-singapore : kling-v2-6  kling-v1-1 ( /)
@@ -1098,13 +1109,21 @@ KLING_VIDEO_MODEL = os.getenv("KLING_VIDEO_MODEL", "kling-v2-6")
 KLING_VIDEO_MODEL_FALLBACK = os.getenv("KLING_VIDEO_MODEL_FALLBACK", "kling-v1-1")
 
 PERSPECTIVES = {
-    "Photorealistic Exterior": "photorealistic 3D exterior render, high-res architectural photography, stunning facade",
+    "Photorealistic Exterior": "photorealistic 3D exterior render, high-res architectural photography, stunning facade, keep the same building design from the reference",
     "Floor Plan to 3D": "convert 2D floor plan layout to a rich 3D floor plan layout, photorealistic top-down perspective, high detail interior",
     "Architectural Plan, Elevation & Section": "architectural plan elevation section, top down or orthographic, clean lines, technical drawing style, precise",
-    "Physical Model": "physical scale model on table, studio lighting, miniature model, 3D craft",
+    "Physical Model": (
+        "Transform the building into a professional architectural physical scale model on a clean display base "
+        "with soft studio lighting and miniature craft presentation (tabletop model look). "
+        "COLOR LOCK: paint/finish the model with the SAME facade colors, tones, and material color zones "
+        "as the reference building (glass, stone, plaster, wood, metal accents must keep their reference colors). "
+        "Do NOT convert the building to white, beige, or monochrome. "
+        "STRICT geometry: keep the EXACT same massing, openings, facade rhythm, and proportions — "
+        "no redesign or distortion; only the presentation becomes a physical scale model."
+    ),
     "BIM Model": "BIM Villa Exterior, Futuristic luxury villa at dusk, photorealistic, warm interior glow, wet asphalt reflections, full neon cyan holographic BIM overlay showing 3D structural framework, floor plans, and dimensions, cinematic wide-angle, ultra-realistic, HDR, 8K, UnrealFuturistic luxury villa at dusk, photorealistic, warm interior glow, wet asphalt reflections, full neon cyan holographic BIM overlay showing 3D structural framework, floor plans, and dimensions, cinematic wide-angle, ultra-realistic, HDR, 8K, Unreal",
-    "Night Shot": "Night Shot, Use Night for Night technique: Night for night shoots actual night scenes at night, capturing authentic darkness, city lights, and nocturnal atmosphere impossible to replicate during the day. This expensive approach requires powerful lighting but delivers superior results compared to day-for-night techniques.",
-    "Sunset/Golden Hour": "Golden hour lighting, warm sunlight, sunset, beautiful twilight sky, dramatic long shadows, photorealistic",
+    "Night Shot": "Night Shot on the SAME building from the reference: authentic night lighting, city/ambient lights, nocturnal atmosphere. Keep exact architecture and facade colors; change lighting/time of day only.",
+    "Sunset/Golden Hour": "Golden hour lighting on the SAME building from the reference: warm sunlight, sunset sky, long shadows. Keep exact architecture and facade colors; change lighting/sky only.",
     "Helicopter Shot": "Helicopter Shot, Use Helicopter Shot technique: A helicopter shot is a sweeping aerial shot typically taken from a helicopter, allowing the camera to weave through landscapes, follow vehicles, or capture dramatic overhead perspectives. These shots create a sense of epic scale and freedom of movement that's difficult to achieve with other methods. Often used as establishing shots in big-budget productions.",
     "Architectural analysis sketch": "Architectural analysis sketch, no changes to architectural design, no adding or removing elements, only stylistic transformation",
     "Concept Studio conceptual design": "Concept Studio conceptual design, Convert the frist and the secend floor and the elevation into a diagram illustrated as a Concept Studio conceptual design, including an explanation of the elements used, an explanation of the proportions and distribution, a diagram illustrating the functional relationships between the sleeping area, the family area, the hospitality area, and the service area, and an explanation illustrating the axis of movement, privacy, and comfortable views. The result will be a high-resolution schematic drawing. no changes to architectural design, no adding or removing elements, only stylistic transformation",
@@ -1130,16 +1149,34 @@ PERSPECTIVES = {
     "Custom Scene": "",
 }
 
+# Perspectives that are primarily a style/material/lighting transform of a reference building
+STYLE_TRANSFER_PERSPECTIVES = {
+    "Physical Model",
+    "Night Shot",
+    "Sunset/Golden Hour",
+    "Photorealistic Exterior",
+    "Architectural analysis sketch",
+    "Architectural concept sketch",
+    "BIM Model",
+}
 
-def build_prompt(perspective: str, custom: Optional[str] = None) -> str:
+
+def build_prompt(
+    perspective: str,
+    custom: Optional[str] = None,
+    has_reference: bool = False,
+) -> str:
     """
-    :  `Custom Scene`     .
-         +   .
+    Build the final generation prompt.
+    When a reference image is present, force structure/identity preservation so styles
+    like Physical Model change materials/presentation without redesigning the building.
     """
     custom = (custom or "").strip()
 
     # Custom Scene must be driven ONLY by the user's prompt (no fixed template text).
     if perspective == "Custom Scene":
+        if has_reference and custom:
+            return f"{STRUCTURE_LOCK}\n\n{custom}"
         return custom
 
     # Fetch from Firestore prompt table first
@@ -1149,20 +1186,48 @@ def build_prompt(perspective: str, custom: Optional[str] = None) -> str:
         query = db_client.collection('app_prompts').where(filter=FieldFilter("title", "==", perspective)).stream()
         docs = list(query)
         if docs:
-            extra = docs[0].to_dict().get("prompt_text", "")
+            extra = docs[0].to_dict().get("prompt_text", "") or ""
         else:
             extra = PERSPECTIVES.get(perspective, "")
     except Exception:
         extra = PERSPECTIVES.get(perspective, "")
 
-    parts = []
+    # Prefer the stronger in-code Physical Model prompt even if Firestore has a weak/legacy text
+    if perspective == "Physical Model":
+        code_extra = PERSPECTIVES.get("Physical Model", "")
+        if code_extra and (
+            not extra
+            or "COLOR LOCK" not in extra
+            or "white/beige" in extra.lower()
+            or "white 3d" in extra.lower()
+        ):
+            extra = code_extra
+
+    parts: List[str] = []
+
+    # Identity lock first when editing from a reference (especially style transfers)
+    if has_reference and (
+        perspective in STYLE_TRANSFER_PERSPECTIVES or bool(extra) or bool(custom)
+    ):
+        parts.append(STRUCTURE_LOCK)
+
     if custom:
         # For non-custom scenes, keep user's additions but don't let them replace perspective intent.
         parts.append(custom)
+
     parts.append(BASE_PROMPT)
     if extra:
         parts.append(extra)
-    parts.append("highly detailed, ultra realistic, sharp, 8k, global illumination, trending on artstation")
+
+    if perspective == "Physical Model":
+        parts.append(
+            "clean studio product photo of a color-accurate architectural scale model, "
+            "facade colors match the reference exactly, accurate craftsmanship, "
+            "faithful miniature of the reference building, no warped geometry, no all-white model"
+        )
+    else:
+        parts.append("highly detailed, ultra realistic, sharp, 8k, global illumination, trending on artstation")
+
     return " | ".join([p.strip() for p in parts if p.strip() and p != ""])
 
 # =========================
@@ -1364,6 +1429,10 @@ def process_gemini_job(
         
         # Explicitly instruct the model to return ONLY the image, preventing wasteful output text tokens
         no_text_hint = "\nIMPORTANT: Generate ONLY the image. Do not output any descriptive text, explanations, or reasoning."
+
+        has_any_ref = bool(input_image_b64) or bool(reference_images)
+        if has_any_ref and STRUCTURE_LOCK not in final_prompt:
+            final_prompt = f"{STRUCTURE_LOCK}\n\n{final_prompt}" if final_prompt else STRUCTURE_LOCK
         
         if final_prompt:
             final_prompt = f"{final_prompt}\n{size_hint}{no_text_hint}"
@@ -1376,8 +1445,9 @@ def process_gemini_job(
         image_index = 1
 
         if input_image_b64:
-            compressed_input = compress_image_b64(input_image_b64, max_size=1024, quality=80)
-            parts.append({"text": f"\n[Image {image_index}]"})
+            # Higher fidelity for structure-preserving edits (Physical Model, night, etc.)
+            compressed_input = compress_image_b64(input_image_b64, max_size=1536, quality=90)
+            parts.append({"text": f"\n[Image {image_index} — PRIMARY architectural reference: preserve this building exactly]"})
             parts.append({
                 "inlineData": {
                     "mimeType": "image/jpeg",
@@ -1388,8 +1458,8 @@ def process_gemini_job(
 
         if reference_images:
             for ref in reference_images:
-                compressed_ref = compress_image_b64(ref["b64"], max_size=1024, quality=75)
-                parts.append({"text": f"\n[Image {image_index}]"})
+                compressed_ref = compress_image_b64(ref["b64"], max_size=1536, quality=88)
+                parts.append({"text": f"\n[Image {image_index} — architectural reference: preserve geometry and facade details]"})
                 parts.append({
                     "inlineData": {
                         "mimeType": "image/jpeg",
@@ -1995,7 +2065,11 @@ async def generate(
             job_ids.append(job_id)
         else:
             for idx, p in enumerate(perspective):
-                prompt = build_prompt(p, custom_prompt)
+                prompt = build_prompt(
+                    p,
+                    custom_prompt,
+                    has_reference=bool(input_image_b64 or reference_images),
+                )
                 
                 ar = aspect_ratio[idx] if idx < len(aspect_ratio) else "9:16"
                 raw_c = image_count[idx] if idx < len(image_count) else 1

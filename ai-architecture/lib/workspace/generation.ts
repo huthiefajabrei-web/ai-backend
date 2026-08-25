@@ -3,6 +3,7 @@ import type { Edge, Node } from "@xyflow/react";
 import { authFormPost, fetchJobStatus, fetchProxyBlob, apiGetMe, setStoredUser } from "@/lib/mysql/client";
 import {
   buildReferenceAwarePrompt,
+  pickPerspective,
   resolveImageNodeInputs,
   type WorkspaceReference,
 } from "./graphUtils";
@@ -52,6 +53,8 @@ export type ImageGenerationSettings = {
   aspectRatio: string;
   imageCount: number;
   promptOverride?: string;
+  /** Local Style / Perspective on the Image Generator (overrides Text when set) */
+  perspective?: string;
 };
 
 export type GenerationCallbacks = {
@@ -98,19 +101,37 @@ export async function runImageNodeGeneration(
     : resolved.promptText;
 
   const promptText = buildReferenceAwarePrompt(rawPrompt, resolved.references);
+  // Text Style must win over Image Generator default "Custom Scene"
+  const perspective = pickPerspective(settings.perspective, resolved.perspective);
+  const modelName = resolved.modelName || settings.modelName;
+  const aspectRatio = resolved.aspectRatio || settings.aspectRatio;
+  const imageCount = resolved.imageCount || settings.imageCount;
 
-  if (!promptText && !resolved.references.length) {
-    throw new Error("Connect a Text node and/or add reference images");
+  if (!promptText && !resolved.references.length && perspective === "Custom Scene") {
+    throw new Error("Connect a Text node, pick a Style/Perspective, and/or add reference images");
   }
 
-  updateNodeData(nodeId, { isLoading: true, imageUrls: [] });
+  updateNodeData(nodeId, {
+    isLoading: true,
+    imageUrls: [],
+    perspective,
+    modelName,
+    aspectRatio,
+    imageCount,
+  });
 
   const formData = new FormData();
-  formData.append("perspective", resolved.perspective);
-  formData.append("custom_prompt", promptText || "Generate an image from the attached reference images.");
-  formData.append("model_name", settings.modelName);
-  formData.append("aspect_ratio", settings.aspectRatio);
-  formData.append("image_count", String(settings.imageCount));
+  formData.append("perspective", perspective);
+  formData.append(
+    "custom_prompt",
+    promptText ||
+      (resolved.references.length
+        ? "Apply the selected style to the attached reference image(s)."
+        : "Generate an architectural image."),
+  );
+  formData.append("model_name", modelName);
+  formData.append("aspect_ratio", aspectRatio);
+  formData.append("image_count", String(imageCount));
   formData.append("denoise", "0.75");
 
   // All references go as numbered `refs` (backend labels them Image 1…N)
@@ -153,9 +174,10 @@ export async function runImageNodeGeneration(
         data: {
           isLoading: true,
           imageUrls: [],
-          modelName: settings.modelName,
-          aspectRatio: settings.aspectRatio,
+          modelName,
+          aspectRatio,
           imageCount: 1,
+          perspective,
         },
       });
       if (incomingEdge) {

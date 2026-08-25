@@ -632,7 +632,8 @@ export default function ControlPanel({
                                   className="appearance-none bg-transparent text-[11px] text-amber-100 outline-none cursor-pointer pr-3 font-semibold w-[120px] text-ellipsis"
                                 >
                                   <option value="gemini-2.5-flash-image" className="bg-slate-900">gemini 2.5 flash image</option>
-                                  <option value="nano-banana-pro-preview" className="bg-slate-900">Nano Banana (Gemini 2.5 Flash Preview Image)</option>
+                                  <option value="nano-banana-pro-preview" className="bg-slate-900">Nano Banana Pro Preview</option>
+                                  <option value="nano-banana-pro" className="bg-slate-900">Nano Banana Pro</option>
                                   <option value="gemini-3.1-flash-image-preview" className="bg-slate-900">Gemini 3.1 Flash Image</option>
                                   <option value="gemini-3-pro-image-preview" className="bg-slate-900">Gemini 3.0 Pro Image</option>
                                   <option value="gemini-2.5-flash-lite" className="bg-slate-900">Gemini 2.5 Flash lite</option>

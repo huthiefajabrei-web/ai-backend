@@ -3,8 +3,13 @@
 import { useState, useRef, useEffect } from "react";
 import { FastForward, ChevronDown, Loader2, Check, Workflow } from "lucide-react";
 import { useReactFlow } from "@xyflow/react";
+import { v4 as uuidv4 } from "uuid";
 import { useWorkspaceEditor } from "./WorkspaceEditorContext";
-import { getDownstreamImageNodes, getImageNodeExecutionOrder } from "@/lib/workspace/graphUtils";
+import {
+  ensureLinkedImageGenerator,
+  getDownstreamImageNodes,
+  getImageNodesDependingOn,
+} from "@/lib/workspace/graphUtils";
 
 type Props = {
   nodeId: string | null;
@@ -13,10 +18,13 @@ type Props = {
 /**
  * Magnific-style Run control for Creation / Text nodes:
  * Run from here (downstream Image Generators) · All workflow
+ *
+ * If no Image Generator is linked, auto-create & wire one (images are only
+ * produced on Image Generator nodes), then run it.
  */
 export default function NodeRunMenu({ nodeId }: Props) {
-  const { getNodes, getEdges } = useReactFlow();
-  const { runWorkflow, runNode } = useWorkspaceEditor();
+  const { getNodes, getEdges, setNodes, setEdges, fitView } = useReactFlow();
+  const { runWorkflow, runNode, waitForRunner } = useWorkspaceEditor();
   const [open, setOpen] = useState(false);
   const [running, setRunning] = useState(false);
   const [mode, setMode] = useState<"from-here" | "all">("from-here");
@@ -31,55 +39,48 @@ export default function NodeRunMenu({ nodeId }: Props) {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  const runFromHere = async () => {
-    if (!nodeId) return;
+  const resolveImageTargets = async (startId: string): Promise<string[]> => {
     const nodes = getNodes();
     const edges = getEdges();
-    const order = getDownstreamImageNodes(nodeId, nodes, edges);
 
-    if (!order.length) {
-      // Fallback: any Image Generator that eventually depends on this node (incoming path)
-      const imageIds = nodes.filter((n) => n.type === "imageNode").map((n) => n.id);
-      const affected: string[] = [];
-      for (const imgId of imageIds) {
-        const seen = new Set<string>();
-        const queue = [imgId];
-        let hits = false;
-        while (queue.length) {
-          const cur = queue.shift()!;
-          if (seen.has(cur)) continue;
-          seen.add(cur);
-          if (cur === nodeId) {
-            hits = true;
-            break;
-          }
-          for (const e of edges.filter((ed) => ed.target === cur)) {
-            queue.push(e.source);
-          }
-        }
-        if (hits) affected.push(imgId);
+    const downstream = getDownstreamImageNodes(startId, nodes, edges);
+    if (downstream.length) return downstream;
+
+    const depending = getImageNodesDependingOn(startId, nodes, edges);
+    if (depending.length) return depending;
+
+    // Magnific: auto-attach Image Generator when missing
+    const ensured = ensureLinkedImageGenerator(startId, nodes, edges, uuidv4());
+    if (!ensured.created || !ensured.imageNodeId) return [];
+
+    setNodes(ensured.nodes);
+    setEdges(ensured.edges);
+    window.dispatchEvent(new Event("trigger-workspace-save"));
+
+    requestAnimationFrame(() => {
+      try {
+        fitView({ nodes: [{ id: ensured.imageNodeId }], padding: 0.35, duration: 400 });
+      } catch {
+        /* ignore */
       }
-      const ordered = getImageNodeExecutionOrder(
-        nodes.filter((n) => affected.includes(n.id)),
-        edges,
-      );
-      if (!ordered.length) {
+    });
+
+    const ready = await waitForRunner(ensured.imageNodeId);
+    if (!ready) return [];
+    return [ensured.imageNodeId];
+  };
+
+  const runFromHere = async () => {
+    if (!nodeId) return;
+    setRunning(true);
+    try {
+      const order = await resolveImageTargets(nodeId);
+      if (!order.length) {
         alert(
-          "Connect this asset to an Image Generator (directly or via Text), then press Run.\n\nاربط هذه الصورة بـ Image Generator ثم شغّل.",
+          "Could not create an Image Generator. Add one from the toolbar, connect Text → Image Generator, then Run.\n\nأضف Image Generator واربط Text به ثم شغّل.",
         );
         return;
       }
-      setRunning(true);
-      try {
-        for (const id of ordered) await runNode(id);
-      } finally {
-        setRunning(false);
-      }
-      return;
-    }
-
-    setRunning(true);
-    try {
       for (const id of order) await runNode(id);
     } finally {
       setRunning(false);
@@ -89,7 +90,26 @@ export default function NodeRunMenu({ nodeId }: Props) {
   const runAll = async () => {
     setRunning(true);
     try {
-      await runWorkflow(getNodes(), getEdges());
+      let nodes = getNodes();
+      let edges = getEdges();
+      const hasImage = nodes.some((n) => n.type === "imageNode");
+      if (!hasImage) {
+        const seed =
+          nodes.find((n) => n.type === "promptNode") ||
+          nodes.find((n) => n.type === "creationNode");
+        if (seed) {
+          const ensured = ensureLinkedImageGenerator(seed.id, nodes, edges, uuidv4());
+          if (ensured.created) {
+            setNodes(ensured.nodes);
+            setEdges(ensured.edges);
+            nodes = ensured.nodes;
+            edges = ensured.edges;
+            window.dispatchEvent(new Event("trigger-workspace-save"));
+            await waitForRunner(ensured.imageNodeId);
+          }
+        }
+      }
+      await runWorkflow(nodes, edges);
     } finally {
       setRunning(false);
     }

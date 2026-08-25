@@ -26,10 +26,13 @@ import {
   compressImageFile,
   loadLocalRefs,
   MAX_REFERENCE_IMAGES,
+  pickPerspective,
   resolveImageNodeInputs,
   saveLocalRefs,
   type WorkspaceReference,
 } from "@/lib/workspace/graphUtils";
+import { groupStylePrompts, mergeStylePrompts, type StylePrompt } from "@/lib/workspace/perspectives";
+import { DEFAULT_IMAGE_MODEL, IMAGE_MODEL_OPTIONS } from "@/lib/workspace/imageModels";
 import { runImageNodeGeneration } from "@/lib/workspace/generation";
 import { useWorkspaceEditor } from "../WorkspaceEditorContext";
 
@@ -40,9 +43,12 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
   const { registerRunner, runDownstream, runWorkflow } = useWorkspaceEditor();
 
   const [error, setError] = useState<string | null>(null);
-  const [modelName, setModelName] = useState(data.modelName || "nano-banana-pro-preview");
+  const [modelName, setModelName] = useState(data.modelName || DEFAULT_IMAGE_MODEL);
   const [aspectRatio, setAspectRatio] = useState(data.aspectRatio || "16:9");
   const [imageCount, setImageCount] = useState(data.imageCount || 1);
+  const [perspective, setPerspective] = useState<string>(data.perspective || "Custom Scene");
+  const [showStyles, setShowStyles] = useState(false);
+  const [dbPrompts, setDbPrompts] = useState<StylePrompt[]>([]);
   const activeJobIdsRef = useRef<string[]>([]);
   const [showRunMenu, setShowRunMenu] = useState(false);
   const refInputRef = useRef<HTMLInputElement>(null);
@@ -64,6 +70,27 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
   const [linkedPrompt, setLinkedPrompt] = useState("");
 
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    fetch(`${apiUrl}/content/prompts`)
+      .then((res) => res.json())
+      .then((resData) => {
+        if (resData.ok && resData.data) setDbPrompts(resData.data);
+      })
+      .catch(() => {
+        /* defaults still work */
+      });
+  }, []);
+
+  useEffect(() => {
+    if (data.perspective) setPerspective(String(data.perspective));
+  }, [data.perspective]);
+
+  const styleGroups = useMemo(
+    () => groupStylePrompts(mergeStylePrompts(dbPrompts)),
+    [dbPrompts],
+  );
 
   const refreshInputs = useCallback(() => {
     if (!nodeId) return;
@@ -174,12 +201,15 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
     isCancellingRef.current = false;
 
     const resolved = resolveImageNodeInputs(nodeId, getNode, getEdges);
+    const effectivePerspective = pickPerspective(perspective, resolved.perspective);
+    const hasStyle = Boolean(effectivePerspective && effectivePerspective !== "Custom Scene");
     if (
       !resolved.textSourceIds.length &&
       !resolved.references.length &&
-      !data.promptOverride
+      !data.promptOverride &&
+      !hasStyle
     ) {
-      setError("Add a prompt and/or reference images (Image 1, Image 2…)");
+      setError("Add a prompt, Style/Perspective, and/or reference images");
       return;
     }
 
@@ -187,10 +217,11 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
       await runImageNodeGeneration(
         nodeId,
         {
-          modelName,
-          aspectRatio,
-          imageCount,
+          modelName: resolved.modelName || modelName,
+          aspectRatio: resolved.aspectRatio || aspectRatio,
+          imageCount: resolved.imageCount || imageCount,
           promptOverride: data.promptOverride,
+          perspective: effectivePerspective,
         },
         {
           getNode,
@@ -219,6 +250,7 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
     modelName,
     aspectRatio,
     imageCount,
+    perspective,
     data.promptOverride,
     updateNodeData,
     setNodes,
@@ -464,8 +496,8 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
             className="w-full bg-transparent text-sm text-gray-300 placeholder-gray-600 focus:outline-none"
             placeholder={
               references.length
-                ? `e.g. Keep the sofa from ${references[0]?.mention || "@Creation #1"}…`
-                : "Prompt (or connect Text)…"
+                ? `e.g. Keep the sofa from ${references[0]?.mention || "@Image1"}…`
+                : "Custom prompt (optional)…"
             }
             value={data.promptOverride || ""}
             onChange={(e) => {
@@ -489,6 +521,42 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
               ))}
             </div>
           )}
+
+          <div className="mt-3 border-t border-white/5 pt-2">
+            <button
+              type="button"
+              onClick={() => setShowStyles((v) => !v)}
+              className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500 hover:text-amber-400 mb-2"
+            >
+              Style / Perspective {showStyles ? "▲" : "▼"}
+            </button>
+            {showStyles ? (
+              <select
+                value={perspective}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  setPerspective(next);
+                  if (nodeId) {
+                    updateNodeData(nodeId, { perspective: next });
+                    window.dispatchEvent(new Event("trigger-workspace-save"));
+                  }
+                }}
+                className="w-full bg-[#1c1c1f] border border-white/10 rounded-lg px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500/50"
+              >
+                {Object.entries(styleGroups).map(([type, items]) => (
+                  <optgroup key={type} label={type}>
+                    {items.map((p) => (
+                      <option key={p.title} value={p.title}>
+                        {p.title}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            ) : (
+              <p className="text-[10px] text-zinc-600 truncate">{perspective}</p>
+            )}
+          </div>
         </div>
 
         <div className="px-3 pb-3 flex items-center justify-between gap-2">
@@ -528,11 +596,14 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
                   window.dispatchEvent(new Event("trigger-workspace-save"));
                 }
               }}
-              className="bg-[#1c1c1f] border border-white/5 rounded-lg px-2 h-8 text-[11px] text-gray-300 focus:outline-none cursor-pointer max-w-[100px]"
+              className="bg-[#1c1c1f] border border-white/5 rounded-lg px-2 h-8 text-[11px] text-gray-300 focus:outline-none cursor-pointer max-w-[160px]"
+              title={modelName}
             >
-              <option value="nano-banana-pro-preview">Auto</option>
-              <option value="gemini-2.5-flash-image">Gemini Flash</option>
-              <option value="imagen-3.0-generate-001">Imagen 3</option>
+              {IMAGE_MODEL_OPTIONS.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
+                </option>
+              ))}
             </select>
 
             <select
