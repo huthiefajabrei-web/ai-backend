@@ -230,7 +230,7 @@ export default function PromptNode({ data, selected }: { data: any; selected?: b
               >
                 {ref.thumb ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={ref.thumb} alt={ref.name} className="w-full h-full object-cover" />
+                  <img src={ref.thumb} alt={ref.name} draggable={false} className="w-full h-full object-cover pointer-events-none select-none [-webkit-user-drag:none]" />
                 ) : null}
                 <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[8px] font-bold text-white text-center py-0.5 truncate px-0.5">
                   {ref.creationNumber ? `#${ref.creationNumber}` : ref.name}

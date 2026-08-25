@@ -25,7 +25,7 @@ import { cancelJobs } from "@/lib/mysql/client";
 import {
   compressImageFile,
   collectDroppedImageFiles,
-  isFileDragEvent,
+  isExternalOsFileDrop,
   loadLocalRefs,
   MAX_REFERENCE_IMAGES,
   pickPerspective,
@@ -350,12 +350,13 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
       <div
         className="px-3 pt-3 nodrag nopan"
         onDragOver={(e) => {
-          if (!isFileDragEvent(e.dataTransfer)) return;
+          if (!isExternalOsFileDrop(e.dataTransfer)) return;
           e.preventDefault();
           e.stopPropagation();
           e.dataTransfer.dropEffect = "copy";
         }}
         onDrop={(e) => {
+          if (!isExternalOsFileDrop(e.dataTransfer)) return;
           const files = collectDroppedImageFiles(e.dataTransfer);
           if (!files.length) return;
           e.preventDefault();
@@ -380,7 +381,7 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
             >
               {ref.thumb ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={ref.thumb} alt={ref.name} className="w-full h-full object-cover" />
+                <img src={ref.thumb} alt={ref.name} draggable={false} className="w-full h-full object-cover pointer-events-none select-none [-webkit-user-drag:none]" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-zinc-600">
                   <ImageIcon size={16} />
@@ -450,8 +451,9 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
               <img
                 src={displayUrl}
                 alt="Generated"
+                draggable={false}
                 onClick={() => setIsModalOpen(true)}
-                className={`w-full object-cover transition-transform duration-500 hover:scale-[1.02] cursor-pointer ${
+                className={`w-full object-cover transition-transform duration-500 hover:scale-[1.02] cursor-pointer select-none [-webkit-user-drag:none] ${
                   aspectRatio === "16:9"
                     ? "aspect-video"
                     : aspectRatio === "1:1"

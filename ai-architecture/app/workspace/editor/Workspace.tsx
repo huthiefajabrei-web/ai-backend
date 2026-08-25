@@ -47,8 +47,8 @@ import {
   compressImageFile,
   saveCreationImage,
   ensureLinkedImageGenerator,
-  isFileDragEvent,
   collectDroppedImageFiles,
+  isExternalOsFileDrop,
   type SpotlightNodeOption,
   PORT_COLORS,
 } from "@/lib/workspace/graphUtils";
@@ -711,6 +711,9 @@ function Flow() {
 
   const handleExternalImageDrop = useCallback(
     async (event: React.DragEvent) => {
+      if (isDraggingRef.current) return false;
+      if (!isExternalOsFileDrop(event.dataTransfer)) return false;
+
       const files = collectDroppedImageFiles(event.dataTransfer);
       if (!files.length) return false;
 
@@ -754,19 +757,26 @@ function Flow() {
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
-    event.preventDefault();
-    event.dataTransfer.dropEffect = isFileDragEvent(event.dataTransfer) ? "copy" : "move";
+    if (isExternalOsFileDrop(event.dataTransfer)) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+      return;
+    }
+    if (event.dataTransfer.types.includes("application/reactflow")) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "move";
+    }
   }, []);
 
   const onDragEnter = useCallback((event: React.DragEvent) => {
-    if (!isFileDragEvent(event.dataTransfer)) return;
+    if (!isExternalOsFileDrop(event.dataTransfer)) return;
     event.preventDefault();
     fileDragDepthRef.current += 1;
     setIsFileDragOver(true);
   }, []);
 
   const onDragLeave = useCallback((event: React.DragEvent) => {
-    if (!isFileDragEvent(event.dataTransfer)) return;
+    if (!isExternalOsFileDrop(event.dataTransfer)) return;
     fileDragDepthRef.current = Math.max(0, fileDragDepthRef.current - 1);
     if (fileDragDepthRef.current === 0) setIsFileDragOver(false);
   }, []);
@@ -793,13 +803,21 @@ function Flow() {
 
   useEffect(() => {
     const preventBrowserOpen = (e: DragEvent) => {
-      if (isFileDragEvent(e.dataTransfer)) e.preventDefault();
+      if (isExternalOsFileDrop(e.dataTransfer)) e.preventDefault();
+    };
+    const preventNodeImageDrag = (e: DragEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest?.(".react-flow__node")) {
+        e.preventDefault();
+      }
     };
     window.addEventListener("dragover", preventBrowserOpen);
     window.addEventListener("drop", preventBrowserOpen);
+    document.addEventListener("dragstart", preventNodeImageDrag);
     return () => {
       window.removeEventListener("dragover", preventBrowserOpen);
       window.removeEventListener("drop", preventBrowserOpen);
+      document.removeEventListener("dragstart", preventNodeImageDrag);
     };
   }, []);
 

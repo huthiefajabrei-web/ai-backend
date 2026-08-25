@@ -828,6 +828,16 @@ export function isFileDragEvent(dt: DataTransfer | null | undefined): boolean {
   return Array.from(dt.types || []).includes("Files");
 }
 
+/** True only for files from the OS, not for dragging an in-page <img>. */
+export function isExternalOsFileDrop(dt: DataTransfer | null | undefined): boolean {
+  if (!dt) return false;
+  const types = Array.from(dt.types || []);
+  if (!types.includes("Files")) return false;
+  // Browsers expose these when dragging an existing <img> inside the page.
+  if (types.includes("text/uri-list") || types.includes("text/html")) return false;
+  return true;
+}
+
 export function collectDroppedImageFiles(dt: DataTransfer | null | undefined): File[] {
   if (!dt) return [];
   const out: File[] = [];

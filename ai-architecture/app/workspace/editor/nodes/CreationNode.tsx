@@ -13,7 +13,7 @@ import {
   clearCreationImage,
   compressImageFile,
   collectDroppedImageFiles,
-  isFileDragEvent,
+  isExternalOsFileDrop,
   loadCreationImage,
   saveCreationImage,
 } from "@/lib/workspace/graphUtils";
@@ -97,7 +97,7 @@ export default function CreationNode({ data, selected }: { data: CreationData; s
   };
 
   const onFileDragOver = (e: DragEvent) => {
-    if (!isFileDragEvent(e.dataTransfer)) return;
+    if (!isExternalOsFileDrop(e.dataTransfer)) return;
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = "copy";
@@ -105,6 +105,7 @@ export default function CreationNode({ data, selected }: { data: CreationData; s
   };
 
   const onFileDrop = async (e: DragEvent) => {
+    if (!isExternalOsFileDrop(e.dataTransfer)) return;
     const files = collectDroppedImageFiles(e.dataTransfer);
     if (!files.length) return;
     e.preventDefault();
@@ -192,7 +193,7 @@ export default function CreationNode({ data, selected }: { data: CreationData; s
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onPick(e)} />
 
       <div
-        className={`relative aspect-square bg-[#0a0a0c] rounded-2xl overflow-hidden group nodrag nopan ${
+        className={`relative aspect-square bg-[#0a0a0c] rounded-2xl overflow-hidden group ${
           isFileOver ? "ring-2 ring-amber-500/70" : ""
         }`}
         onDragOver={onFileDragOver}
@@ -203,16 +204,21 @@ export default function CreationNode({ data, selected }: { data: CreationData; s
         {imageSrc ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageSrc} alt={title} className="w-full h-full object-cover" />
+            <img
+              src={imageSrc}
+              alt={title}
+              draggable={false}
+              className="w-full h-full object-cover pointer-events-none select-none [-webkit-user-drag:none]"
+            />
             {dims.w > 0 && (
-              <span className="absolute top-2 right-2 text-[10px] font-semibold text-white bg-black/55 px-2 py-0.5 rounded-md">
+              <span className="absolute top-2 right-2 text-[10px] font-semibold text-white bg-black/55 px-2 py-0.5 rounded-md pointer-events-none">
                 {dims.w} × {dims.h}
               </span>
             )}
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className="absolute bottom-2 left-2 flex items-center gap-1.5 text-[11px] font-medium text-white bg-black/55 hover:bg-black/75 px-2.5 py-1.5 rounded-lg"
+              className="absolute bottom-2 left-2 flex items-center gap-1.5 text-[11px] font-medium text-white bg-black/55 hover:bg-black/75 px-2.5 py-1.5 rounded-lg nodrag nopan"
             >
               <Replace size={12} />
               Replace
