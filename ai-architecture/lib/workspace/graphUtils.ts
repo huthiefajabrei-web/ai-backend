@@ -823,6 +823,37 @@ export function filterSpotlightForPort(
     }));
 }
 
+export function isFileDragEvent(dt: DataTransfer | null | undefined): boolean {
+  if (!dt) return false;
+  return Array.from(dt.types || []).includes("Files");
+}
+
+export function collectDroppedImageFiles(dt: DataTransfer | null | undefined): File[] {
+  if (!dt) return [];
+  const out: File[] = [];
+  const seen = new Set<string>();
+  const push = (file: File | null) => {
+    if (!file) return;
+    const isImage =
+      file.type.startsWith("image/") ||
+      /\.(jpe?g|png|webp|gif|bmp|avif|heic|heif)$/i.test(file.name);
+    if (!isImage) return;
+    const key = `${file.name}:${file.size}:${file.lastModified}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(file);
+  };
+
+  if (dt.files?.length) {
+    Array.from(dt.files).forEach(push);
+  } else {
+    for (const item of Array.from(dt.items || [])) {
+      if (item.kind === "file") push(item.getAsFile());
+    }
+  }
+  return out;
+}
+
 /** Compress a File / data URL for local reference storage */
 export async function compressImageFile(file: File, maxSize = 720, quality = 0.75): Promise<string> {
   const dataUrl = await new Promise<string>((resolve, reject) => {

@@ -24,6 +24,8 @@ import { v4 as uuidv4 } from "uuid";
 import { cancelJobs } from "@/lib/mysql/client";
 import {
   compressImageFile,
+  collectDroppedImageFiles,
+  isFileDragEvent,
   loadLocalRefs,
   MAX_REFERENCE_IMAGES,
   pickPerspective,
@@ -137,14 +139,12 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
     }
   };
 
-  const handleAddLocalRefs = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!nodeId) return;
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-
+  const addLocalRefFiles = async (files: File[]) => {
+    if (!nodeId || !files.length) return;
     const existing = loadLocalRefs(nodeId);
     const allowed = Math.max(0, MAX_REFERENCE_IMAGES - references.length);
     const toAdd = files.slice(0, allowed);
+    if (!toAdd.length) return;
     const next = [...existing];
     for (const file of toAdd) {
       try {
@@ -158,6 +158,10 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
     updateNodeData(nodeId, { localRefCount: next.length });
     setLocalRefsTick((t) => t + 1);
     window.dispatchEvent(new Event("trigger-workspace-save"));
+  };
+
+  const handleAddLocalRefs = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    await addLocalRefFiles(Array.from(e.target.files || []));
     if (refInputRef.current) refInputRef.current.value = "";
   };
 
@@ -343,7 +347,22 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
       </div>
 
       {/* References strip — Magnific style */}
-      <div className="px-3 pt-3">
+      <div
+        className="px-3 pt-3 nodrag nopan"
+        onDragOver={(e) => {
+          if (!isFileDragEvent(e.dataTransfer)) return;
+          e.preventDefault();
+          e.stopPropagation();
+          e.dataTransfer.dropEffect = "copy";
+        }}
+        onDrop={(e) => {
+          const files = collectDroppedImageFiles(e.dataTransfer);
+          if (!files.length) return;
+          e.preventDefault();
+          e.stopPropagation();
+          void addLocalRefFiles(files);
+        }}
+      >
         <div className="flex items-center justify-between mb-2">
           <span className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
             References {references.length > 0 ? `(${references.length})` : ""}
@@ -395,7 +414,7 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
               type="button"
               onClick={() => refInputRef.current?.click()}
               className="w-14 h-14 rounded-xl border border-dashed border-white/15 hover:border-amber-500/50 flex flex-col items-center justify-center text-zinc-500 hover:text-amber-300 transition-colors"
-              title="Add reference images"
+              title="Add reference images — or drop files here"
             >
               <Plus size={16} />
               <span className="text-[9px] mt-0.5">Add</span>

@@ -8,10 +8,12 @@ import {
   Replace,
   MoreHorizontal,
 } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type DragEvent, type ChangeEvent } from "react";
 import {
   clearCreationImage,
   compressImageFile,
+  collectDroppedImageFiles,
+  isFileDragEvent,
   loadCreationImage,
   saveCreationImage,
 } from "@/lib/workspace/graphUtils";
@@ -33,6 +35,7 @@ export default function CreationNode({ data, selected }: { data: CreationData; s
   const fileRef = useRef<HTMLInputElement>(null);
   const [imageSrc, setImageSrc] = useState<string | null>(data.previewUrl || null);
   const [dims, setDims] = useState({ w: data.width || 0, h: data.height || 0 });
+  const [isFileOver, setIsFileOver] = useState(false);
 
   const number = data.creationNumber || 1;
   const title = data.label || `Creation #${number}`;
@@ -87,10 +90,27 @@ export default function CreationNode({ data, selected }: { data: CreationData; s
     img.src = b64;
   };
 
-  const onPick = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onPick = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) await applyFile(file);
     if (fileRef.current) fileRef.current.value = "";
+  };
+
+  const onFileDragOver = (e: DragEvent) => {
+    if (!isFileDragEvent(e.dataTransfer)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "copy";
+    setIsFileOver(true);
+  };
+
+  const onFileDrop = async (e: DragEvent) => {
+    const files = collectDroppedImageFiles(e.dataTransfer);
+    if (!files.length) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setIsFileOver(false);
+    await applyFile(files[0]);
   };
 
   const handleDownload = () => {
@@ -171,7 +191,15 @@ export default function CreationNode({ data, selected }: { data: CreationData; s
 
       <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => void onPick(e)} />
 
-      <div className="relative aspect-square bg-[#0a0a0c] rounded-2xl overflow-hidden group">
+      <div
+        className={`relative aspect-square bg-[#0a0a0c] rounded-2xl overflow-hidden group nodrag nopan ${
+          isFileOver ? "ring-2 ring-amber-500/70" : ""
+        }`}
+        onDragOver={onFileDragOver}
+        onDragEnter={onFileDragOver}
+        onDragLeave={() => setIsFileOver(false)}
+        onDrop={(e) => void onFileDrop(e)}
+      >
         {imageSrc ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -197,9 +225,14 @@ export default function CreationNode({ data, selected }: { data: CreationData; s
             className="w-full h-full flex flex-col items-center justify-center gap-2 text-zinc-500 hover:text-zinc-300 transition-colors"
           >
             <ImageIcon size={28} className="opacity-50" />
-            <span className="text-xs font-medium">Choose from device</span>
+            <span className="text-xs font-medium">Drop image or click to upload</span>
             <span className="text-[10px] text-zinc-600">JPG, PNG, WebP</span>
           </button>
+        )}
+        {isFileOver && (
+          <div className="absolute inset-0 bg-amber-950/50 flex items-center justify-center pointer-events-none">
+            <span className="text-xs font-semibold text-amber-200">Drop to add image</span>
+          </div>
         )}
       </div>
     </div>

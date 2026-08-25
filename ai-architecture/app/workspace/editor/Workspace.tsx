@@ -30,6 +30,7 @@ import {
   Play,
   Coins,
   Loader2,
+  ImagePlus,
 } from "lucide-react";
 
 import { auth, db } from "../../../lib/firebase";
@@ -46,6 +47,8 @@ import {
   compressImageFile,
   saveCreationImage,
   ensureLinkedImageGenerator,
+  isFileDragEvent,
+  collectDroppedImageFiles,
   type SpotlightNodeOption,
   PORT_COLORS,
 } from "@/lib/workspace/graphUtils";
@@ -159,6 +162,8 @@ function Flow() {
   const assetFileInputRef = useRef<HTMLInputElement>(null);
   const pendingAssetConnectRef = useRef<PendingConnect | null>(null);
   const pendingAssetPositionRef = useRef<{ x: number; y: number } | null>(null);
+  const [isFileDragOver, setIsFileDragOver] = useState(false);
+  const fileDragDepthRef = useRef(0);
 
   const nodesRef = useRef(nodes);
   const edgesRef = useRef(edges);
@@ -398,7 +403,12 @@ function Flow() {
   );
 
   const createCreationNodesFromFiles = useCallback(
-    async (files: FileList | File[], position?: { x: number; y: number }, pending?: PendingConnect | null) => {
+    async (
+      files: FileList | File[],
+      position?: { x: number; y: number },
+      pending?: PendingConnect | null,
+      options?: { fitView?: boolean },
+    ) => {
       const instance = reactFlowInstanceRef.current;
       if (!instance) return;
 
@@ -501,14 +511,16 @@ function Flow() {
             return next;
           });
         }
-        // Fit view lightly toward new nodes
-        requestAnimationFrame(() => {
-          try {
-            instance.fitView({ nodes: newNodes.map((n) => ({ id: n.id })), padding: 0.4, duration: 300 });
-          } catch {
-            /* ignore */
-          }
-        });
+        // Fit view only for picker imports — canvas drop keeps the cursor position
+        if (options?.fitView !== false) {
+          requestAnimationFrame(() => {
+            try {
+              instance.fitView({ nodes: newNodes.map((n) => ({ id: n.id })), padding: 0.4, duration: 300 });
+            } catch {
+              /* ignore */
+            }
+          });
+        }
         triggerSave();
       }
     },
@@ -656,13 +668,113 @@ function Flow() {
     triggerSave();
   }, [triggerSave]);
 
+  const clearFileDrag = useCallback(() => {
+    fileDragDepthRef.current = 0;
+    setIsFileDragOver(false);
+  }, []);
+
+  const applyImageToCreationNode = useCallback(
+    async (nodeId: string, file: File) => {
+      try {
+        const b64 = await compressImageFile(file, 1024, 0.8);
+        saveCreationImage(nodeId, b64);
+        const img = await new Promise<{ w: number; h: number }>((resolve) => {
+          const el = new window.Image();
+          el.onload = () => resolve({ w: el.naturalWidth, h: el.naturalHeight });
+          el.onerror = () => resolve({ w: 1024, h: 1024 });
+          el.src = b64;
+        });
+        setNodes((nds) =>
+          nds.map((n) =>
+            n.id === nodeId
+              ? {
+                  ...n,
+                  data: {
+                    ...n.data,
+                    hasImage: true,
+                    previewUrl: b64,
+                    width: img.w,
+                    height: img.h,
+                  },
+                }
+              : n,
+          ),
+        );
+        triggerSave();
+      } catch (err) {
+        console.error("Failed to apply dropped image", err);
+        alert("Failed to import image. Try a smaller JPG/PNG file.");
+      }
+    },
+    [setNodes, triggerSave],
+  );
+
+  const handleExternalImageDrop = useCallback(
+    async (event: React.DragEvent) => {
+      const files = collectDroppedImageFiles(event.dataTransfer);
+      if (!files.length) return false;
+
+      event.preventDefault();
+      event.stopPropagation();
+      clearFileDrag();
+
+      const instance = reactFlowInstanceRef.current;
+      const position = instance
+        ? instance.screenToFlowPosition({ x: event.clientX, y: event.clientY })
+        : { x: event.clientX, y: event.clientY };
+
+      const nodeEl = (event.target as HTMLElement | null)?.closest?.(".react-flow__node") as HTMLElement | null;
+      const hitId = nodeEl?.getAttribute("data-id");
+      const hit = hitId ? nodesRef.current.find((n) => n.id === hitId) : undefined;
+
+      if (hit?.type === "creationNode") {
+        await applyImageToCreationNode(hit.id, files[0]);
+        if (files.length > 1) {
+          await createCreationNodesFromFiles(files.slice(1), { x: position.x + 320, y: position.y }, null, {
+            fitView: false,
+          });
+        }
+        return true;
+      }
+
+      let pending: PendingConnect | null = null;
+      if (hit?.type === "imageNode" || hit?.type === "promptNode") {
+        pending = {
+          fromNodeId: hit.id,
+          fromHandleId: "image-in",
+          fromHandleType: "target",
+          screen: { x: event.clientX, y: event.clientY },
+        };
+      }
+
+      await createCreationNodesFromFiles(files, position, pending, { fitView: false });
+      return true;
+    },
+    [applyImageToCreationNode, createCreationNodesFromFiles, clearFileDrag],
+  );
+
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
-    event.dataTransfer.dropEffect = "move";
+    event.dataTransfer.dropEffect = isFileDragEvent(event.dataTransfer) ? "copy" : "move";
+  }, []);
+
+  const onDragEnter = useCallback((event: React.DragEvent) => {
+    if (!isFileDragEvent(event.dataTransfer)) return;
+    event.preventDefault();
+    fileDragDepthRef.current += 1;
+    setIsFileDragOver(true);
+  }, []);
+
+  const onDragLeave = useCallback((event: React.DragEvent) => {
+    if (!isFileDragEvent(event.dataTransfer)) return;
+    fileDragDepthRef.current = Math.max(0, fileDragDepthRef.current - 1);
+    if (fileDragDepthRef.current === 0) setIsFileDragOver(false);
   }, []);
 
   const onDrop = useCallback(
-    (event: React.DragEvent) => {
+    async (event: React.DragEvent) => {
+      if (await handleExternalImageDrop(event)) return;
+
       event.preventDefault();
       const type = event.dataTransfer.getData("application/reactflow");
       if (!type || !reactFlowInstance) return;
@@ -676,8 +788,20 @@ function Flow() {
       setNodes((nds) => nds.concat(newNode));
       triggerSave();
     },
-    [reactFlowInstance, setNodes, triggerSave],
+    [handleExternalImageDrop, reactFlowInstance, setNodes, triggerSave],
   );
+
+  useEffect(() => {
+    const preventBrowserOpen = (e: DragEvent) => {
+      if (isFileDragEvent(e.dataTransfer)) e.preventDefault();
+    };
+    window.addEventListener("dragover", preventBrowserOpen);
+    window.addEventListener("drop", preventBrowserOpen);
+    return () => {
+      window.removeEventListener("dragover", preventBrowserOpen);
+      window.removeEventListener("drop", preventBrowserOpen);
+    };
+  }, []);
 
   const onEdgeClick = useCallback(
     (_event: React.MouseEvent, edge: Edge) => {
@@ -789,7 +913,15 @@ function Flow() {
   }
 
   return (
-    <div className="flex h-screen w-screen bg-[#09090b] overflow-hidden text-gray-200 font-sans relative">
+    <div
+      className="flex h-screen w-screen bg-[#09090b] overflow-hidden text-gray-200 font-sans relative"
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+      onDragOver={onDragOver}
+      onDrop={(e) => {
+        void handleExternalImageDrop(e);
+      }}
+    >
       <input
         ref={assetFileInputRef}
         type="file"
@@ -942,7 +1074,7 @@ function Flow() {
             setReactFlowInstance(instance);
             reactFlowInstanceRef.current = instance;
           }}
-          onDrop={onDrop}
+          onDrop={(e) => void onDrop(e)}
           onDragOver={onDragOver}
           nodeTypes={nodeTypes}
           fitView
@@ -962,12 +1094,13 @@ function Flow() {
         </ReactFlow>
       </div>
 
-      {isLoaded && nodes.length === 0 && !spotlightOpen && (
+      {isLoaded && nodes.length === 0 && !spotlightOpen && !isFileDragOver && (
         <div className="absolute inset-0 z-30 flex items-center justify-center pointer-events-none">
           <div className="pointer-events-auto text-center bg-[#121214]/95 border border-white/10 backdrop-blur-xl rounded-2xl p-8 max-w-md shadow-2xl">
             <h2 className="text-xl font-display font-bold text-white mb-2">Build your workflow</h2>
             <p className="text-sm text-zinc-400 mb-6 leading-relaxed">
-              Connect <span className="text-blue-400 font-semibold">Text</span> →{" "}
+              Drop images onto the canvas, or connect{" "}
+              <span className="text-blue-400 font-semibold">Text</span> →{" "}
               <span className="text-amber-500 font-semibold">Image Generator</span>. Press{" "}
               <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[11px]">Space</kbd> or{" "}
               <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-[11px]">/</kbd> for Spotlight.
@@ -983,11 +1116,24 @@ function Flow() {
         </div>
       )}
 
+      {isFileDragOver && (
+        <div className="absolute inset-0 z-[70] pointer-events-none flex items-center justify-center">
+          <div className="absolute inset-4 rounded-[28px] border-2 border-dashed border-amber-500/70 bg-amber-950/25 shadow-[inset_0_0_80px_rgba(184,134,11,0.12)]" />
+          <div className="relative flex flex-col items-center gap-3 rounded-2xl border border-amber-500/30 bg-[#121214]/95 px-8 py-6 shadow-2xl">
+            <div className="w-12 h-12 rounded-2xl bg-amber-600/20 border border-amber-500/30 flex items-center justify-center">
+              <ImagePlus size={22} className="text-amber-400" />
+            </div>
+            <p className="text-white font-semibold">Drop images here</p>
+            <p className="text-xs text-zinc-400">They will appear on the canvas as Creations</p>
+          </div>
+        </div>
+      )}
+
       <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 pointer-events-none hidden lg:block">
         <div className="bg-[#121214]/90 border border-white/10 backdrop-blur-md px-4 py-2 rounded-full text-[11px] text-zinc-400 shadow-xl">
           Magnific flow:{" "}
-          <span className="text-zinc-200">Assets → Text → Image Generator</span>
-          {" "}· images are produced on Image Generator · Run auto-adds it if missing
+          <span className="text-zinc-200">Drop images onto the canvas</span>
+          {" "}· Assets → Text → Image Generator
         </div>
       </div>
 
