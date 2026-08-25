@@ -1,4 +1,5 @@
 import type { Connection, Edge, Node } from "@xyflow/react";
+import { authFormPost } from "@/lib/mysql/client";
 
 /** Magnific data types for typed ports */
 export type PortKind = "text" | "image";
@@ -243,24 +244,63 @@ function getImageUrlFromNode(node: Node | undefined): string | undefined {
 
 export type LocalRefStored = {
   id: string;
-  b64: string;
+  b64?: string;
+  url?: string;
 };
 
-export function loadLocalRefs(nodeId: string): LocalRefStored[] {
+export function loadLocalRefs(nodeId: string, nodeData?: Record<string, unknown> | null): LocalRefStored[] {
   if (typeof window === "undefined") return [];
+  const byId = new Map<string, LocalRefStored>();
+
+  const fromNode = Array.isArray(nodeData?.localRefs) ? nodeData!.localRefs : [];
+  for (const item of fromNode as LocalRefStored[]) {
+    if (!item?.id) continue;
+    byId.set(String(item.id), { id: String(item.id), url: item.url, b64: item.b64 });
+  }
+
   try {
     const raw = localStorage.getItem(`ws_refs_${nodeId}`);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed.filter((r) => r?.id && r?.b64) : [];
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        for (const item of parsed) {
+          if (!item?.id) continue;
+          const prev = byId.get(String(item.id)) || { id: String(item.id) };
+          byId.set(String(item.id), {
+            ...prev,
+            url: prev.url || item.url,
+            b64: prev.b64 || item.b64,
+          });
+        }
+      }
+    }
   } catch {
-    return [];
+    /* ignore */
   }
+
+  return Array.from(byId.values()).filter((r) => r.url || r.b64);
 }
 
 export function saveLocalRefs(nodeId: string, refs: LocalRefStored[]) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(`ws_refs_${nodeId}`, JSON.stringify(refs));
+  try {
+    localStorage.setItem(`ws_refs_${nodeId}`, JSON.stringify(refs));
+  } catch {
+    try {
+      localStorage.removeItem(`ws_refs_${nodeId}`);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+export function persistableLocalRefs(refs: LocalRefStored[]): { id: string; url: string }[] {
+  return refs
+    .map((r) => {
+      const url = r.url && /^https?:\/\//i.test(r.url) ? r.url : undefined;
+      return url ? { id: r.id, url } : null;
+    })
+    .filter(Boolean) as { id: string; url: string }[];
 }
 
 /** Expand @Creation #4 / @Image1 → stable labels for the model */
@@ -312,19 +352,21 @@ function addCreationRef(
   creationNode: Node,
   edgeId: string,
 ) {
-  const fromData = creationNode.data?.previewUrl ? String(creationNode.data.previewUrl) : undefined;
-  const b64 = loadCreationImage(creationNode.id) || fromData || undefined;
-  const url = !b64 ? getImageUrlFromNode(creationNode) : undefined;
-  if (!b64 && !url) return;
+  const preview = creationNode.data?.previewUrl ? String(creationNode.data.previewUrl) : undefined;
+  const stored = loadCreationImage(creationNode.id) || undefined;
+  const remote = [preview, stored].find((v) => v && /^https?:\/\//i.test(v));
+  const dataUrl = [stored, preview].find((v) => v && String(v).startsWith("data:"));
+  const thumb = stored || preview;
+  if (!thumb) return;
   const creationNumber = Number(creationNode.data?.creationNumber) || undefined;
   pushReference(references, {
     id: `creation_${edgeId}_${creationNode.id}`,
     source: "creation",
     sourceNodeId: creationNode.id,
     creationNumber,
-    thumb: b64 || url,
-    b64,
-    url,
+    thumb,
+    b64: dataUrl,
+    url: remote,
   });
 }
 
@@ -406,13 +448,16 @@ export function resolveImageNodeInputs(
   };
 
   // 1) Local uploads on the Image Generator card
-  const localRefs = loadLocalRefs(nodeId);
+  const localRefs = loadLocalRefs(nodeId, (node?.data || {}) as Record<string, unknown>);
   for (const local of localRefs) {
+    const src = local.url || local.b64;
+    if (!src) continue;
     pushReference(references, {
       id: local.id,
       source: "upload",
-      thumb: local.b64,
-      b64: local.b64,
+      thumb: src,
+      b64: local.b64?.startsWith("data:") ? local.b64 : undefined,
+      url: local.url || (/^https?:\/\//i.test(src) ? src : undefined),
     });
   }
 
@@ -456,21 +501,24 @@ export function resolveImageNodeInputs(
           });
         }
       } else if (source.type === "promptNode") {
-        const promptLocals = loadLocalRefs(source.id);
+        const promptLocals = loadLocalRefs(source.id, (source.data || {}) as Record<string, unknown>);
         const legacy = source.data?.compressedImageB64 || source.data?.imageB64;
-        const payloads: { id: string; b64: string }[] = promptLocals.length
+        const payloads: LocalRefStored[] = promptLocals.length
           ? promptLocals
           : legacy
             ? [{ id: `legacy_${source.id}`, b64: String(legacy) }]
             : [];
 
         for (const item of payloads) {
+          const src = item.url || item.b64;
+          if (!src) continue;
           pushReference(references, {
             id: `edge_${edge.id}_${item.id}`,
             source: "edge",
             sourceNodeId: source.id,
-            thumb: item.b64,
-            b64: item.b64,
+            thumb: src,
+            b64: item.b64?.startsWith("data:") ? item.b64 : undefined,
+            url: item.url || (/^https?:\/\//i.test(src) ? src : undefined),
           });
         }
         collectImageRefsIntoTextNode(source.id, getNode, getEdges, references);
@@ -965,4 +1013,49 @@ export async function compressImageFile(file: File, maxSize = 720, quality = 0.7
     img.onerror = reject;
     img.src = dataUrl;
   });
+}
+
+function dataUrlToBlob(dataUrl: string): Blob {
+  const arr = dataUrl.split(",");
+  const mimeMatch = arr[0].match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : "image/jpeg";
+  const binary = atob(arr[1] || "");
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return new Blob([bytes], { type: mime });
+}
+
+export async function persistDroppedImageFile(file: File): Promise<{ displaySrc: string; persistUrl?: string }> {
+  const preview = await compressImageFile(file, 1280, 0.82);
+  try {
+    const blob = dataUrlToBlob(preview);
+    const uploadFile = new File([blob], `workspace-${Date.now()}.jpg`, { type: blob.type || "image/jpeg" });
+    const fd = new FormData();
+    fd.append("file", uploadFile);
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:8000";
+    const res = await authFormPost(`${apiBase}/workspace/upload-image`, fd);
+    const data = await res.json();
+    if (data?.ok && data.url) {
+      return { displaySrc: String(data.url), persistUrl: String(data.url) };
+    }
+  } catch (err) {
+    console.warn("Workspace image upload failed, using local preview only", err);
+  }
+  return { displaySrc: preview };
+}
+
+export async function persistCreationImage(
+  nodeId: string,
+  file: File,
+): Promise<{ src: string; width: number; height: number; persistUrl?: string }> {
+  const { displaySrc, persistUrl } = await persistDroppedImageFile(file);
+  const src = persistUrl || displaySrc;
+  saveCreationImage(nodeId, src);
+  const dims = await new Promise<{ width: number; height: number }>((resolve) => {
+    const el = new window.Image();
+    el.onload = () => resolve({ width: el.naturalWidth, height: el.naturalHeight });
+    el.onerror = () => resolve({ width: 1024, height: 1024 });
+    el.src = src;
+  });
+  return { src, persistUrl, ...dims };
 }

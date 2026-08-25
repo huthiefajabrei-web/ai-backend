@@ -44,8 +44,7 @@ import {
   SPOTLIGHT_NODES,
   filterSpotlightForPort,
   nextCreationNumber,
-  compressImageFile,
-  saveCreationImage,
+  persistCreationImage,
   ensureLinkedImageGenerator,
   collectDroppedImageFiles,
   isExternalOsFileDrop,
@@ -83,9 +82,26 @@ function sanitizeForFirestore(value: any): any {
     const cleaned: Record<string, any> = {};
     for (const [k, v] of Object.entries(value)) {
       if (v === undefined) continue;
-      if (k === "imageB64" || k === "compressedImageB64" || k === "localRefs" || k === "previewUrl") continue;
+      if (k === "imageB64" || k === "compressedImageB64") continue;
       if (k === "isLoading") {
         cleaned[k] = false;
+        continue;
+      }
+      if (k === "previewUrl") {
+        if (typeof v === "string" && /^https?:\/\//i.test(v)) cleaned[k] = v;
+        continue;
+      }
+      if (k === "localRefs") {
+        if (Array.isArray(v)) {
+          const persisted = v
+            .map((item: any) => {
+              const url = typeof item?.url === "string" && /^https?:\/\//i.test(item.url) ? item.url : null;
+              const id = item?.id ? String(item.id) : "";
+              return url && id ? { id, url } : null;
+            })
+            .filter(Boolean);
+          if (persisted.length) cleaned[k] = persisted;
+        }
         continue;
       }
       cleaned[k] = sanitizeForFirestore(v);
@@ -471,15 +487,7 @@ function Flow() {
         const id = uuidv4();
         const creationNumber = number++;
         try {
-          const b64 = await compressImageFile(file, 1024, 0.8);
-          saveCreationImage(id, b64);
-
-          const img = await new Promise<{ w: number; h: number }>((resolve) => {
-            const el = new window.Image();
-            el.onload = () => resolve({ w: el.naturalWidth, h: el.naturalHeight });
-            el.onerror = () => resolve({ w: 1024, h: 1024 });
-            el.src = b64;
-          });
+          const persisted = await persistCreationImage(id, file);
 
           newNodes.push({
             id,
@@ -489,9 +497,9 @@ function Flow() {
               label: `Creation #${creationNumber}`,
               creationNumber,
               hasImage: true,
-              previewUrl: b64,
-              width: img.w,
-              height: img.h,
+              previewUrl: persisted.src,
+              width: persisted.width,
+              height: persisted.height,
             },
           });
 
@@ -699,14 +707,7 @@ function Flow() {
   const applyImageToCreationNode = useCallback(
     async (nodeId: string, file: File) => {
       try {
-        const b64 = await compressImageFile(file, 1024, 0.8);
-        saveCreationImage(nodeId, b64);
-        const img = await new Promise<{ w: number; h: number }>((resolve) => {
-          const el = new window.Image();
-          el.onload = () => resolve({ w: el.naturalWidth, h: el.naturalHeight });
-          el.onerror = () => resolve({ w: 1024, h: 1024 });
-          el.src = b64;
-        });
+        const persisted = await persistCreationImage(nodeId, file);
         setNodes((nds) =>
           nds.map((n) =>
             n.id === nodeId
@@ -715,9 +716,9 @@ function Flow() {
                   data: {
                     ...n.data,
                     hasImage: true,
-                    previewUrl: b64,
-                    width: img.w,
-                    height: img.h,
+                    previewUrl: persisted.src,
+                    width: persisted.width,
+                    height: persisted.height,
                   },
                 }
               : n,

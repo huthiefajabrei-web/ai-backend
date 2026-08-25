@@ -23,10 +23,11 @@ import { createPortal } from "react-dom";
 import { v4 as uuidv4 } from "uuid";
 import { cancelJobs } from "@/lib/mysql/client";
 import {
-  compressImageFile,
   collectDroppedImageFiles,
   isExternalOsFileDrop,
   loadLocalRefs,
+  persistDroppedImageFile,
+  persistableLocalRefs,
   MAX_REFERENCE_IMAGES,
   pickPerspective,
   resolveImageNodeInputs,
@@ -141,21 +142,28 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
 
   const addLocalRefFiles = async (files: File[]) => {
     if (!nodeId || !files.length) return;
-    const existing = loadLocalRefs(nodeId);
+    const existing = loadLocalRefs(nodeId, data);
     const allowed = Math.max(0, MAX_REFERENCE_IMAGES - references.length);
     const toAdd = files.slice(0, allowed);
     if (!toAdd.length) return;
     const next = [...existing];
     for (const file of toAdd) {
       try {
-        const b64 = await compressImageFile(file);
-        next.push({ id: uuidv4(), b64 });
+        const persisted = await persistDroppedImageFile(file);
+        next.push({
+          id: uuidv4(),
+          url: persisted.persistUrl,
+          b64: persisted.persistUrl ? undefined : persisted.displaySrc,
+        });
       } catch (err) {
         console.error(err);
       }
     }
     saveLocalRefs(nodeId, next);
-    updateNodeData(nodeId, { localRefCount: next.length });
+    updateNodeData(nodeId, {
+      localRefs: persistableLocalRefs(next),
+      localRefCount: next.length,
+    });
     setLocalRefsTick((t) => t + 1);
     window.dispatchEvent(new Event("trigger-workspace-save"));
   };
@@ -168,9 +176,12 @@ export default function ImageNode({ data, selected }: { data: any; selected?: bo
   const removeReference = (ref: WorkspaceReference) => {
     if (!nodeId) return;
     if (ref.source === "upload") {
-      const next = loadLocalRefs(nodeId).filter((r) => r.id !== ref.id);
+      const next = loadLocalRefs(nodeId, data).filter((r) => r.id !== ref.id);
       saveLocalRefs(nodeId, next);
-      updateNodeData(nodeId, { localRefCount: next.length });
+      updateNodeData(nodeId, {
+        localRefs: persistableLocalRefs(next),
+        localRefCount: next.length,
+      });
       setLocalRefsTick((t) => t + 1);
     } else if (ref.source === "edge" && ref.sourceNodeId) {
       setEdges((eds) =>

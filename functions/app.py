@@ -1080,6 +1080,50 @@ async def admin_upload_image(
         print(f" Upload error: {e}")
         return JSONResponse(status_code=500, content={"ok": False, "error": "Upload failed"})
 
+@app.post("/workspace/upload-image")
+async def workspace_upload_image(
+    file: UploadFile = File(...),
+    authorization: Optional[str] = Header(None)
+):
+    token = (authorization or "").replace("Bearer ", "").strip()
+    user = get_user_from_token(token)
+    if not user:
+        return JSONResponse(status_code=401, content={"ok": False, "error": "Sign in required"})
+
+    try:
+        content = await file.read()
+        upload_error = validate_image_upload(content, file.content_type)
+        if upload_error:
+            return JSONResponse(status_code=400, content={"ok": False, "error": upload_error})
+        ext = file.filename.split('.')[-1].lower() if file.filename and '.' in file.filename else 'jpg'
+        if ext not in ("jpg", "jpeg", "png", "webp", "gif"):
+            ext = "jpg"
+        uid = str(user.get("id") or "anon")
+        filename = f"ws_{uid}_{int(time.time())}_{uuid.uuid4().hex[:8]}.{ext}"
+
+        if storage_bucket:
+            content_type = file.content_type or "image/jpeg"
+            if ext == "png":
+                content_type = "image/png"
+            elif ext == "webp":
+                content_type = "image/webp"
+            elif ext == "gif":
+                content_type = "image/gif"
+            blob = storage_bucket.blob(f"workspace-refs/{filename}")
+            blob.upload_from_string(content, content_type=content_type)
+            blob.make_public()
+            return {"ok": True, "url": blob.public_url, "storage": "firebase"}
+
+        filepath = os.path.join("static", filename)
+        with open(filepath, "wb") as f:
+            f.write(content)
+        api_base = os.getenv("API_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
+        return {"ok": True, "url": f"{api_base}/static/{filename}", "storage": "local"}
+    except Exception as e:
+        print(f" workspace_upload_image error: {e}")
+        return JSONResponse(status_code=500, content={"ok": False, "error": "Upload failed"})
+
+
 # =========================
 # 3) Prompt Templates
 # =========================

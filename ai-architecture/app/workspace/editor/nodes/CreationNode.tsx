@@ -11,11 +11,10 @@ import {
 import { useEffect, useRef, useState, type DragEvent, type ChangeEvent } from "react";
 import {
   clearCreationImage,
-  compressImageFile,
+  persistCreationImage,
   collectDroppedImageFiles,
   isExternalOsFileDrop,
   loadCreationImage,
-  saveCreationImage,
 } from "@/lib/workspace/graphUtils";
 import NodeRunMenu from "../NodeRunMenu";
 
@@ -70,24 +69,18 @@ export default function CreationNode({ data, selected }: { data: CreationData; s
 
   const applyFile = async (file: File) => {
     if (!nodeId) return;
-    const b64 = await compressImageFile(file, 1024, 0.8);
-    saveCreationImage(nodeId, b64);
-    setImageSrc(b64);
-
-    const img = new window.Image();
-    img.onload = () => {
-      setDims({ w: img.naturalWidth, h: img.naturalHeight });
-      updateNodeData(nodeId, {
-        hasImage: true,
-        previewUrl: b64,
-        width: img.naturalWidth,
-        height: img.naturalHeight,
-        label: `Creation #${number}`,
-        creationNumber: number,
-      });
-      window.dispatchEvent(new Event("trigger-workspace-save"));
-    };
-    img.src = b64;
+    const persisted = await persistCreationImage(nodeId, file);
+    setImageSrc(persisted.src);
+    setDims({ w: persisted.width, h: persisted.height });
+    updateNodeData(nodeId, {
+      hasImage: true,
+      previewUrl: persisted.src,
+      width: persisted.width,
+      height: persisted.height,
+      label: `Creation #${number}`,
+      creationNumber: number,
+    });
+    window.dispatchEvent(new Event("trigger-workspace-save"));
   };
 
   const onPick = async (e: ChangeEvent<HTMLInputElement>) => {
